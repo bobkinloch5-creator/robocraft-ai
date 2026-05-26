@@ -187,7 +187,7 @@ export const Route = createFileRoute("/terms")({
         <Section title="17. Contact">
           <p>
             Questions about these Terms? Email{" "}
-            <a className="underline" href="mailto:support@bloxsmith.pro">support@bloxsmith.pro</a>.
+            <a className="underline" href="mailto:community100x@gmail.com">community100x@gmail.com</a>.
           </p>
         </Section>
       </main>

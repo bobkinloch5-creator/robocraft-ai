@@ -115,7 +115,7 @@ export const Route = createFileRoute("/privacy")({
             We protect data in transit with TLS and at rest with industry-standard encryption. Database access is
             scoped through row-level security policies so you can only access your own data. Plugin tokens and MCP
             credentials are stored as hashes or in restricted-access tables. No system is perfectly secure — please
-            report suspected vulnerabilities to <a className="underline" href="mailto:security@bloxsmith.pro">security@bloxsmith.pro</a>.
+            report suspected vulnerabilities to <a className="underline" href="mailto:community100x@gmail.com">community100x@gmail.com</a>.
           </p>
         </Section>
 
@@ -128,7 +128,7 @@ export const Route = createFileRoute("/privacy")({
             <li>Withdraw consent at any time (without affecting prior lawful processing).</li>
             <li>Lodge a complaint with your local data-protection authority.</li>
           </ul>
-          <p>To exercise any of these rights, email <a className="underline" href="mailto:privacy@bloxsmith.pro">privacy@bloxsmith.pro</a>.</p>
+          <p>To exercise any of these rights, email <a className="underline" href="mailto:community100x@gmail.com">community100x@gmail.com</a>.</p>
         </Section>
 
         <Section title="11. Children">
@@ -164,7 +164,7 @@ export const Route = createFileRoute("/privacy")({
         <Section title="15. Contact">
           <p>
             Questions about this policy? Email{" "}
-            <a className="underline" href="mailto:privacy@bloxsmith.pro">privacy@bloxsmith.pro</a>{" "}
+            <a className="underline" href="mailto:community100x@gmail.com">community100x@gmail.com</a>{" "}
             or write to BloxSmith, Privacy Team.
           </p>
         </Section>
