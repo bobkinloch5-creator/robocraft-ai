@@ -10,6 +10,7 @@ import { Plus, Folder, Plug, BookOpen, CreditCard, ShieldCheck, X, Gamepad2, Spa
 import { toast } from "sonner";
 import { Onboarding } from "@/components/Onboarding";
 import { UsageRemaining } from "@/components/UsageRemaining";
+import { useDailyClaimCooldown } from "@/hooks/useDailyClaimCooldown";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
