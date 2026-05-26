@@ -2057,15 +2057,6 @@ function ProjectEditor() {
                   {thinking ? " · deeper" : ""}
                 </span>
               </div>
-                <span className="text-[10px] text-muted-foreground">
-                  {chatMode
-                    ? `${CHAT_COST} cr / chat`
-                    : planMode
-                      ? `${PLAN_COST} cr / plan`
-                      : `${GENERATE_COST} cr / build`}
-                  {thinking ? " · deeper" : ""}
-                </span>
-              </div>
             </div>
           )}
         </aside>
