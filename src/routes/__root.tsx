@@ -47,8 +47,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "BloxSmith — Build Roblox Games With AI" },
       { name: "twitter:description", content: "Describe your Roblox game, generate scripts and systems, then sync directly into Roblox Studio." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/2206a489-a9ce-4b28-915f-44796995f224" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/2206a489-a9ce-4b28-915f-44796995f224" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/d40a0299-aad3-4400-9750-9e748359ad0c" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/d40a0299-aad3-4400-9750-9e748359ad0c" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
