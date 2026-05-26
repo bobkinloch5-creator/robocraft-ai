@@ -173,8 +173,11 @@ Action shapes:
         const userPrompt =
           `Project: ${project.name}\n` +
           `Instance count: ${ctxRow.instance_count}\n` +
-          `Workspace tree (path : ClassName), truncated to ${instances.length} entries:\n` +
-          instances.map((i) => `${i.path} : ${i.className}`).join("\n") +
+          (ignores.length > 0
+            ? `IGNORE these locations / names (do NOT reference them in any action): ${ignores.join(", ")}\n`
+            : "") +
+          `Workspace tree (path : ClassName), truncated to ${visibleInstances.length} entries:\n` +
+          visibleInstances.map((i) => `${i.path} : ${i.className}`).join("\n") +
           `\n\nReturn the JSON plan now.`;
 
         let aiJson: any = null;
