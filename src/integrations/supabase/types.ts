@@ -414,9 +414,12 @@ export type Database = {
           bio: string | null
           created_at: string
           credits: number
+          discord_claimed: boolean
           display_name: string | null
           email: string
           id: string
+          referral_code: string | null
+          referred_by: string | null
           specialization: string | null
           updated_at: string
         }
@@ -425,9 +428,12 @@ export type Database = {
           bio?: string | null
           created_at?: string
           credits?: number
+          discord_claimed?: boolean
           display_name?: string | null
           email: string
           id: string
+          referral_code?: string | null
+          referred_by?: string | null
           specialization?: string | null
           updated_at?: string
         }
@@ -436,9 +442,12 @@ export type Database = {
           bio?: string | null
           created_at?: string
           credits?: number
+          discord_claimed?: boolean
           display_name?: string | null
           email?: string
           id?: string
+          referral_code?: string | null
+          referred_by?: string | null
           specialization?: string | null
           updated_at?: string
         }
@@ -748,12 +757,14 @@ export type Database = {
         Args: { _reason: string; _request_id: string }
         Returns: undefined
       }
+      apply_referral: { Args: { _code: string }; Returns: Json }
       can_access_project: {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
       check_and_record_ai_usage: { Args: never; Returns: Json }
       claim_daily_credits: { Args: never; Returns: Json }
+      claim_discord_credits: { Args: never; Returns: Json }
       get_ai_usage: { Args: never; Returns: Json }
       grant_credits_service: {
         Args: { _amount: number; _reason: string; _user_id: string }
