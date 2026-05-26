@@ -59,11 +59,33 @@ function McpPage() {
           </p>
         </header>
 
+        <section className="space-y-4 rounded-2xl border border-primary/30 bg-primary/5 p-6">
+          <h2 className="text-2xl font-semibold">How it works (3 steps)</h2>
+          <ol className="list-decimal list-inside text-muted-foreground space-y-2">
+            <li>
+              <strong className="text-foreground">Generate your token</strong> below
+              and copy it. Keep it secret — it spends your credits.
+            </li>
+            <li>
+              <strong className="text-foreground">Add BloxSmith as an MCP server</strong>
+              {" "}in your AI client (Claude Code, Codex, Antigravity, VS Code,
+              Cursor, Windsurf, or anything else that speaks MCP).
+            </li>
+            <li>
+              <strong className="text-foreground">Prompt your AI</strong> to call
+              {" "}<code className="bg-muted px-1.5 py-0.5 rounded">list_my_projects</code>
+              {" "}then <code className="bg-muted px-1.5 py-0.5 rounded">build_roblox</code>.
+              That's it — your Studio plugin applies the changes.
+            </li>
+          </ol>
+        </section>
+
         <section className="space-y-3">
           <h2 className="text-2xl font-semibold">Endpoint</h2>
           <Code>{endpoint}</Code>
           <p className="text-sm text-muted-foreground">
-            Streamable HTTP MCP transport. Authenticate with{" "}
+            Standard <strong>MCP Streamable HTTP</strong> transport — works with any
+            MCP-compatible client. Authenticate with{" "}
             <code className="bg-muted px-1.5 py-0.5 rounded">
               Authorization: Bearer &lt;YOUR_MCP_TOKEN&gt;
             </code>
@@ -71,6 +93,8 @@ function McpPage() {
             click <strong>Revoke</strong> to kill it instantly.
           </p>
         </section>
+
+
 
         <McpTokenManager />
 
