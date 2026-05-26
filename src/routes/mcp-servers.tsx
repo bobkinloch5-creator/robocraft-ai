@@ -1,12 +1,14 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Plug, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { testMcpServer } from "@/lib/mcp-test.functions";
 
 type Server = {
   id: string;
@@ -30,11 +32,15 @@ export const Route = createFileRoute("/mcp-servers")({
   }),
 });
 
+type TestState = { status: "idle" | "loading" | "ok" | "fail"; toolCount?: number; error?: string; tools?: Array<{ name: string; description: string }> };
+
 function McpServersPage() {
   const [servers, setServers] = useState<Server[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: "", url: "", auth_header: "" });
   const [saving, setSaving] = useState(false);
+  const [tests, setTests] = useState<Record<string, TestState>>({});
+  const runTest = useServerFn(testMcpServer);
 
   const load = async () => {
     setLoading(true);
@@ -47,9 +53,36 @@ function McpServersPage() {
     setLoading(false);
   };
 
+  const testServer = async (s: Server, silent = false) => {
+    setTests((t) => ({ ...t, [s.id]: { status: "loading" } }));
+    try {
+      const res = await runTest({ data: { serverId: s.id } });
+      if (res.ok) {
+        setTests((t) => ({ ...t, [s.id]: { status: "ok", toolCount: res.toolCount, tools: res.tools } }));
+        if (!silent) toast.success(`${s.name}: ${res.toolCount} tool${res.toolCount === 1 ? "" : "s"} ready`);
+      } else {
+        setTests((t) => ({ ...t, [s.id]: { status: "fail", error: res.error } }));
+        if (!silent) toast.error(`${s.name}: ${res.error}`);
+      }
+    } catch (e: any) {
+      setTests((t) => ({ ...t, [s.id]: { status: "fail", error: e?.message ?? "Test failed" } }));
+      if (!silent) toast.error(e?.message ?? "Test failed");
+    }
+  };
+
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    servers.forEach((s) => {
+      if (s.enabled && !tests[s.id]) testServer(s, true);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [servers]);
+
+
+
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,27 +192,58 @@ function McpServersPage() {
             <p className="text-muted-foreground text-sm">None yet.</p>
           ) : (
             <ul className="space-y-2">
-              {servers.map((s) => (
+              {servers.map((s) => {
+                const t = tests[s.id];
+                return (
                 <li
                   key={s.id}
-                  className="border border-border rounded-lg p-4 bg-card flex items-center justify-between gap-4"
+                  className="border border-border rounded-lg p-4 bg-card flex flex-col gap-3"
                 >
-                  <div className="min-w-0">
-                    <div className="font-medium">{s.name}</div>
-                    <div className="text-xs text-muted-foreground truncate">{s.url}</div>
-                    {s.auth_header && (
-                      <div className="text-xs text-muted-foreground">🔐 auth set</div>
-                    )}
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium flex items-center gap-2">
+                        {s.name}
+                        {t?.status === "loading" && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                        {t?.status === "ok" && (
+                          <span className="inline-flex items-center gap-1 text-xs font-normal text-emerald-500">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> {t.toolCount} tool{t.toolCount === 1 ? "" : "s"}
+                          </span>
+                        )}
+                        {t?.status === "fail" && (
+                          <span className="inline-flex items-center gap-1 text-xs font-normal text-destructive">
+                            <XCircle className="h-3.5 w-3.5" /> error
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">{s.url}</div>
+                      {s.auth_header && (
+                        <div className="text-xs text-muted-foreground">🔐 auth set</div>
+                      )}
+                      {t?.status === "fail" && t.error && (
+                        <div className="text-xs text-destructive mt-1 break-words">{t.error}</div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button variant="outline" size="sm" onClick={() => testServer(s)} disabled={t?.status === "loading"}>
+                        <Plug className="h-3.5 w-3.5 mr-1" /> Test
+                      </Button>
+                      <Switch checked={s.enabled} onCheckedChange={() => toggle(s)} />
+                      <Button variant="ghost" size="icon" onClick={() => remove(s)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <Switch checked={s.enabled} onCheckedChange={() => toggle(s)} />
-                    <Button variant="ghost" size="icon" onClick={() => remove(s)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {t?.status === "ok" && t.tools && t.tools.length > 0 && (
+                    <div className="text-xs text-muted-foreground border-t border-border pt-2">
+                      <span className="font-medium text-foreground">Available tools: </span>
+                      {t.tools.map((tool) => tool.name).join(", ")}
+                    </div>
+                  )}
                 </li>
-              ))}
+                );
+              })}
             </ul>
+
           )}
         </section>
 

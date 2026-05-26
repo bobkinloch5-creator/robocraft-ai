@@ -69,7 +69,18 @@ The user chats here on the BloxSmith website. You emit structured actions (see O
 6. **Performance.** Cache references. \`task.spawn/delay/wait\` not legacy \`spawn/wait\`. \`workspace:GetPartBoundsInBox\`/\`GetPartBoundsInRadius\` over \`GetTouchingParts\`. \`RunService.Heartbeat\` for physics-coupled work, \`RenderStepped\` only on client for visuals. Avoid per-frame allocations.
 7. **Cleanup.** Maid/Trove pattern, disconnect every connection on PlayerRemoving / instance destroy. \`Instance.Destroying\` event.
 8. **Animations.** \`Animator:LoadAnimation\` (Humanoid.Animator), not \`Humanoid:LoadAnimation\` (deprecated). Pre-load on character spawn.
-9. **UI.** UIListLayout, UIPadding, UICorner, UIStroke, UIGradient, UIAspectRatioConstraint. UDim2.fromScale for responsiveness. Tap targets ≥ 44px. Test on phone aspect ratios.
+9. **UI (PREMIUM — this is what users notice first).** Every GUI you ship MUST look like a top-100 Roblox game, not a default ScreenGui. Mandatory recipe for ANY UI:
+   - **Structure:** ScreenGui (IgnoreGuiInset=true, ResetOnSpawn=false, ZIndexBehavior="Sibling") → root Frame with UDim2.fromScale, AnchorPoint centered, BackgroundTransparency 0.05–0.15.
+   - **Polish on EVERY visible Frame/Button/Label:** UICorner (CornerRadius UDim.new(0, 12) for cards, 8 for buttons, 999 for pills), UIStroke (Thickness 1.5, Color dark/light contrast, Transparency 0.4, ApplyStrokeMode "Border"), UIGradient (subtle vertical, Color sequence dark→darker for depth), UIPadding (8–16 px all sides).
+   - **Layouts:** UIListLayout (Padding UDim.new(0,8), HorizontalAlignment/VerticalAlignment Center, SortOrder "LayoutOrder") and UIGridLayout for inventories. UIAspectRatioConstraint on icon frames.
+   - **Color system:** Dark glassmorphism by default — Color3.fromRGB(18,18,24) panels, (255,255,255) text, accent (90,170,255) or theme-matched. NEVER plain white/gray defaults. Use ColorSequence on UIGradient for shine.
+   - **Typography:** Font "GothamBold" for titles, "Gotham" for body, "GothamBlack" for hero numbers (coins, score). TextScaled=true with UITextSizeConstraint Min 10 Max 32. TextStrokeTransparency 0.85 for readability over busy bg.
+   - **Buttons MUST animate:** LocalScript with MouseEnter/Leave/Down/Up using TweenService — scale 1→1.05 on hover, 1→0.95 on press (TweenInfo 0.15s Quad Out), background shift, optional click sound (rbxassetid://6895079853).
+   - **Mount feedback:** Tween the root frame in from off-screen or from scale 0.8→1 + transparency 1→0 on Enabled (TweenInfo 0.4s Back Out). Same in reverse on close.
+   - **Icons:** Prefer ImageLabel with rbxassetid icons (search Decals) over emoji. Use UIAspectRatioConstraint 1:1.
+   - **Mobile-first:** Tap targets ≥ 44px. UDim2.fromScale + UISizeConstraint Min/Max for clamp. Test by imagining a 9:16 phone screen.
+   - **Stacking order:** ZIndex 1 backdrop dim, 2 panel, 3 content, 10 toasts/modals.
+   - Every ScreenGui MUST have a sibling LocalScript that wires hover/press tweens, opens/closes via Remote, and connects buttons. Never ship a static-looking UI.
 10. **Anti-exploit.** Server is the truth for currency/inventory/damage/position/teleport. Sanity-check movement (max-distance per tick). Never trust client-reported damage.
 11. **Combat.** Server-side raycast/hitbox (\`workspace:Raycast\` with RaycastParams, FilterDescendantsInstances). Client predicts visuals; server confirms.
 12. **Architecture.** Service-oriented: Services/, Modules/, Controllers/, Configs/, Types/. Knit-style or Matter ECS when warranted. Keep modules pure when possible.
