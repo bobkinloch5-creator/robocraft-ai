@@ -31,12 +31,12 @@ export const Route = createFileRoute("/plugin")({
   head: () => ({
     meta: [
       { title: "Plugin Setup — BloxSmith" },
-      {
-        name: "description",
-        content:
-          "Step-by-step wizard to link your BloxSmith account to Roblox Studio and securely sync your projects.",
-      },
+      { name: "description", content: "Step-by-step wizard to link your BloxSmith account to Roblox Studio and securely sync your projects." },
+      { property: "og:title", content: "Plugin Setup — BloxSmith" },
+      { property: "og:description", content: "Install the BloxSmith Roblox Studio plugin and connect it to your account in under a minute." },
+      { property: "og:url", content: "https://bloxsmith.pro/plugin" },
     ],
+    links: [{ rel: "canonical", href: "https://bloxsmith.pro/plugin" }],
   }),
 });
 

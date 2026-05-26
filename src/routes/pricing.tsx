@@ -4,7 +4,16 @@ import { CREDIT_PACKS } from "@/lib/credits";
 
 export const Route = createFileRoute("/pricing")({
   component: Pricing,
-  head: () => ({ meta: [{ title: "Pricing — BloxSmith" }, { name: "description", content: "BloxSmith credit packs and pricing." }] }),
+  head: () => ({
+    meta: [
+      { title: "Pricing — BloxSmith" },
+      { name: "description", content: "Simple, fair credit-based pricing. Start free with 200 daily credits, then pay only for what you use." },
+      { property: "og:title", content: "Pricing — BloxSmith" },
+      { property: "og:description", content: "Simple, fair credit-based pricing. Start free with 200 daily credits, then pay only for what you use." },
+      { property: "og:url", content: "https://bloxsmith.pro/pricing" },
+    ],
+    links: [{ rel: "canonical", href: "https://bloxsmith.pro/pricing" }],
+  }),
 });
 
 function Pricing() {
@@ -44,7 +53,7 @@ function Pricing() {
           </Link>
         </div>
 
-        <p className="mt-8 text-center text-xs text-muted-foreground">PayPal checkout is wired on the backend; complete payment provider configuration in your account.</p>
+        <p className="mt-8 text-center text-xs text-muted-foreground">Payments are processed via PayPal. Credits are usually delivered within a few hours of manual verification.</p>
       </main>
       <Footer />
     </div>

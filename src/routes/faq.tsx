@@ -7,7 +7,23 @@ export const Route = createFileRoute("/faq")({
     meta: [
       { title: "FAQ — BloxSmith" },
       { name: "description", content: "Frequently asked questions about BloxSmith credits, payments, the Roblox Studio plugin, and AI generation." },
+      { property: "og:title", content: "FAQ — BloxSmith" },
+      { property: "og:description", content: "Answers about credits, PayPal payments, the Roblox Studio plugin and AI generation." },
+      { property: "og:url", content: "https://bloxsmith.pro/faq" },
     ],
+    links: [{ rel: "canonical", href: "https://bloxsmith.pro/faq" }],
+    scripts: [{
+      type: "application/ld+json",
+      children: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: QA.map((item) => ({
+          "@type": "Question",
+          name: item.q,
+          acceptedAnswer: { "@type": "Answer", text: item.a },
+        })),
+      }),
+    }],
   }),
 });
 
