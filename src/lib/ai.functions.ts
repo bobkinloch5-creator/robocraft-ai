@@ -107,7 +107,7 @@ export const generateWithAI = createServerFn({ method: "POST" })
         model,
         system: SYSTEM_PROMPT,
         prompt: fullPrompt,
-        tools: buildBloxSmithTools() as any,
+        tools: { ...buildBloxSmithTools({ userId }), ...(await (await import("./mcp-client.server")).buildUserMcpTools(userId)) } as any,
         stopWhen: stepCountIs(50),
       });
       // Parse JSON from the raw text response
@@ -560,7 +560,7 @@ Respond ONLY with the JSON object specified.`;
         model,
         system: FIX_SYSTEM,
         prompt: `STUDIO OUTPUT LOGS:\n\`\`\`\n${logs}\n\`\`\`\n\n${liveBlock}\n\nProject files in DB:\n${filesBlock || "(empty)"}\n\nThink step-by-step. Use web_search / fetch_url if you need to look up a Roblox API to fix the error. Then patch the broken files now.`,
-        tools: buildBloxSmithTools() as any,
+        tools: { ...buildBloxSmithTools({ userId }), ...(await (await import("./mcp-client.server")).buildUserMcpTools(userId)) } as any,
         stopWhen: stepCountIs(40),
       });
       // Parse JSON from raw text
@@ -821,7 +821,7 @@ Output JSON:
         model,
         system: AUTOPILOT_SYSTEM,
         prompt: `${liveBlock}\n\n${projectBlockAP}\n\nGAME DESCRIPTION:\n"""\n${description}\n"""\n\nThink deeply step-by-step. Build ON TOP of any existing files above — extend or refactor them rather than duplicating. Research what you need:\n- Use web_search for Roblox API references, Luau patterns, mechanics you're unsure about.\n- Use roblox_asset_search to find free models, decals, sounds, meshes that fit the game (then queue insertAsset actions).\n- Use roblox_asset_thumbnail / roblox_asset_info to verify an asset before using it.\nThen plan and build the entire game. Return the full JSON object with every phase, every file body complete, and every structural action (including insertAsset actions for any free assets you chose).`,
-        tools: buildBloxSmithTools() as any,
+        tools: { ...buildBloxSmithTools({ userId }), ...(await (await import("./mcp-client.server")).buildUserMcpTools(userId)) } as any,
         stopWhen: stepCountIs(60),
       });
       // Parse JSON from raw text
