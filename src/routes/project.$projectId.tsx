@@ -49,6 +49,7 @@ import { downloadRbxmx } from "@/lib/rbxmx-export";
 import { PluginStatus } from "@/components/PluginStatus";
 import { PushPreview, type PreviewPayload } from "@/components/PushPreview";
 import { SyncValidationDrawer } from "@/components/SyncValidationDrawer";
+import { TeamChat } from "@/components/TeamChat";
 
 export const Route = createFileRoute("/project/$projectId")({
   component: ProjectEditor,
@@ -255,20 +256,20 @@ function ProjectEditor() {
       refreshCredits();
       refreshAiContext();
 
-      // Load or create the per-project agent conversation, then hydrate messages.
+      // Load or create the SHARED per-project agent conversation, then hydrate messages.
+      // (Collaborators all see the same conversation, not a per-user one.)
       const { data: existing } = await supabase
         .from("agent_conversations")
         .select("id")
         .eq("project_id", projectId)
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
+        .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
       let cid = existing?.id ?? null;
       if (!cid) {
         const { data: created } = await supabase
           .from("agent_conversations")
-          .insert({ project_id: projectId, user_id: user.id, title: "Chat" })
+          .insert({ project_id: projectId, user_id: user.id, title: "Team Chat" })
           .select("id")
           .single();
         cid = created?.id ?? null;
@@ -340,6 +341,32 @@ function ProjectEditor() {
       supabase.removeChannel(ch);
     };
   }, [user, projectId]);
+
+  // realtime AI chat (so collaborators see each other's prompts + AI replies live)
+  useEffect(() => {
+    if (!convoId) return;
+    const ch = supabase
+      .channel(`agent_messages:${convoId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "agent_messages", filter: `conversation_id=eq.${convoId}` },
+        (payload) => {
+          setMessages((prev) => {
+            if (payload.eventType === "INSERT") {
+              const m = payload.new as any;
+              if (prev.some((x) => x.id === m.id)) return prev;
+              return [...prev, { id: m.id, role: m.role, content: m.content }];
+            }
+            if (payload.eventType === "DELETE") {
+              return prev.filter((x) => x.id !== (payload.old as any).id);
+            }
+            return prev;
+          });
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [convoId]);
 
   const active = files.find((f) => f.id === activeId) ?? null;
 
@@ -948,6 +975,7 @@ function ProjectEditor() {
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <PluginStatus />
+            <TeamChat projectId={projectId} />
 
             <button
               onClick={() => setShowInvite((s) => !s)}
