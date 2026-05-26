@@ -1,5 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Header } from "@/components/layout";
+import { AiSourceSettings } from "@/components/AiSourceSettings";
+
 import { useAuth } from "@/lib/auth-context";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
