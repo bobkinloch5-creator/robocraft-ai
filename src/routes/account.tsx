@@ -490,6 +490,8 @@ function Account() {
                 </div>
               )}
             </section>
+
+            <DiscordRewards />
           </div>
 
           {/* Right Column: Projects & Ledger (5 Cols) */}
