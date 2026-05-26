@@ -84,7 +84,7 @@ function Admin() {
   const toggleBan = async (r: Row) => {
     if (r.banned) {
       if (!confirm(`Unban ${r.email}?`)) return;
-      const { error } = await supabase.rpc("admin_set_ban", { _user_id: r.id, _banned: false, _reason: null });
+      const { error } = await supabase.rpc("admin_set_ban", { _user_id: r.id, _banned: false, _reason: "" });
       if (error) return toast.error(error.message);
       toast.success("Unbanned");
     } else {
