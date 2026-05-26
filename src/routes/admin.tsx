@@ -69,7 +69,39 @@ function Admin() {
       supabase.from("generations").select("id", { count: "exact", head: true }),
     ]).then(([u, p, g]) => setStats({ users: u.count ?? 0, projects: p.count ?? 0, generations: g.count ?? 0 }));
     loadRequests();
+    loadPromos();
   }, [isAdmin]);
+
+  const createPromo = async () => {
+    const code = newCode.trim().toUpperCase();
+    if (!code) return toast.error("Code required");
+    if (!Number.isFinite(newCredits) || newCredits <= 0) return toast.error("Credits must be > 0");
+    const payload: { code: string; credits: number; max_redemptions: number | null; expires_at: string | null; created_by: string | undefined } = {
+      code,
+      credits: newCredits,
+      max_redemptions: newMax ? parseInt(newMax, 10) : null,
+      expires_at: newExpires ? new Date(newExpires).toISOString() : null,
+      created_by: user?.id,
+    };
+    const { error } = await supabase.from("promo_codes").insert(payload);
+    if (error) return toast.error(error.message);
+    toast.success(`Promo ${code} created`);
+    setNewCode(""); setNewCredits(50); setNewMax(""); setNewExpires("");
+    loadPromos();
+  };
+
+  const togglePromo = async (p: Promo) => {
+    const { error } = await supabase.from("promo_codes").update({ active: !p.active }).eq("id", p.id);
+    if (error) return toast.error(error.message);
+    loadPromos();
+  };
+
+  const deletePromo = async (p: Promo) => {
+    if (!confirm(`Delete promo ${p.code}?`)) return;
+    const { error } = await supabase.from("promo_codes").delete().eq("id", p.id);
+    if (error) return toast.error(error.message);
+    loadPromos();
+  };
 
   const reviewPayment = async (pr: PR, approve: boolean) => {
     if (!user) return;
