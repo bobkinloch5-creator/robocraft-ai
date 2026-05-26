@@ -2105,6 +2105,8 @@ local function openPreviewOverlay()
 		refreshReviewBtnLabel()
 		closePreviewOverlay()
 		reportDiscarded(batch)
+		statsSkipped = statsSkipped + #batch
+		pcall(refreshStatsInfo)
 		syncInfo.Text = ("Discarded %d pending action(s)"):format(#batch)
 	end)
 	apply.MouseButton1Click:Connect(function()
@@ -2117,10 +2119,29 @@ local function openPreviewOverlay()
 		previewSeenIds = {}
 		refreshReviewBtnLabel()
 		closePreviewOverlay()
-		if #toDiscard > 0 then reportDiscarded(toDiscard) end
+		if #toDiscard > 0 then
+			reportDiscarded(toDiscard)
+			statsSkipped = statsSkipped + #toDiscard
+			pcall(refreshStatsInfo)
+		end
 		if #toApply > 0 then
-			applyActions(toApply, "preview apply")
-			syncInfo.Text = ("Applied %d, skipped %d"):format(#toApply, #toDiscard)
+			local okN, failN, failedDetails = applyActions(toApply, "preview apply")
+			-- If anything failed, re-queue just the failed actions with their
+			-- error attached, and re-open the overlay so the user can see
+			-- exactly what broke and why.
+			if failedDetails and #failedDetails > 0 then
+				for _, fd in ipairs(failedDetails) do
+					fd.action.error = fd.error
+					table.insert(pendingPreview, fd.action)
+					local key = fd.action.id or (tostring(fd.action.type) .. ":" .. tostring(fd.action.name))
+					previewSeenIds[key] = true
+				end
+				refreshReviewBtnLabel()
+				syncInfo.Text = ("Applied %d, %d failed (review below)"):format(okN or 0, failN or #failedDetails)
+				task.defer(openPreviewOverlay)
+			else
+				syncInfo.Text = ("Applied %d, skipped %d"):format(#toApply, #toDiscard)
+			end
 		else
 			syncInfo.Text = ("Nothing applied — skipped %d"):format(#toDiscard)
 		end
