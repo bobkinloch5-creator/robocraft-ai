@@ -1900,22 +1900,38 @@ function ProjectEditor() {
                     >
                       <Bug className="h-4 w-4" />
                     </button>
+                    <button
+                      type="button"
+                      onClick={toggleMic}
+                      title={listening ? "Stop dictation" : "Voice input"}
+                      className={`h-8 w-8 grid place-items-center rounded-lg transition ${listening ? "text-rose-300 bg-rose-500/15 animate-pulse" : "text-muted-foreground hover:text-foreground hover:bg-surface"}`}
+                    >
+                      {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </button>
                   </div>
-                  <button
-                    onClick={send}
-                    disabled={aiBusy || !prompt.trim()}
-                    className="inline-flex h-8 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:opacity-90 transition disabled:opacity-30"
-                    title={
-                      planMode ? `Generate plan · ${PLAN_COST} cr` : `Build · ${GENERATE_COST} cr`
-                    }
-                  >
-                    {aiBusy ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
+                  {aiBusy ? (
+                    <button
+                      onClick={stopGeneration}
+                      className="inline-flex h-8 items-center gap-2 rounded-lg bg-rose-500/90 px-3 text-xs font-semibold text-white hover:bg-rose-500 transition"
+                      title="Stop generating"
+                    >
+                      <Square className="h-3.5 w-3.5 fill-current" />
+                      Stop
+                    </button>
+                  ) : (
+                    <button
+                      onClick={send}
+                      disabled={!prompt.trim()}
+                      className="inline-flex h-8 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:opacity-90 transition disabled:opacity-30"
+                      title={
+                        planMode ? `Generate plan · ${PLAN_COST} cr` : `Build · ${GENERATE_COST} cr`
+                      }
+                    >
                       <Send className="h-3.5 w-3.5" />
-                    )}
-                    {planMode ? "Plan" : autoExecute ? "Execute" : "Preview"}
-                  </button>
+                      {planMode ? "Plan" : autoExecute ? "Execute" : "Preview"}
+                    </button>
+                  )}
+                </div>
                 </div>
               </div>
               <div className="flex items-center justify-between">
