@@ -13,6 +13,23 @@ async function runBuild(projectId: string, prompt: string) {
     .maybeSingle();
   if (projErr || !project) throw new Error(`Project ${projectId} not found.`);
 
+  // Check & deduct 1 credit from the project owner before running.
+  const { data: prof, error: profErr } = await supabaseAdmin
+    .from("profiles")
+    .select("credits")
+    .eq("id", project.user_id)
+    .maybeSingle();
+  if (profErr || !prof) throw new Error("Owner profile not found.");
+  if ((prof.credits ?? 0) < 1) {
+    throw new Error(
+      "Out of BloxSmith credits. Top up at https://bloxsmith.pro/settings before running more MCP builds.",
+    );
+  }
+  await supabaseAdmin
+    .from("profiles")
+    .update({ credits: (prof.credits ?? 0) - 1 })
+    .eq("id", project.user_id);
+
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error("GROQ_API_KEY missing on server.");
 
