@@ -1380,17 +1380,23 @@ export const Route = createFileRoute("/api/assistant/execute")({
 
                   rawText = "";
                   try {
-                    const textRes = await generateText({
-                      model,
-                      system: SYSTEM_PROMPT,
-                      messages,
-                      tools: buildBloxSmithTools({ projectId }) as any,
-                      stopWhen: stepCountIs(thinking ? 60 : 45),
-                    });
+                    const systemWithRules = projectRules
+                      ? `${SYSTEM_PROMPT}\n\n=== PROJECT-SPECIFIC RULES (override defaults) ===\n${projectRules}`
+                      : SYSTEM_PROMPT;
+                    const textRes = await withRateLimitRetry("ai-execute", () =>
+                      generateText({
+                        model,
+                        system: systemWithRules,
+                        messages,
+                        tools: buildBloxSmithTools({ projectId }) as any,
+                        stopWhen: stepCountIs(thinking ? 60 : 45),
+                      }),
+                    );
                     rawText = textRes.text;
                     result = normalizeResult(tryParseJSON(rawText));
                     lastErr = null;
                     break;
+
                   } catch (err: any) {
                     lastErr = err;
                     const msg = String(err?.message ?? err);
