@@ -22,7 +22,9 @@ export const Route = createFileRoute("/api/public/plugin/auth")({
         const token = request.headers.get("x-plugin-token");
         if (!token) return new Response(JSON.stringify({ error: "missing token" }), { status: 401, headers: cors });
         const hash = await sha256(token);
-        const { data: profile } = await supabaseAdmin.from("profiles").select("id,email,display_name,credits").eq("plugin_token_hash", hash).maybeSingle();
+        const { data: tokenRow } = await supabaseAdmin.from("plugin_tokens").select("user_id").eq("token_hash", hash).maybeSingle();
+        if (!tokenRow) return new Response(JSON.stringify({ error: "invalid token" }), { status: 401, headers: cors });
+        const { data: profile } = await supabaseAdmin.from("profiles").select("id,email,display_name,credits").eq("id", tokenRow.user_id).maybeSingle();
         if (!profile) return new Response(JSON.stringify({ error: "invalid token" }), { status: 401, headers: cors });
 
         // Fetch owned projects
