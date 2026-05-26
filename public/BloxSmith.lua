@@ -544,10 +544,11 @@ local function utilityButton(parent, text, widthScale, order)
 	return b
 end
 
-local syncNowBtn      = utilityButton(utilityRow, "Sync Now",     0.25, 1)
-local reconnectBtn    = utilityButton(utilityRow, "Reconnect",    0.25, 2)
-local cancelScanBtn   = utilityButton(utilityRow, "Cancel Scan",  0.25, 3)
-local cleanSyncedBtn  = utilityButton(utilityRow, "Clean Synced", 0.25, 4)
+local syncNowBtn      = utilityButton(utilityRow, "Sync Now",     0.2, 1)
+local reconnectBtn    = utilityButton(utilityRow, "Reconnect",    0.2, 2)
+local cancelScanBtn   = utilityButton(utilityRow, "Cancel Scan",  0.2, 3)
+local cleanSyncedBtn  = utilityButton(utilityRow, "Clean Synced", 0.2, 4)
+local testConnBtn     = utilityButton(utilityRow, "Test",         0.2, 5)
 
 -- Preview mode row: when ON, incoming AI actions are stashed locally so you
 -- can review every script + change before it touches your place. Stays in
