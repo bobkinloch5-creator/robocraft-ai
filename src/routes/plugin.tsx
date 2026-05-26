@@ -11,6 +11,8 @@ import {
   Check,
   Copy,
   Download,
+  Eye,
+  EyeOff,
   KeyRound,
   Laptop,
   Loader2,
@@ -21,6 +23,7 @@ import {
   ShieldCheck,
   Wifi,
 } from "lucide-react";
+
 import pluginSource from "../../plugin-src/BloxSmith.server.lua?raw";
 import { AutoPluginInstaller } from "@/components/AutoPluginInstaller";
 
