@@ -1483,19 +1483,8 @@ local function pull(manual)
 
 	-- Backwards-compat: server may send {files = ...} OR {actions = ...}
 	local actions = data.actions or {}
-	if #actions == 0 and data.files then
-		for _, f in ipairs(data.files) do
-			table.insert(actions, {
-				type = "script",
-				name = (string.split(f.path or "Script", "/"))[#string.split(f.path or "Script", "/")],
-				parent = f.service_location or "ServerScriptService",
-				className = f.file_type or "Script",
-				source = f.content or "",
-				id = f.path,
-				rev = #(f.content or ""),
-			})
-		end
-	end
+	-- Legacy `data.files` fallback removed — it caused duplicate / nested
+	-- folder spam in Studio because every poll re-materialized the same files.
 
 	if #actions == 0 then return end
 	appendLog("Command received: " .. tostring(#actions) .. " action(s)")
