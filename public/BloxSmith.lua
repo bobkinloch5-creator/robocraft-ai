@@ -275,21 +275,21 @@ corner(pill, 10)
 stroke(pill, C.stroke, 1)
 
 local pillDot = Instance.new("Frame", pill)
-pillDot.Size = UDim2.fromOffset(6,6)
-pillDot.Position = UDim2.new(0, 11, 0.5, -3)
+pillDot.Size = UDim2.fromOffset(5,5)
+pillDot.Position = UDim2.new(0, 10, 0.5, -2)
 pillDot.BackgroundColor3 = C.idle
 pillDot.BorderSizePixel = 0
 corner(pillDot, 3)
 local pillDotGlow = Instance.new("UIStroke", pillDot)
 pillDotGlow.Color = C.idle
-pillDotGlow.Thickness = 3
+pillDotGlow.Thickness = 2
 pillDotGlow.Transparency = 0.6
 
 local pillText = Instance.new("TextLabel", pill)
 pillText.BackgroundTransparency = 1
-pillText.Position = UDim2.new(0, 22, 0, 0)
-pillText.Size = UDim2.new(1, -28, 1, 0)
-pillText.Font = Enum.Font.GothamMedium; pillText.TextSize = 10
+pillText.Position = UDim2.new(0, 20, 0, 0)
+pillText.Size = UDim2.new(1, -26, 1, 0)
+pillText.Font = Enum.Font.GothamMedium; pillText.TextSize = 9
 pillText.TextColor3 = C.textDim
 pillText.Text = "Offline"
 pillText.TextXAlignment = Enum.TextXAlignment.Left
