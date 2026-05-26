@@ -93,6 +93,34 @@ function ProjectEditor() {
     localStorage.setItem("bs_auto_execute", String(val));
   };
 
+  // Resizable AI chat panel (drag the handle on its left edge)
+  const [chatWidth, setChatWidth] = useState<number>(() => {
+    if (typeof window === "undefined") return 420;
+    const v = Number(localStorage.getItem("bs_chat_width"));
+    return Number.isFinite(v) && v >= 320 && v <= 900 ? v : 420;
+  });
+  const resizing = useRef(false);
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!resizing.current) return;
+      const next = Math.min(900, Math.max(320, window.innerWidth - e.clientX));
+      setChatWidth(next);
+    };
+    const onUp = () => {
+      if (!resizing.current) return;
+      resizing.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      localStorage.setItem("bs_chat_width", String(chatWidth));
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [chatWidth]);
+
   // Action status polling state
   const [actionStatuses, setActionStatuses] = useState<
     Record<string, { status: "pending" | "executing" | "complete" | "error"; error?: string }>
