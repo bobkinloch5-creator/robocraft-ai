@@ -30,7 +30,9 @@ type Props = {
   onClearChat: () => void;
   canClearChat: boolean;
   studioConnected: boolean;
+  projectId?: string;
 };
+
 
 type McpServer = {
   id: string;
