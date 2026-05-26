@@ -2105,7 +2105,25 @@ function ProjectEditor() {
                     })()}
                   </button>
 
+                  {aiUsage && !aiUsage.owner && (() => {
+                    const pct5 = Math.min(100, Math.round((aiUsage.used_5h / aiUsage.limit_5h) * 100));
+                    const near = pct5 >= 80;
+                    const full = pct5 >= 100;
+                    return (
+                      <div
+                        className={`inline-flex items-center gap-1.5 rounded-full bg-surface-elevated/60 border px-2.5 py-0.5 text-[10px] tabular-nums ${full ? "border-destructive/60" : near ? "border-amber-400/60" : "border-border/40"}`}
+                        title={`AI usage: ${aiUsage.used_5h}/${aiUsage.limit_5h} in last 5h · ${aiUsage.used_7d}/${aiUsage.limit_7d} in last 7d${aiUsage.reset_5h ? ` · resets ${new Date(aiUsage.reset_5h).toLocaleTimeString()}` : ""}`}
+                      >
+                        <span className={`h-1.5 w-1.5 rounded-full ${full ? "bg-destructive" : near ? "bg-amber-400" : "bg-emerald-500/70"}`} />
+                        <span className="text-muted-foreground">
+                          Usage {aiUsage.used_5h}/{aiUsage.limit_5h} · {aiUsage.used_7d}/{aiUsage.limit_7d}
+                        </span>
+                      </div>
+                    );
+                  })()}
+
                   <div
+
                     className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated/60 border border-border/40 px-2.5 py-0.5 text-[10px]"
                     title={isStudioConnected ? "Roblox Studio plugin connected" : "Roblox Studio plugin not connected"}
                   >
