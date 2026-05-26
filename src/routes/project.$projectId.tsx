@@ -126,6 +126,92 @@ function ProjectEditor() {
     };
   }, [chatWidth]);
 
+  // Collapsible side panels (desktop). Persisted.
+  const [showFiles, setShowFiles] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("bs_show_files") !== "false";
+  });
+  const [showChat, setShowChat] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("bs_show_chat") !== "false";
+  });
+  const toggleFiles = (v: boolean) => {
+    setShowFiles(v);
+    localStorage.setItem("bs_show_files", String(v));
+  };
+  const toggleChat = (v: boolean) => {
+    setShowChat(v);
+    localStorage.setItem("bs_show_chat", String(v));
+  };
+
+  // Stop button for in-flight AI generations
+  const stopRequested = useRef(false);
+  const stopGeneration = () => {
+    stopRequested.current = true;
+    setAiBusy(false);
+    setAutoBusy(false);
+    setFixBusy(false);
+    setImproving(false);
+    setAutoFixingMsg(null);
+    toast.message("Generation stopped");
+  };
+
+  // Microphone dictation (Web Speech API)
+  const [listening, setListening] = useState(false);
+  const recogRef = useRef<any>(null);
+  const toggleMic = () => {
+    const SR: any =
+      typeof window !== "undefined" &&
+      ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+    if (!SR) {
+      toast.error("Voice input isn't supported in this browser. Try Chrome or Edge.");
+      return;
+    }
+    if (listening && recogRef.current) {
+      recogRef.current.stop();
+      return;
+    }
+    const rec = new SR();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = navigator.language || "en-US";
+    let base = "";
+    rec.onstart = () => {
+      base = prompt ? prompt.trimEnd() + " " : "";
+      setListening(true);
+    };
+    rec.onresult = (e: any) => {
+      let finalText = "";
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) finalText += r[0].transcript;
+        else interim += r[0].transcript;
+      }
+      setPrompt(base + finalText + interim);
+      if (finalText) base += finalText;
+    };
+    rec.onerror = (e: any) => {
+      console.warn("[speech]", e);
+      if (e.error === "not-allowed") toast.error("Microphone permission denied.");
+    };
+    rec.onend = () => {
+      setListening(false);
+      recogRef.current = null;
+    };
+    recogRef.current = rec;
+    try {
+      rec.start();
+    } catch (err) {
+      console.warn("[speech]", err);
+    }
+  };
+  useEffect(() => () => {
+    try {
+      recogRef.current?.stop();
+    } catch {}
+  }, []);
+
   // Action status polling state
   const [actionStatuses, setActionStatuses] = useState<
     Record<string, { status: "pending" | "executing" | "complete" | "error"; error?: string }>
