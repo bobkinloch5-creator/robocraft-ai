@@ -32,6 +32,7 @@ import {
   Hammer,
   ShieldCheck,
   Sparkles,
+  Wand2,
   User as UserIcon,
   Brain,
   Code2,
