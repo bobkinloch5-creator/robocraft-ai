@@ -1743,9 +1743,9 @@ function ProjectEditor() {
                     </span>
                   </div>
                   <div
-                    className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${isUser ? "text-foreground/90" : "text-foreground"} pl-5`}
+                    className={`${isUser ? "text-foreground/90 text-sm leading-relaxed whitespace-pre-wrap break-words" : "text-foreground"} pl-5`}
                   >
-                    {m.content}
+                    {isUser ? m.content : <AssistantMessage content={m.content} />}
                   </div>
                   <div className="pl-5 space-y-2">
                     {!isUser && previewsByMsg[m.id] && (
