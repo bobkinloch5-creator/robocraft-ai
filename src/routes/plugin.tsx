@@ -358,28 +358,6 @@ function PluginWizard() {
               }
             />
           )}
-              action={
-                <div className="flex flex-wrap gap-2">
-                  <a
-                    href={PLUGIN_DOWNLOAD_URL}
-                    download="BloxSmith.lua"
-                    className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-surface"
-                  >
-                    <Download className="h-4 w-4" /> Download .lua ({PLUGIN_VERSION})
-                  </a>
-                  <button
-                    onClick={() => {
-                      setInstalled(true);
-                      setStep(2);
-                    }}
-                    className="rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-surface"
-                  >
-                    I've installed it
-                  </button>
-                </div>
-              }
-            />
-          )}
 
           {STEPS[step].id === "http" && (
             <StepBlock
