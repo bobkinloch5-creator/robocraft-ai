@@ -229,6 +229,12 @@ export function McpTokenManager() {
                 <div className="font-semibold text-success">Active</div>
               </div>
               <div>
+                <div className="text-muted-foreground">Connected AI</div>
+                <div className="font-semibold" title={status.lastUserAgent ?? undefined}>
+                  {status.lastClient ?? "Not yet connected"}
+                </div>
+              </div>
+              <div>
                 <div className="text-muted-foreground">Last used</div>
                 <div className="font-semibold">
                   {status.lastUsedAt ? new Date(status.lastUsedAt).toLocaleString() : "Never"}
