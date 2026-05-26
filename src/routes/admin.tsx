@@ -20,6 +20,7 @@ export const Route = createFileRoute("/admin")({
 
 type Row = { id: string; email: string; display_name: string | null; credits: number };
 type PR = { id: string; user_id: string; pack_id: string; credits: number; amount: number; paypal_transaction_id: string; paypal_note: string | null; status: string; created_at: string };
+type Promo = { id: string; code: string; credits: number; max_redemptions: number | null; redemption_count: number; expires_at: string | null; active: boolean; created_at: string };
 
 function Admin() {
   const { user, isAdmin, loading } = useAuth();
