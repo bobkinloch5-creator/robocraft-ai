@@ -55,6 +55,22 @@ export const Route = createFileRoute("/api/public/plugin/organize")({
 
         const body = await request.json().catch(() => ({}));
         const projectId = body?.projectId;
+        const ignores: string[] = Array.isArray(body?.ignores)
+          ? body.ignores
+              .filter((s: unknown) => typeof s === "string")
+              .map((s: string) => s.trim().toLowerCase())
+              .filter(Boolean)
+          : [];
+        const isIgnored = (p: unknown) => {
+          if (typeof p !== "string" || !p || ignores.length === 0) return false;
+          const lower = p.toLowerCase();
+          const segments = lower.split(/[./]/).filter(Boolean);
+          for (const pat of ignores) {
+            if (segments.includes(pat)) return true;
+            if (lower.includes(pat)) return true;
+          }
+          return false;
+        };
         if (!projectId)
           return new Response(JSON.stringify({ error: "missing projectId" }), {
             status: 400,
