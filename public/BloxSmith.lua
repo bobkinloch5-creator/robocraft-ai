@@ -501,13 +501,13 @@ apiBox.FocusLost:Connect(function() setApiBase(apiBox.Text or "") end)
 -- Pause/resume toggle (lets the user stop incoming actions without losing the token)
 local pauseBtn = Instance.new("TextButton", root)
 pauseBtn.LayoutOrder = 10
-pauseBtn.Size = UDim2.new(1,0,0,26)
+pauseBtn.Size = UDim2.new(1,0,0,24)
 pauseBtn.BackgroundColor3 = C.panel
 register(pauseBtn, "panel")
 pauseBtn.TextColor3 = C.textDim
 register(pauseBtn, "textDim")
 pauseBtn.Text = getPaused() and "▶  Resume sync" or "⏸  Pause sync"
-pauseBtn.Font = Enum.Font.GothamMedium; pauseBtn.TextSize = 11
+pauseBtn.Font = Enum.Font.GothamMedium; pauseBtn.TextSize = 10
 pauseBtn.BorderSizePixel = 0
 pauseBtn.AutoButtonColor = false
 corner(pauseBtn, 6)
