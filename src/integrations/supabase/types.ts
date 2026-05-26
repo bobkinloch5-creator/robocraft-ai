@@ -725,7 +725,12 @@ export type Database = {
           created_at: string
           enabled: boolean
           id: string
+          last_test_error: string | null
+          last_test_ok: boolean | null
+          last_tested_at: string | null
           name: string
+          tool_count: number | null
+          tools_cache: Json | null
           updated_at: string
           url: string
           user_id: string
@@ -735,7 +740,12 @@ export type Database = {
           created_at?: string
           enabled?: boolean
           id?: string
+          last_test_error?: string | null
+          last_test_ok?: boolean | null
+          last_tested_at?: string | null
           name: string
+          tool_count?: number | null
+          tools_cache?: Json | null
           updated_at?: string
           url: string
           user_id: string
@@ -745,7 +755,12 @@ export type Database = {
           created_at?: string
           enabled?: boolean
           id?: string
+          last_test_error?: string | null
+          last_test_ok?: boolean | null
+          last_tested_at?: string | null
           name?: string
+          tool_count?: number | null
+          tools_cache?: Json | null
           updated_at?: string
           url?: string
           user_id?: string
