@@ -418,6 +418,65 @@ function Account() {
                 </Link>
               </div>
             </section>
+
+            {/* Promo Codes & Daily Credits */}
+            <section className="rounded-2xl border border-border/50 bg-surface/20 p-6 space-y-4">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <Ticket className="h-5 w-5 text-primary" /> Promo Codes & Free Credits
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Enter a promo code to add credits to your account, or claim your free daily refill (+10 credits per day).
+              </p>
+
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">Promo code</label>
+                <div className="flex gap-2">
+                  <input
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => { if (e.key === "Enter") redeemPromo(); }}
+                    placeholder="ENTER CODE"
+                    className="flex-1 rounded-lg bg-surface-elevated border border-border px-3 py-2 text-sm uppercase font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <button
+                    onClick={redeemPromo}
+                    disabled={redeeming || !promoCode.trim()}
+                    className="rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 text-sm font-semibold transition disabled:opacity-50"
+                  >
+                    {redeeming ? "…" : "Redeem"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg bg-surface-elevated/40 border border-border/40 p-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <Gift className="h-4 w-4 text-primary-glow" />
+                  <span>Daily free credits (+10/day)</span>
+                </div>
+                <button
+                  onClick={claimDaily}
+                  disabled={claiming}
+                  className="rounded-lg bg-primary/10 border border-primary/20 text-primary-glow hover:bg-primary/15 px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50"
+                >
+                  {claiming ? "…" : "Claim +10"}
+                </button>
+              </div>
+
+              {redemptions.length > 0 && (
+                <div className="pt-2 border-t border-border/40">
+                  <div className="text-xs font-semibold text-muted-foreground mb-2">Recent redemptions</div>
+                  <ul className="space-y-1.5 text-xs">
+                    {redemptions.map((r) => (
+                      <li key={r.id} className="flex justify-between text-muted-foreground">
+                        <span className="font-mono text-foreground">{r.promo_codes?.code ?? "—"}</span>
+                        <span className="text-success">+{r.credits} credits</span>
+                        <span>{new Date(r.redeemed_at).toLocaleDateString()}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </section>
           </div>
 
           {/* Right Column: Projects & Ledger (5 Cols) */}
