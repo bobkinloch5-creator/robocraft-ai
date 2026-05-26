@@ -1114,14 +1114,45 @@ export const Route = createFileRoute("/api/assistant/execute")({
                   ? `LIVE STUDIO WORKSPACE (snapshot at ${liveContext.updated_at}, ${liveContext.instance_count} instances):\n${JSON.stringify(liveContext.context, null, 0).slice(0, 18000)}`
                   : "LIVE STUDIO WORKSPACE: (not yet reported by plugin — assume empty baseplate)";
 
-                const fullPrompt = `${liveBlock}\n\nStudio plugin status: ${studioConnected ? "connected or recently synced" : "not connected / no recent sync"}. Still emit the full files/actions so they are ready to apply once Studio is connected.\n\nProject files in DB:\n${filesBlock || "(empty)"}\n\nUser request:\n${prompt}\n\nExecute the request as fully as possible. For any Roblox build/edit request, return files and/or actions that the website can queue for the Studio plugin. If you need current Roblox API details, free asset IDs, thumbnails, or docs, call the available tools before answering. If the user request is just casual chat or a general question, reply naturally in the message field with empty files and actions.\n\nReturn ONLY the strict JSON object from the output contract.`;
+                // Pull recent chat history for this project so the AI has
+                // memory of prior turns (collaborators share one conversation).
+                const { data: convoRow } = await supabaseUser
+                  .from("agent_conversations")
+                  .select("id")
+                  .eq("project_id", projectId)
+                  .order("created_at", { ascending: true })
+                  .limit(1)
+                  .maybeSingle();
+                let history: { role: "user" | "assistant"; content: string }[] = [];
+                if (convoRow?.id) {
+                  const { data: msgs } = await supabaseUser
+                    .from("agent_messages")
+                    .select("role,content,created_at")
+                    .eq("conversation_id", convoRow.id)
+                    .order("created_at", { ascending: false })
+                    .limit(20);
+                  history = (msgs ?? [])
+                    .reverse()
+                    .filter((m: any) => m.role === "user" || m.role === "assistant")
+                    .map((m: any) => ({
+                      role: m.role as "user" | "assistant",
+                      content: String(m.content ?? "").slice(0, 4000),
+                    }));
+                }
+
+                const contextBlock = `${liveBlock}\n\nStudio plugin status: ${studioConnected ? "connected or recently synced" : "not connected / no recent sync"}. Still emit the full files/actions so they are ready to apply once Studio is connected.\n\nProject files in DB:\n${filesBlock || "(empty)"}\n\nUser request:\n${prompt}\n\nExecute the request as fully as possible. For any Roblox build/edit request, return files and/or actions that the website can queue for the Studio plugin. If you need current Roblox API details, free asset IDs, thumbnails, or docs, call the available tools before answering. If the user request is just casual chat or a general question, reply naturally in the message field with empty files and actions.\n\nReturn ONLY the strict JSON object from the output contract.`;
+
+                const messages = [
+                  ...history,
+                  { role: "user" as const, content: contextBlock },
+                ];
 
                 let rawText = "";
                 try {
                   const textRes = await generateText({
                     model,
                     system: SYSTEM_PROMPT,
-                    prompt: fullPrompt,
+                    messages,
                     tools: buildBloxSmithTools({ projectId }) as any,
                     stopWhen: stepCountIs(thinking ? 60 : 45),
                   });
