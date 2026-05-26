@@ -1,0 +1,19 @@
+# BloxSmith
+
+> AI-powered Roblox game builder. Describe a game in plain English and BloxSmith generates Luau scripts, UI, full game systems, and Toolbox asset insertions — synced directly into Roblox Studio via a companion plugin.
+
+BloxSmith helps Roblox creators ship playable games faster. It runs in the browser, generates production-ready Luau, and pushes changes into Roblox Studio in one click using the BloxSmith Studio plugin.
+
+## Pages
+
+- [Home](/): Product overview, how BloxSmith builds Roblox games from prompts.
+- [Pricing](/pricing): Credit packs, daily free credits, and custom top-ups.
+- [Plugin](/plugin): The BloxSmith Roblox Studio plugin — install and sync.
+- [Docs](/docs): How to use BloxSmith, prompting tips, and Studio sync guide.
+- [FAQ](/faq): Common questions about credits, plugin, and generation.
+- [Changelog](/changelog): Latest releases, plugin updates, and security fixes.
+
+## Optional
+
+- [Privacy](/privacy): How BloxSmith handles account and project data.
+- [Terms](/terms): Terms of service for BloxSmith accounts and content.

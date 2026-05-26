@@ -15,7 +15,7 @@ export const Route = createFileRoute("/admin")({
     }
   },
   component: Admin,
-  head: () => ({ meta: [{ title: "Admin — BloxSmith" }] }),
+  head: () => ({ meta: [{ title: "Admin — BloxSmith" }, { name: "robots", content: "noindex, nofollow" }] }),
 });
 
 type Row = { id: string; email: string; display_name: string | null; credits: number };

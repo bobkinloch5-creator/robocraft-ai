@@ -12,7 +12,7 @@ import { Onboarding } from "@/components/Onboarding";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
-  head: () => ({ meta: [{ title: "Dashboard — BloxSmith" }, { name: "description", content: "Your BloxSmith dashboard." }] }),
+  head: () => ({ meta: [{ title: "Dashboard — BloxSmith" }, { name: "description", content: "Your BloxSmith dashboard." }, { name: "robots", content: "noindex, nofollow" }] }),
 });
 
 type Project = { id: string; name: string; game_type: string; updated_at: string; status: string };
