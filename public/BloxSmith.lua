@@ -1476,6 +1476,10 @@ end
 
 function pushSnapshot()
 	if not activeProjectId then return end
+	if getClearMode() then
+		syncInfo.Text = "Clear Mode — snapshot skipped"
+		return
+	end
 	if scanInProgress then
 		syncInfo.Text = "Scan already running"
 		return
