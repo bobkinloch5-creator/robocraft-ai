@@ -1872,7 +1872,7 @@ function ProjectEditor() {
             <div ref={chatEnd} />
           </div>
 
-          {outOfCreditsBlock(outOfCredits, chatMode, credits, CHAT_COST) ? (
+          {outOfCredits && !(chatMode && credits !== null && credits >= CHAT_COST) ? (
             <div className="border-t border-border p-3 space-y-2 bg-destructive/5">
               <p className="text-sm font-semibold text-destructive">You're out of credits</p>
               <p className="text-xs text-muted-foreground">
