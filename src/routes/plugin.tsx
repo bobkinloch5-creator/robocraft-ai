@@ -103,6 +103,8 @@ function PluginWizard() {
     try {
       const { token: t } = await runGenToken({});
       setToken(t);
+      setShowToken(false);
+
       setVerified(false);
       toast.success("New plugin token generated");
     } catch (e: any) {
