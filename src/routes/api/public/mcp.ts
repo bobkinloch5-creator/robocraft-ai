@@ -83,19 +83,14 @@ const authedHandler = withMcpAuth(
   async (request, auth) => mcp.handleRequest(request, { auth }),
   async (request) => {
     const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
-    if (!token) {
-      // No header at all — Codex/Claude trying OAuth discovery or misconfigured.
-      // We can't attribute this to a user, so just bail.
-      return null;
-    }
+    const ua = request.headers.get("User-Agent");
+    if (!token) return null;
 
-    // Admin override: shared workspace MCP_SECRET still works
     const adminSecret = process.env.MCP_SECRET;
     if (adminSecret && token === adminSecret) {
       return { token, claims: { scope: "admin", userId: null } };
     }
 
-    // Per-user revocable token
     if (token.startsWith("bsmcp_")) {
       const hash = await sha256(token);
       const { data } = await supabaseAdmin
@@ -104,21 +99,16 @@ const authedHandler = withMcpAuth(
         .eq("token_hash", hash)
         .maybeSingle();
 
-      if (!data) {
-        // Token is the right shape but does not match — likely a stale key after
-        // a regenerate. Try to find ANY token with the same prefix bucket so we
-        // can at least record the failed attempt. We can't, so record globally
-        // via mcp_anon_attempts keyed by a synthetic id is not useful — skip.
-        return null;
-      }
+      if (!data) return null;
 
-      recordTokenAttempt(data.user_id, true);
+      recordTokenAttempt(data.user_id, true, ua);
       return { token, claims: { scope: "user", userId: data.user_id } };
     }
 
     return null;
   },
 );
+
 
 
 
