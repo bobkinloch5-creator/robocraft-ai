@@ -1350,8 +1350,25 @@ function ProjectEditor() {
 
         {/* AI chat */}
         <aside
-          className={`${mobileTab === "chat" ? "flex" : "hidden"} lg:flex border-l border-border bg-surface/20 flex-col max-h-[calc(100vh-8rem)] min-h-[60vh]`}
+          className={`${mobileTab === "chat" ? "flex" : "hidden"} lg:flex relative border-l border-border bg-surface/20 flex-col max-h-[calc(100vh-8rem)] min-h-[60vh]`}
         >
+          {/* Drag handle to stretch chat panel wider/narrower */}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            title="Drag to resize chat"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              resizing.current = true;
+              document.body.style.cursor = "col-resize";
+              document.body.style.userSelect = "none";
+            }}
+            onDoubleClick={() => {
+              setChatWidth(420);
+              localStorage.setItem("bs_chat_width", "420");
+            }}
+            className="hidden lg:block absolute left-0 top-0 h-full w-1.5 -ml-[3px] cursor-col-resize z-20 hover:bg-primary/40 active:bg-primary/60 transition-colors"
+          />
           <div className="px-4 py-3 border-b border-border/60 space-y-3">
             <div className="flex items-center justify-between gap-2">
               {(() => {
