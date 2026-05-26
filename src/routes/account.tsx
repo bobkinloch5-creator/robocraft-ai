@@ -60,6 +60,7 @@ function Account() {
   const [promoCode, setPromoCode] = useState("");
   const [redeeming, setRedeeming] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const dailyCd = useDailyClaimCooldown(user?.id);
   const [redemptions, setRedemptions] = useState<{ id: string; credits: number; redeemed_at: string; promo_codes: { code: string } | null }[]>([]);
 
   const loadRedemptions = async () => {
