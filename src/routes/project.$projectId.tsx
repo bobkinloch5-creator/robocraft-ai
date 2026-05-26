@@ -446,23 +446,22 @@ function ProjectEditor() {
       refreshCredits();
       refreshAiContext();
 
-      // Load or create the SHARED per-project agent conversation, then hydrate messages.
-      // (Collaborators all see the same conversation, not a per-user one.)
-      const { data: existing } = await supabase
+      // Load all conversations for this project, pick the most recent (or create one).
+      const { data: allConvos } = await supabase
         .from("agent_conversations")
-        .select("id")
+        .select("id,title,updated_at")
         .eq("project_id", projectId)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      let cid = existing?.id ?? null;
+        .order("updated_at", { ascending: false });
+      setConversations((allConvos ?? []) as any);
+      let cid = allConvos?.[0]?.id ?? null;
       if (!cid) {
         const { data: created } = await supabase
           .from("agent_conversations")
-          .insert({ project_id: projectId, user_id: user.id, title: "Team Chat" })
-          .select("id")
+          .insert({ project_id: projectId, user_id: user.id, title: "New chat" })
+          .select("id,title,updated_at")
           .single();
         cid = created?.id ?? null;
+        if (created) setConversations([created as any]);
       }
       if (cid) {
         setConvoId(cid);
@@ -475,6 +474,45 @@ function ProjectEditor() {
       }
     })();
   }, [user, projectId]);
+
+  const loadConversation = async (cid: string) => {
+    setConvoId(cid);
+    setShowHistory(false);
+    const { data: msgs } = await supabase
+      .from("agent_messages")
+      .select("id,role,content")
+      .eq("conversation_id", cid)
+      .order("created_at", { ascending: true });
+    setMessages((msgs ?? []).map((m: any) => ({ id: m.id, role: m.role, content: m.content })));
+  };
+
+  const newChat = async () => {
+    if (!user) return;
+    const { data: created } = await supabase
+      .from("agent_conversations")
+      .insert({ project_id: projectId, user_id: user.id, title: "New chat" })
+      .select("id,title,updated_at")
+      .single();
+    if (created) {
+      setConversations((prev) => [created as any, ...prev]);
+      setConvoId(created.id);
+      setMessages([]);
+      setShowHistory(false);
+    }
+  };
+
+  const deleteConversation = async (cid: string) => {
+    if (!confirm("Delete this conversation? This cannot be undone.")) return;
+    await supabase.from("agent_messages").delete().eq("conversation_id", cid);
+    await supabase.from("agent_conversations").delete().eq("id", cid);
+    setConversations((prev) => prev.filter((c) => c.id !== cid));
+    if (cid === convoId) {
+      setMessages([]);
+      setConvoId(null);
+      // Auto-create a fresh one
+      newChat();
+    }
+  };
 
   const persistMsg = async (role: "user" | "assistant", content: string, actions?: any) => {
     if (!convoId) return null;
