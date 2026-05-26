@@ -624,6 +624,49 @@ organizeBtn.MouseButton1Click:Connect(function()
 	end)
 end)
 
+-- Ignore Filters row: comma-separated list of services / folder names / path
+-- substrings to exclude from scans, organize plans, and any applied actions.
+local ignoreLabel = Instance.new("TextLabel", root)
+ignoreLabel.LayoutOrder = 15
+ignoreLabel.BackgroundTransparency = 1
+ignoreLabel.Size = UDim2.new(1,0,0,14)
+ignoreLabel.Font = Enum.Font.GothamMedium; ignoreLabel.TextSize = 10
+ignoreLabel.TextColor3 = C.textDim
+register(ignoreLabel, "textDim")
+ignoreLabel.Text = "IGNORE FILTERS  (comma-separated)"
+ignoreLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local ignoreWrap = Instance.new("Frame", root)
+ignoreWrap.LayoutOrder = 16
+ignoreWrap.Size = UDim2.new(1,0,0,30)
+ignoreWrap.BackgroundColor3 = C.panel
+register(ignoreWrap, "panel")
+ignoreWrap.BorderSizePixel = 0
+corner(ignoreWrap, 8)
+local ignoreStroke = stroke(ignoreWrap, C.stroke, 1)
+
+local ignoreBox = Instance.new("TextBox", ignoreWrap)
+ignoreBox.Size = UDim2.new(1,-20,1,0)
+ignoreBox.Position = UDim2.new(0,10,0,0)
+ignoreBox.BackgroundTransparency = 1
+ignoreBox.TextColor3 = C.text
+register(ignoreBox, "text")
+ignoreBox.Text = getIgnoresRaw()
+ignoreBox.PlaceholderText = "e.g. StarterPlayer, Archive, _wip"
+ignoreBox.PlaceholderColor3 = C.textMute
+ignoreBox.Font = Enum.Font.Code; ignoreBox.TextSize = 12
+ignoreBox.ClearTextOnFocus = false
+ignoreBox.TextXAlignment = Enum.TextXAlignment.Left
+ignoreBox.Focused:Connect(function() ignoreStroke.Color = C.primary; ignoreStroke.Thickness = 1.5 end)
+ignoreBox.FocusLost:Connect(function(enter)
+	ignoreStroke.Color = C.stroke; ignoreStroke.Thickness = 1
+	setIgnoresRaw(ignoreBox.Text)
+	local n = #getIgnoreList()
+	appendLog("Ignore filters saved (" .. n .. " pattern" .. (n == 1 and "" or "s") .. ")")
+end)
+
+
+
 local function setPill(state)
 	local dotColor, label, textColor
 	if state == "connected" or state == "idle" then
