@@ -2008,10 +2008,19 @@ local function openPreviewOverlay()
 		typeTag.Size = UDim2.new(1, -72, 1, 0)
 		typeTag.Font = Enum.Font.GothamBold
 		typeTag.TextSize = 10
-		typeTag.TextColor3 = C.accent
+		typeTag.TextColor3 = a.error and Color3.fromRGB(255, 120, 120) or C.accent
 		typeTag.TextXAlignment = Enum.TextXAlignment.Left
-		typeTag.Text = ("#%d  ·  %s"):format(i, string.upper(tostring(a.type or "?")))
+		typeTag.Text = ("#%d  ·  %s%s"):format(
+			i,
+			string.upper(tostring(a.type or "?")),
+			a.error and "  ·  FAILED" or "")
 		typeTag.ZIndex = 65
+
+		-- If the action previously failed during Apply All, paint the row
+		-- with a red tint so it's visually obvious it needs attention.
+		if a.error then
+			row.BackgroundColor3 = Color3.fromRGB(48, 22, 28)
+		end
 
 		skipBtn.MouseButton1Click:Connect(function()
 			skipFlags[i] = not skipFlags[i]
