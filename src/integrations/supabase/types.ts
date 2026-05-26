@@ -14,16 +14,583 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      agent_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          title?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_conversations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_messages: {
+        Row: {
+          actions: Json | null
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          role: string
+        }
+        Insert: {
+          actions?: Json | null
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          role: string
+        }
+        Update: {
+          actions?: Json | null
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "agent_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_transactions: {
+        Row: {
+          amount: number
+          balance: number
+          created_at: string
+          id: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          balance: number
+          created_at?: string
+          id?: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          balance?: number
+          created_at?: string
+          id?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      generations: {
+        Row: {
+          created_at: string
+          credits_used: number
+          id: string
+          project_id: string | null
+          prompt: string
+          result: Json | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits_used?: number
+          id?: string
+          project_id?: string | null
+          prompt: string
+          result?: Json | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits_used?: number
+          id?: string
+          project_id?: string | null
+          prompt?: string
+          result?: Json | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_requests: {
+        Row: {
+          amount: number
+          created_at: string
+          credits: number
+          id: string
+          pack_id: string
+          paypal_note: string | null
+          paypal_transaction_id: string
+          reject_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          credits: number
+          id?: string
+          pack_id: string
+          paypal_note?: string | null
+          paypal_transaction_id: string
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          credits?: number
+          id?: string
+          pack_id?: string
+          paypal_note?: string | null
+          paypal_transaction_id?: string
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          credits_added: number
+          id: string
+          provider: string
+          provider_payment_id: string | null
+          raw: Json | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          credits_added?: number
+          id?: string
+          provider: string
+          provider_payment_id?: string | null
+          raw?: Json | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          credits_added?: number
+          id?: string
+          provider?: string
+          provider_payment_id?: string | null
+          raw?: Json | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      plugin_actions: {
+        Row: {
+          action_type: string
+          created_at: string
+          delivered_at: string | null
+          error_message: string | null
+          executed_at: string | null
+          id: string
+          payload: Json | null
+          project_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          payload?: Json | null
+          project_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          payload?: Json | null
+          project_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plugin_actions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plugin_connections: {
+        Row: {
+          created_at: string
+          id: string
+          last_connected_at: string | null
+          status: string
+          studio_metadata: Json | null
+          token_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_connected_at?: string | null
+          status?: string
+          studio_metadata?: Json | null
+          token_hash: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_connected_at?: string | null
+          status?: string
+          studio_metadata?: Json | null
+          token_hash?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      plugin_context: {
+        Row: {
+          context: Json
+          created_at: string
+          id: string
+          instance_count: number
+          project_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          context: Json
+          created_at?: string
+          id?: string
+          instance_count?: number
+          project_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          context?: Json
+          created_at?: string
+          id?: string
+          instance_count?: number
+          project_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plugin_context_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          credits: number
+          display_name: string | null
+          email: string
+          id: string
+          plugin_token_hash: string | null
+          specialization: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          credits?: number
+          display_name?: string | null
+          email: string
+          id: string
+          plugin_token_hash?: string | null
+          specialization?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          credits?: number
+          display_name?: string | null
+          email?: string
+          id?: string
+          plugin_token_hash?: string | null
+          specialization?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      project_collaborators: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_collaborators_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_files: {
+        Row: {
+          content: string
+          created_at: string
+          file_type: string
+          id: string
+          path: string
+          project_id: string
+          service_location: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          file_type: string
+          id?: string
+          path: string
+          project_id: string
+          service_location: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          file_type?: string
+          id?: string
+          path?: string
+          project_id?: string
+          service_location?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          created_at: string
+          description: string | null
+          game_type: string
+          id: string
+          name: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          game_type: string
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          game_type?: string
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      studio_errors: {
+        Row: {
+          created_at: string
+          error_message: string
+          file_path: string | null
+          id: string
+          project_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message: string
+          file_path?: string | null
+          id?: string
+          project_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string
+          file_path?: string | null
+          id?: string
+          project_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_errors_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_adjust_credits: {
+        Args: { _amount: number; _reason: string; _user_id: string }
+        Returns: number
+      }
+      admin_approve_payment: {
+        Args: { _request_id: string }
+        Returns: undefined
+      }
+      admin_reject_payment: {
+        Args: { _reason: string; _request_id: string }
+        Returns: undefined
+      }
+      can_access_project: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: boolean
+      }
+      grant_credits_service: {
+        Args: { _amount: number; _reason: string; _user_id: string }
+        Returns: number
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_project_owner: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: boolean
+      }
+      refund_credits: {
+        Args: { _amount: number; _reason?: string }
+        Returns: number
+      }
+      spend_credits_atomic: { Args: { _amount: number }; Returns: number }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "owner" | "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +717,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["owner", "admin", "user"],
+    },
   },
 } as const
