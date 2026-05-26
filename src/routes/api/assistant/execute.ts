@@ -1357,18 +1357,24 @@ export const Route = createFileRoute("/api/assistant/execute")({
                   keywords,
                 };
 
-                // Try increasingly compressed prompts. If still too big for the
-                // default model, switch to the large-context fallback. Each
-                // attempt logs an estimate so token issues are easy to diagnose.
-                const attempts: Array<{
+                // Build attempts. For external API-key sources we use a
+                // single attempt with the user's chosen model. For built-in
+                // (groq) source we keep the 3-step compression ladder.
+                type Attempt = {
                   level: 0 | 1 | 2;
                   modelId: string;
                   budget: number;
-                }> = [
-                  { level: 0, modelId: thinking ? BLOXSMITH_THINK_MODEL : BLOXSMITH_MODEL, budget: BLOXSMITH_MODEL_TOKEN_BUDGET },
-                  { level: 1, modelId: thinking ? BLOXSMITH_THINK_MODEL : BLOXSMITH_MODEL, budget: BLOXSMITH_MODEL_TOKEN_BUDGET },
-                  { level: 2, modelId: BLOXSMITH_LARGE_MODEL, budget: BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET },
-                ];
+                  useResolved: boolean;
+                };
+                const attempts: Attempt[] = resolved.source === "api_key"
+                  ? [
+                      { level: 1, modelId: resolved.modelName, budget: BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET, useResolved: true },
+                    ]
+                  : [
+                      { level: 0, modelId: thinking ? BLOXSMITH_THINK_MODEL : BLOXSMITH_MODEL, budget: BLOXSMITH_MODEL_TOKEN_BUDGET, useResolved: true },
+                      { level: 1, modelId: thinking ? BLOXSMITH_THINK_MODEL : BLOXSMITH_MODEL, budget: BLOXSMITH_MODEL_TOKEN_BUDGET, useResolved: false },
+                      { level: 2, modelId: BLOXSMITH_LARGE_MODEL, budget: BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET, useResolved: false },
+                    ];
 
                 const systemTokens = estimateTokens(SYSTEM_PROMPT);
                 const slimSystemTokens = estimateTokens(SLIM_SYSTEM_PROMPT);
@@ -1378,9 +1384,6 @@ export const Route = createFileRoute("/api/assistant/execute")({
                 for (let i = 0; i < attempts.length; i++) {
                   const att = attempts[i];
                   const built = buildContextBlock(att.level, ctxInputs);
-                  // Use the slim system prompt for the level-2 fallback so we
-                  // always fit under the model's TPM ceiling even when the
-                  // full encyclopedic system prompt would push us over.
                   const useSlim = att.level === 2;
                   const baseSystem = useSlim ? SLIM_SYSTEM_PROMPT : SYSTEM_PROMPT;
                   const baseSystemTokens = useSlim ? slimSystemTokens : systemTokens;
@@ -1390,17 +1393,23 @@ export const Route = createFileRoute("/api/assistant/execute")({
                     built.trimmedHistory.reduce((sum, m) => sum + estimateTokens(m.content), 0);
 
                   console.log(
-                    `[ai-execute] attempt=${i} level=${att.level} model=${att.modelId} ` +
+                    `[ai-execute] attempt=${i} src=${resolved.source} level=${att.level} model=${att.modelId} ` +
                       `est_tokens=${promptTokens} budget=${att.budget} files_included=${built.filesIncluded} slim=${useSlim}`,
                   );
 
-                  // Skip attempt if it's still too large for this model's budget.
                   if (promptTokens > att.budget && i < attempts.length - 1) {
                     console.log(`[ai-execute] skipping attempt ${i}: over budget, compressing further`);
                     continue;
                   }
 
-                  const model = gateway(att.modelId);
+                  // Pick the right SDK model handle for this attempt.
+                  // - First attempt always uses the user-resolved gateway
+                  //   (their API key / chosen provider).
+                  // - Later groq-only fallback attempts use the built-in
+                  //   Groq gateway with the larger model.
+                  const model = att.useResolved
+                    ? resolved.model
+                    : (gateway ? gateway(att.modelId) : resolved.model);
                   const messages = [
                     ...built.trimmedHistory,
                     { role: "user" as const, content: built.contextBlock },
@@ -1419,7 +1428,7 @@ export const Route = createFileRoute("/api/assistant/execute")({
                         messages,
                         tools: buildBloxSmithTools({ projectId }) as any,
                         stopWhen: stepCountIs(thinking ? 60 : 45),
-                      }, `ai-execute attempt#${i} model=${att.modelId} slim=${useSlim}`),
+                      }, `ai-execute attempt#${i} src=${resolved.source} model=${att.modelId} slim=${useSlim}`),
                     );
                     rawText = textRes.text;
                     result = normalizeResult(tryParseJSON(rawText));
@@ -1433,24 +1442,18 @@ export const Route = createFileRoute("/api/assistant/execute")({
                     console.error(
                       `[ai-execute] attempt ${i} failed (tooLarge=${isTooLarge}): ${msg.slice(0, 300)}`,
                     );
-                    // For non-size errors, try repair before giving up.
-                    if (!isTooLarge && rawText) {
+                    if (!isTooLarge && rawText && gateway) {
                       try {
                         result = normalizeResult(
-                          await repairJsonWithGroq(rawText, gateway, gateway(att.modelId)),
+                          await repairJsonWithGroq(rawText, gateway, gateway(BLOXSMITH_LARGE_MODEL)),
                         );
                         lastErr = null;
                         break;
                       } catch {
-                        // fall through to next attempt
+                        // fall through
                       }
                     }
-                    // Only keep retrying for size-related errors. Other errors
-                    // (auth, network, etc.) won't be fixed by shrinking.
-                    if (!isTooLarge && i < attempts.length - 1) {
-                      // try once more with smaller context anyway
-                      continue;
-                    }
+                    if (!isTooLarge && i < attempts.length - 1) continue;
                     if (i === attempts.length - 1) break;
                   }
                 }
