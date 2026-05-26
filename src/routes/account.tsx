@@ -20,6 +20,8 @@ import {
   ChevronRight,
   ExternalLink,
   BookOpen,
+  Ticket,
+  Gift,
 } from "lucide-react";
 import { toast } from "sonner";
 
