@@ -173,6 +173,9 @@ export function Header() {
           <Link to="/plugin" className="block py-2">
             Plugin
           </Link>
+          <Link to="/mcp" className="block py-2">
+            MCP
+          </Link>
           <Link to="/changelog" className="block py-2">
             Changelog
           </Link>
