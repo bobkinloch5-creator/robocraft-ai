@@ -18,10 +18,11 @@ export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — BloxSmith" }, { name: "robots", content: "noindex, nofollow" }] }),
 });
 
-type Row = { id: string; email: string; display_name: string | null; credits: number };
+type Row = { id: string; email: string; display_name: string | null; credits: number; banned: boolean; ban_reason: string | null; roles: string[]; projects: number; generations: number };
 type PR = { id: string; user_id: string; pack_id: string; credits: number; amount: number; paypal_transaction_id: string; paypal_note: string | null; status: string; created_at: string };
 type Promo = { id: string; code: string; credits: number; max_redemptions: number | null; redemption_count: number; expires_at: string | null; active: boolean; created_at: string };
 type PromoSub = { id: string; user_id: string; platform: string; url: string; note: string | null; status: string; created_at: string };
+type Activity = { id: string; user_id: string; amount: number; balance: number; reason: string | null; created_at: string };
 
 function Admin() {
   const { user, isAdmin, loading } = useAuth();
