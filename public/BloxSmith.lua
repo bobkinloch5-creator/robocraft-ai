@@ -1760,7 +1760,9 @@ local function applyActions(actions, sourceLabel)
 		if #reports > 0 then
 			pcall(function() postJSON("/report", { reports = reports }) end)
 		end
-		return
+		statsErrors = statsErrors + #actions
+		pcall(refreshStatsInfo)
+		return 0, #actions, {}
 	end
 
 	setPill("executing")
