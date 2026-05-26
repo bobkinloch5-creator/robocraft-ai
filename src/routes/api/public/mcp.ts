@@ -42,37 +42,55 @@ async function sha256(text: string) {
   return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function recordTokenAttempt(userId: string, ok: boolean, error?: string) {
+function detectClient(ua: string | null): string {
+  if (!ua) return "Unknown client";
+  const s = ua.toLowerCase();
+  if (s.includes("codex")) return "ChatGPT Codex";
+  if (s.includes("claude-code")) return "Claude Code";
+  if (s.includes("claude")) return "Claude";
+  if (s.includes("antigravity")) return "Antigravity";
+  if (s.includes("cursor")) return "Cursor";
+  if (s.includes("cline")) return "Cline";
+  if (s.includes("windsurf")) return "Windsurf";
+  if (s.includes("continue")) return "Continue";
+  if (s.includes("zed")) return "Zed";
+  if (s.includes("openai")) return "OpenAI client";
+  if (s.includes("anthropic")) return "Anthropic client";
+  if (s.includes("mcp")) return "MCP client";
+  // Fall back to first token of UA
+  return ua.split(/[\s/]/)[0]?.slice(0, 40) || "Unknown client";
+}
+
+function recordTokenAttempt(userId: string, ok: boolean, ua: string | null, error?: string) {
   const now = new Date().toISOString();
+  const client = detectClient(ua);
   supabaseAdmin
     .from("mcp_tokens")
     .update({
       last_attempt_at: now,
       last_attempt_ok: ok,
       last_attempt_error: ok ? null : (error ?? "auth failed"),
+      last_client: client,
+      last_user_agent: ua ?? null,
       ...(ok ? { last_used_at: now } : {}),
     })
     .eq("user_id", userId)
     .then(() => {}, () => {});
 }
 
+
 const authedHandler = withMcpAuth(
   async (request, auth) => mcp.handleRequest(request, { auth }),
   async (request) => {
     const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
-    if (!token) {
-      // No header at all — Codex/Claude trying OAuth discovery or misconfigured.
-      // We can't attribute this to a user, so just bail.
-      return null;
-    }
+    const ua = request.headers.get("User-Agent");
+    if (!token) return null;
 
-    // Admin override: shared workspace MCP_SECRET still works
     const adminSecret = process.env.MCP_SECRET;
     if (adminSecret && token === adminSecret) {
       return { token, claims: { scope: "admin", userId: null } };
     }
 
-    // Per-user revocable token
     if (token.startsWith("bsmcp_")) {
       const hash = await sha256(token);
       const { data } = await supabaseAdmin
@@ -81,21 +99,16 @@ const authedHandler = withMcpAuth(
         .eq("token_hash", hash)
         .maybeSingle();
 
-      if (!data) {
-        // Token is the right shape but does not match — likely a stale key after
-        // a regenerate. Try to find ANY token with the same prefix bucket so we
-        // can at least record the failed attempt. We can't, so record globally
-        // via mcp_anon_attempts keyed by a synthetic id is not useful — skip.
-        return null;
-      }
+      if (!data) return null;
 
-      recordTokenAttempt(data.user_id, true);
+      recordTokenAttempt(data.user_id, true, ua);
       return { token, claims: { scope: "user", userId: data.user_id } };
     }
 
     return null;
   },
 );
+
 
 
 

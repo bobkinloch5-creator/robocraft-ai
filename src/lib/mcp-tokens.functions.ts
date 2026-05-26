@@ -21,7 +21,7 @@ export const getMcpTokenStatus = createServerFn({ method: "POST" })
     const { data } = await supabase
       .from("mcp_tokens")
       .select(
-        "created_at,updated_at,last_used_at,last_attempt_at,last_attempt_ok,last_attempt_error",
+        "created_at,updated_at,last_used_at,last_attempt_at,last_attempt_ok,last_attempt_error,last_client,last_user_agent",
       )
       .eq("user_id", userId)
       .maybeSingle();
@@ -33,6 +33,8 @@ export const getMcpTokenStatus = createServerFn({ method: "POST" })
       lastAttemptAt: data?.last_attempt_at ?? null,
       lastAttemptOk: data?.last_attempt_ok ?? null,
       lastAttemptError: data?.last_attempt_error ?? null,
+      lastClient: (data as any)?.last_client ?? null,
+      lastUserAgent: (data as any)?.last_user_agent ?? null,
     };
   });
 

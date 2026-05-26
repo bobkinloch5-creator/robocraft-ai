@@ -217,7 +217,9 @@ export type Database = {
           last_attempt_at: string | null
           last_attempt_error: string | null
           last_attempt_ok: boolean | null
+          last_client: string | null
           last_used_at: string | null
+          last_user_agent: string | null
           token_hash: string
           updated_at: string
           user_id: string
@@ -229,7 +231,9 @@ export type Database = {
           last_attempt_at?: string | null
           last_attempt_error?: string | null
           last_attempt_ok?: boolean | null
+          last_client?: string | null
           last_used_at?: string | null
+          last_user_agent?: string | null
           token_hash: string
           updated_at?: string
           user_id: string
@@ -241,7 +245,9 @@ export type Database = {
           last_attempt_at?: string | null
           last_attempt_error?: string | null
           last_attempt_ok?: boolean | null
+          last_client?: string | null
           last_used_at?: string | null
+          last_user_agent?: string | null
           token_hash?: string
           updated_at?: string
           user_id?: string

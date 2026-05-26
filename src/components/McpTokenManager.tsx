@@ -18,6 +18,8 @@ type Status = {
   lastAttemptAt: string | null;
   lastAttemptOk: boolean | null;
   lastAttemptError: string | null;
+  lastClient: string | null;
+  lastUserAgent: string | null;
 };
 
 export function McpTokenManager() {
@@ -160,10 +162,12 @@ export function McpTokenManager() {
                   <div className="flex items-start gap-2 rounded-lg border border-success/40 bg-success/10 p-3">
                     <CheckCircle2 className="h-4 w-4 text-success mt-0.5 shrink-0" />
                     <div className="text-xs">
-                      <div className="font-semibold text-success">MCP client connected</div>
+                      <div className="font-semibold text-success">
+                        {status.lastClient ?? "MCP client"} connected
+                      </div>
                       <div className="text-muted-foreground">
-                        An MCP client (Codex, Claude, etc.) successfully called your server{" "}
-                        {usedAt?.toLocaleTimeString()}. Status updates every 15 seconds.
+                        <span className="font-medium text-foreground">{status.lastClient ?? "An MCP client"}</span>{" "}
+                        successfully called your server at {usedAt?.toLocaleTimeString()}. Status updates every 15 seconds.
                       </div>
                     </div>
                   </div>
@@ -223,6 +227,12 @@ export function McpTokenManager() {
               <div>
                 <div className="text-muted-foreground">Status</div>
                 <div className="font-semibold text-success">Active</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Connected AI</div>
+                <div className="font-semibold" title={status.lastUserAgent ?? undefined}>
+                  {status.lastClient ?? "Not yet connected"}
+                </div>
               </div>
               <div>
                 <div className="text-muted-foreground">Last used</div>
