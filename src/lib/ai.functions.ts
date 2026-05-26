@@ -466,6 +466,114 @@ Keep it under ~400 words. Be specific to the user's request and existing project
   });
 
 // -----------------------------------------------------------------------------
+// Chat mode — pure conversational AI. NO tools, NO file writes, NO plugin
+// actions. Returns markdown text only. Useful for ideas, explanations, and
+// answering Roblox / Luau questions. The user copies any code manually.
+// -----------------------------------------------------------------------------
+const ChatInputSchema = z.object({
+  projectId: z.string().uuid().optional(),
+  prompt: z.string().min(1).max(8000),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().max(20000),
+      }),
+    )
+    .max(20)
+    .optional(),
+  thinking: z.boolean().default(false),
+});
+
+export const chatWithAI = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => ChatInputSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { projectId, prompt, history, thinking } = data;
+
+    const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+    const isOwner = (roles ?? []).some((r) => r.role === "owner" || r.role === "admin");
+
+    const CHAT_COST = 1;
+    if (!isOwner) {
+      const { error: spendErr } = await supabase.rpc("spend_credits_atomic", {
+        _amount: CHAT_COST,
+      });
+      if (spendErr) throw new Error("Not enough credits. Buy more on the Pricing page.");
+    }
+
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      if (!isOwner)
+        await supabase.rpc("refund_credits", {
+          _amount: CHAT_COST,
+          _reason: "ai gateway not configured",
+        });
+      throw new Error("AI gateway not configured — GROQ_API_KEY missing.");
+    }
+
+    const { generateText } = await import("ai");
+    const { createGroqProvider, BLOXSMITH_MODEL, BLOXSMITH_THINK_MODEL, BLOXSMITH_FAST_MODEL } =
+      await import("./ai-gateway.server");
+    const gateway = createGroqProvider(apiKey);
+    const model = gateway(thinking ? BLOXSMITH_THINK_MODEL : BLOXSMITH_FAST_MODEL);
+
+    // Light project context so chat answers stay relevant.
+    let projectBlock = "";
+    if (projectId) {
+      const { data: existingFiles } = await supabase
+        .from("project_files")
+        .select("path,file_type,service_location")
+        .eq("project_id", projectId)
+        .limit(60);
+      if (existingFiles && existingFiles.length > 0) {
+        projectBlock =
+          "\n\nProject files (for context only — DO NOT modify them):\n" +
+          existingFiles
+            .map((f) => `  • ${f.path} (${f.file_type} in ${f.service_location})`)
+            .join("\n");
+      }
+    }
+
+    const chatSystem = `You are BloxSmith, an expert Roblox / Luau assistant in **CHAT MODE**.
+
+CHAT MODE RULES — never break these:
+- DO NOT modify the user's project. You have no tools. You cannot write files, queue actions, or change Studio.
+- The user wants to brainstorm, get ideas, ask questions, learn, debug, or get sample code to copy manually.
+- Be conversational and helpful. Use Markdown.
+- When you give code, ALWAYS wrap it in fenced code blocks with a language tag like \`\`\`lua, \`\`\`luau, or \`\`\`json. Each block gets a copy button in the UI, so split distinct snippets into separate blocks.
+- Keep answers focused. If something is best built (not chatted about), say so and suggest switching off Chat mode.${projectBlock}`;
+
+    const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+      { role: "system", content: chatSystem },
+    ];
+    for (const h of history ?? []) {
+      messages.push({ role: h.role, content: h.content });
+    }
+    messages.push({ role: "user", content: prompt });
+
+    let text = "";
+    try {
+      const { text: out } = await generateText({ model, messages });
+      text = out;
+    } catch (err: any) {
+      if (!isOwner)
+        await supabase.rpc("refund_credits", {
+          _amount: CHAT_COST,
+          _reason: "chat generation failed",
+        });
+      const msg = String(err?.message ?? err);
+      if (msg.includes("429")) throw new Error("AI rate limit. Try again in a moment.");
+      if (msg.includes("402"))
+        throw new Error("AI credits exhausted. Add credits in workspace settings.");
+      throw new Error("Chat failed: " + msg);
+    }
+
+    return { reply: text, cost: isOwner ? 0 : CHAT_COST };
+  });
+
+// -----------------------------------------------------------------------------
 // Magic-wand prompt improver — rewrites the user's short prompt into a richer,
 // more specific BloxSmith build prompt. Free (0 credits). Fast model.
 // -----------------------------------------------------------------------------

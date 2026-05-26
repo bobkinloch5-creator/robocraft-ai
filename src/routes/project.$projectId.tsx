@@ -11,6 +11,7 @@ import {
   planBuild,
   queuePluginAction,
   improvePrompt,
+  chatWithAI,
 } from "@/lib/ai.functions";
 import { inviteCollaborator } from "@/lib/projects.functions";
 import {
@@ -58,6 +59,8 @@ import { PushPreview, type PreviewPayload } from "@/components/PushPreview";
 import { ChatSettings } from "@/components/ChatSettings";
 import { SyncValidationDrawer } from "@/components/SyncValidationDrawer";
 import { TeamChat } from "@/components/TeamChat";
+import { AssistantMessage } from "@/components/AssistantMessage";
+import { MessagesSquare } from "lucide-react";
 
 export const Route = createFileRoute("/project/$projectId")({
   component: ProjectEditor,
@@ -301,6 +304,17 @@ function ProjectEditor() {
   const [mobileTab, setMobileTab] = useState<"files" | "editor" | "chat">("editor");
   const [previewsByMsg, setPreviewsByMsg] = useState<Record<string, PreviewPayload>>({});
   const [planMode, setPlanMode] = useState(false);
+  const [chatMode, setChatMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("bs_chat_mode") === "true";
+  });
+  const toggleChatMode = (v: boolean) => {
+    setChatMode(v);
+    if (typeof window !== "undefined") localStorage.setItem("bs_chat_mode", String(v));
+    if (v) setPlanMode(false);
+  };
+  const CHAT_COST = 1;
+  const runChat = useServerFn(chatWithAI);
   const [thinking, setThinking] = useState(false);
   const [plansByMsg, setPlansByMsg] = useState<Record<string, { prompt: string; plan: string }>>(
     {},
@@ -886,13 +900,39 @@ function ProjectEditor() {
     }
   };
 
+  const runChatRequest = async (userPrompt: string) => {
+    if (aiBusy) return;
+    if (credits !== null && credits < CHAT_COST) {
+      toast.error("Not enough credits for chat.");
+      return;
+    }
+    setAiBusy(true);
+    await pushMsg("user", userPrompt);
+    try {
+      const history = messages.slice(-10).map((m) => ({ role: m.role, content: m.content }));
+      const out: any = await runChat({
+        data: { projectId, prompt: userPrompt, history, thinking },
+      });
+      await pushMsg("assistant", out.reply, { kind: "chat" });
+    } catch (e: any) {
+      const msg = String(e?.message ?? "Failed");
+      toast.error(msg);
+      await pushMsg("assistant", "Chat error: " + msg);
+    } finally {
+      setAiBusy(false);
+      refreshCredits();
+    }
+  };
+
   const send = async () => {
     if (!prompt.trim() || aiBusy) return;
     const p = prompt;
     setPrompt("");
-    if (planMode) await runPlanRequest(p);
+    if (chatMode) await runChatRequest(p);
+    else if (planMode) await runPlanRequest(p);
     else await runGenerate(p);
   };
+
 
   const buildFromPlan = async (msgId: string) => {
     const entry = plansByMsg[msgId];
@@ -1593,7 +1633,7 @@ function ProjectEditor() {
                 </button>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-[11px]">
+            <div className="grid grid-cols-4 gap-2 text-[11px]">
               <button
                 onClick={() => setShowAuto(true)}
                 className="rounded-lg border border-border bg-background/35 px-2 py-2 text-left hover:bg-surface-elevated transition"
@@ -1607,7 +1647,7 @@ function ProjectEditor() {
                 </span>
               </button>
               <button
-                onClick={() => setPlanMode((v) => !v)}
+                onClick={() => { setPlanMode((v) => !v); if (chatMode) toggleChatMode(false); }}
                 className={`rounded-lg border px-2 py-2 text-left transition ${planMode ? "border-primary/50 bg-primary/10" : "border-border bg-background/35 hover:bg-surface-elevated"}`}
                 title="Draft a plan before building"
               >
@@ -1616,6 +1656,18 @@ function ProjectEditor() {
                 </span>
                 <span className="mt-0.5 block truncate text-muted-foreground">
                   {planMode ? "on" : `${PLAN_COST} cr`}
+                </span>
+              </button>
+              <button
+                onClick={() => toggleChatMode(!chatMode)}
+                className={`rounded-lg border px-2 py-2 text-left transition ${chatMode ? "border-accent/50 bg-accent/10" : "border-border bg-background/35 hover:bg-surface-elevated"}`}
+                title="Chat mode — ask questions, get ideas, get code to copy. Nothing is executed in Studio."
+              >
+                <span className="flex items-center gap-1.5 font-semibold text-foreground">
+                  <MessagesSquare className="h-3 w-3 text-accent" /> Chat
+                </span>
+                <span className="mt-0.5 block truncate text-muted-foreground">
+                  {chatMode ? "on" : `${CHAT_COST} cr`}
                 </span>
               </button>
               <button
@@ -1703,9 +1755,9 @@ function ProjectEditor() {
                     </span>
                   </div>
                   <div
-                    className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${isUser ? "text-foreground/90" : "text-foreground"} pl-5`}
+                    className={`${isUser ? "text-foreground/90 text-sm leading-relaxed whitespace-pre-wrap break-words" : "text-foreground"} pl-5`}
                   >
-                    {m.content}
+                    {isUser ? m.content : <AssistantMessage content={m.content} />}
                   </div>
                   <div className="pl-5 space-y-2">
                     {!isUser && previewsByMsg[m.id] && (
@@ -1813,14 +1865,14 @@ function ProjectEditor() {
                   />
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {planMode ? "Planning…" : "Generating…"}
+                  {chatMode ? "Thinking…" : planMode ? "Planning…" : "Generating…"}
                 </span>
               </div>
             )}
             <div ref={chatEnd} />
           </div>
 
-          {outOfCredits ? (
+          {outOfCredits && !(chatMode && credits !== null && credits >= CHAT_COST) ? (
             <div className="border-t border-border p-3 space-y-2 bg-destructive/5">
               <p className="text-sm font-semibold text-destructive">You're out of credits</p>
               <p className="text-xs text-muted-foreground">
@@ -1837,7 +1889,7 @@ function ProjectEditor() {
           ) : (
             <div className="border-t border-border p-3 space-y-2">
               <div
-                className={`rounded-xl border bg-background/45 p-2 transition ${planMode ? "border-primary/40" : "border-border focus-within:border-primary/40"}`}
+                className={`rounded-xl border bg-background/45 p-2 transition ${chatMode ? "border-accent/40" : planMode ? "border-primary/40" : "border-border focus-within:border-primary/40"}`}
               >
                 <textarea
                   value={prompt}
@@ -1850,9 +1902,11 @@ function ProjectEditor() {
                   }}
                   rows={3}
                   placeholder={
-                    planMode
-                      ? "Describe the Roblox system you want planned..."
-                      : "Type any command: build a map, add UI, create scripts, insert assets, fix bugs..."
+                    chatMode
+                      ? "Ask anything: ideas, Luau questions, code samples to copy — nothing runs in Studio."
+                      : planMode
+                        ? "Describe the Roblox system you want planned..."
+                        : "Type any command: build a map, add UI, create scripts, insert assets, fix bugs..."
                   }
                   className="min-h-20 w-full resize-none bg-transparent px-1 py-1 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none"
                 />
@@ -1924,11 +1978,15 @@ function ProjectEditor() {
                       disabled={!prompt.trim()}
                       className="inline-flex h-8 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:opacity-90 transition disabled:opacity-30"
                       title={
-                        planMode ? `Generate plan · ${PLAN_COST} cr` : `Build · ${GENERATE_COST} cr`
+                        chatMode
+                          ? `Send chat · ${CHAT_COST} cr`
+                          : planMode
+                            ? `Generate plan · ${PLAN_COST} cr`
+                            : `Build · ${GENERATE_COST} cr`
                       }
                     >
                       <Send className="h-3.5 w-3.5" />
-                      {planMode ? "Plan" : autoExecute ? "Execute" : "Preview"}
+                      {chatMode ? "Chat" : planMode ? "Plan" : autoExecute ? "Execute" : "Preview"}
                     </button>
                   )}
                 </div>
@@ -1939,11 +1997,17 @@ function ProjectEditor() {
                     className={`h-1.5 w-1.5 rounded-full ${isStudioConnected ? "bg-success animate-pulse" : "bg-amber-400"}`}
                   />
                   <span className="text-muted-foreground">
-                    {isStudioConnected ? "Studio live" : "Studio waiting"} · Groq · tools enabled
+                    {chatMode
+                      ? "Chat mode · read-only · no tools"
+                      : `${isStudioConnected ? "Studio live" : "Studio waiting"} · Groq · tools enabled`}
                   </span>
                 </div>
                 <span className="text-[10px] text-muted-foreground">
-                  {planMode ? `${PLAN_COST} cr / plan` : `${GENERATE_COST} cr / build`}
+                  {chatMode
+                    ? `${CHAT_COST} cr / chat`
+                    : planMode
+                      ? `${PLAN_COST} cr / plan`
+                      : `${GENERATE_COST} cr / build`}
                   {thinking ? " · deeper" : ""}
                 </span>
               </div>
