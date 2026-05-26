@@ -73,6 +73,37 @@ local function setPreview(v) plugin:SetSetting("bs_preview", v) end
 local function getClearMode()  return plugin:GetSetting("bs_clear_mode") == true end
 local function setClearMode(v) plugin:SetSetting("bs_clear_mode", v) end
 
+-- Ignore filters: comma-separated locations / folder names to exclude from
+-- snapshot scans, organize plans, and any applied move/rename/organize/clean
+-- actions. Patterns are matched case-insensitively against either a full
+-- path segment OR as a substring of the full instance path.
+-- Example: "StarterPlayer, Archive, _wip"
+local function getIgnoresRaw() return plugin:GetSetting("bs_ignores") or "" end
+local function setIgnoresRaw(v) plugin:SetSetting("bs_ignores", tostring(v or "")) end
+local function getIgnoreList()
+	local out = {}
+	for token in string.gmatch(getIgnoresRaw(), "([^,]+)") do
+		local t = token:gsub("^%s+", ""):gsub("%s+$", "")
+		if t ~= "" then table.insert(out, string.lower(t)) end
+	end
+	return out
+end
+local function pathIsIgnored(path)
+	if not path or path == "" then return false end
+	local list = getIgnoreList()
+	if #list == 0 then return false end
+	local lower = string.lower(path)
+	local segments = {}
+	for seg in string.gmatch(lower, "([^/.]+)") do table.insert(segments, seg) end
+	for _, pat in ipairs(list) do
+		for _, seg in ipairs(segments) do
+			if seg == pat then return true end
+		end
+		if string.find(lower, pat, 1, true) then return true end
+	end
+	return false
+end
+
 local function postJSON(path, body)
 	local apiBase = getApiBase()
 	local url = apiBase .. path
@@ -576,7 +607,7 @@ organizeBtn.MouseButton1Click:Connect(function()
 		if not getClearMode() then
 			pcall(pushSnapshot)
 		end
-		local data, err = postJSON("/organize", { projectId = activeProjectId })
+		local data, err = postJSON("/organize", { projectId = activeProjectId, ignores = getIgnoreList() })
 		if err then
 			organizeBtn.Text = "🗂  Organize Workspace (AI)"
 			organizeBtn.TextColor3 = C.accent
@@ -592,6 +623,49 @@ organizeBtn.MouseButton1Click:Connect(function()
 		organizeBtn.TextColor3 = C.accent
 	end)
 end)
+
+-- Ignore Filters row: comma-separated list of services / folder names / path
+-- substrings to exclude from scans, organize plans, and any applied actions.
+local ignoreLabel = Instance.new("TextLabel", root)
+ignoreLabel.LayoutOrder = 15
+ignoreLabel.BackgroundTransparency = 1
+ignoreLabel.Size = UDim2.new(1,0,0,14)
+ignoreLabel.Font = Enum.Font.GothamMedium; ignoreLabel.TextSize = 10
+ignoreLabel.TextColor3 = C.textDim
+register(ignoreLabel, "textDim")
+ignoreLabel.Text = "IGNORE FILTERS  (comma-separated)"
+ignoreLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local ignoreWrap = Instance.new("Frame", root)
+ignoreWrap.LayoutOrder = 16
+ignoreWrap.Size = UDim2.new(1,0,0,30)
+ignoreWrap.BackgroundColor3 = C.panel
+register(ignoreWrap, "panel")
+ignoreWrap.BorderSizePixel = 0
+corner(ignoreWrap, 8)
+local ignoreStroke = stroke(ignoreWrap, C.stroke, 1)
+
+local ignoreBox = Instance.new("TextBox", ignoreWrap)
+ignoreBox.Size = UDim2.new(1,-20,1,0)
+ignoreBox.Position = UDim2.new(0,10,0,0)
+ignoreBox.BackgroundTransparency = 1
+ignoreBox.TextColor3 = C.text
+register(ignoreBox, "text")
+ignoreBox.Text = getIgnoresRaw()
+ignoreBox.PlaceholderText = "e.g. StarterPlayer, Archive, _wip"
+ignoreBox.PlaceholderColor3 = C.textMute
+ignoreBox.Font = Enum.Font.Code; ignoreBox.TextSize = 12
+ignoreBox.ClearTextOnFocus = false
+ignoreBox.TextXAlignment = Enum.TextXAlignment.Left
+ignoreBox.Focused:Connect(function() ignoreStroke.Color = C.primary; ignoreStroke.Thickness = 1.5 end)
+ignoreBox.FocusLost:Connect(function(enter)
+	ignoreStroke.Color = C.stroke; ignoreStroke.Thickness = 1
+	setIgnoresRaw(ignoreBox.Text)
+	local n = #getIgnoreList()
+	appendLog("Ignore filters saved (" .. n .. " pattern" .. (n == 1 and "" or "s") .. ")")
+end)
+
+
 
 local function setPill(state)
 	local dotColor, label, textColor
@@ -1472,6 +1546,8 @@ local function scanProject(timeoutSeconds)
 		if shouldStop() then return end
 		scanned += 1
 		local currentPath = parentPath == "" and inst.Name or (parentPath .. "/" .. inst.Name)
+		-- Honor ignore filters: skip this subtree entirely.
+		if pathIsIgnored(currentPath) then return end
 		local isScript = inst:IsA("LuaSourceContainer")
 		local includeObj = false
 		
@@ -1506,11 +1582,13 @@ local function scanProject(timeoutSeconds)
 
 	for _, svcName in ipairs(scanServices) do
 		if shouldStop() then break end
-		local svc = getService(svcName)
-		if svc then
-			for _, child in ipairs(svc:GetChildren()) do
-				traverse(child, svcName)
-				if timedOut or cancelled then break end
+		if not pathIsIgnored(svcName) then
+			local svc = getService(svcName)
+			if svc then
+				for _, child in ipairs(svc:GetChildren()) do
+					traverse(child, svcName)
+					if timedOut or cancelled then break end
+				end
 			end
 		end
 	end
@@ -1586,9 +1664,34 @@ local function fingerprintActions(actions)
 	return s
 end
 
+-- Returns true if this action targets (or would create things inside) any
+-- path the user has marked as ignored. Covers organize / move / rename /
+-- clean / script / create / etc. since they all reference a path-like field.
+local function actionTouchesIgnored(action)
+	if not action then return false end
+	local candidates = {
+		action.path, action.target, action.newParent, action.parent,
+		action.destination, action.dest, action.folder, action.container,
+	}
+	for _, p in ipairs(candidates) do
+		if type(p) == "string" and pathIsIgnored(p) then return true end
+	end
+	local items = action.items or action.objects or action.paths
+	if type(items) == "table" then
+		for _, p in ipairs(items) do
+			if type(p) == "string" and pathIsIgnored(p) then return true end
+		end
+	end
+	return false
+end
+
 local function dispatch(action)
 	local fn = Actions[action.type]
 	if not fn then return false, "unknown action: " .. tostring(action.type) end
+	if actionTouchesIgnored(action) then
+		appendLog("Skipped " .. tostring(action.type) .. " — matches ignore filter")
+		return true
+	end
 	return fn(action)
 end
 

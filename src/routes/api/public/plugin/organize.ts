@@ -55,6 +55,22 @@ export const Route = createFileRoute("/api/public/plugin/organize")({
 
         const body = await request.json().catch(() => ({}));
         const projectId = body?.projectId;
+        const ignores: string[] = Array.isArray(body?.ignores)
+          ? body.ignores
+              .filter((s: unknown) => typeof s === "string")
+              .map((s: string) => s.trim().toLowerCase())
+              .filter(Boolean)
+          : [];
+        const isIgnored = (p: unknown) => {
+          if (typeof p !== "string" || !p || ignores.length === 0) return false;
+          const lower = p.toLowerCase();
+          const segments = lower.split(/[./]/).filter(Boolean);
+          for (const pat of ignores) {
+            if (segments.includes(pat)) return true;
+            if (lower.includes(pat)) return true;
+          }
+          return false;
+        };
         if (!projectId)
           return new Response(JSON.stringify({ error: "missing projectId" }), {
             status: 400,
@@ -117,10 +133,16 @@ export const Route = createFileRoute("/api/public/plugin/organize")({
         }
         void services;
 
-        if (instances.length === 0)
+        // Drop any instance that lives under an ignored path/segment.
+        const visibleInstances = instances.filter((i) => !isIgnored(i.path));
+
+        if (visibleInstances.length === 0)
           return new Response(
             JSON.stringify({
-              error: "Workspace snapshot is empty — nothing to organize yet.",
+              error:
+                ignores.length > 0
+                  ? "Every instance in the snapshot matched your ignore filters — nothing left to organize."
+                  : "Workspace snapshot is empty — nothing to organize yet.",
             }),
             { status: 409, headers: cors },
           );
@@ -151,8 +173,11 @@ Action shapes:
         const userPrompt =
           `Project: ${project.name}\n` +
           `Instance count: ${ctxRow.instance_count}\n` +
-          `Workspace tree (path : ClassName), truncated to ${instances.length} entries:\n` +
-          instances.map((i) => `${i.path} : ${i.className}`).join("\n") +
+          (ignores.length > 0
+            ? `IGNORE these locations / names (do NOT reference them in any action): ${ignores.join(", ")}\n`
+            : "") +
+          `Workspace tree (path : ClassName), truncated to ${visibleInstances.length} entries:\n` +
+          visibleInstances.map((i) => `${i.path} : ${i.className}`).join("\n") +
           `\n\nReturn the JSON plan now.`;
 
         let aiJson: any = null;
@@ -190,9 +215,17 @@ Action shapes:
           );
         }
 
+        const actionTouchesIgnored = (a: any) => {
+          if (isIgnored(a?.path) || isIgnored(a?.newParent) || isIgnored(a?.parent)) return true;
+          const items = a?.items ?? a?.objects ?? a?.paths;
+          if (Array.isArray(items) && items.some((p: unknown) => isIgnored(p))) return true;
+          return false;
+        };
+
         const rawActions: any[] = Array.isArray(aiJson?.actions) ? aiJson.actions : [];
         const filtered = rawActions
           .filter((a) => a && typeof a === "object" && ALLOWED_TYPES.has(a.type))
+          .filter((a) => !actionTouchesIgnored(a))
           .slice(0, 40);
 
         if (filtered.length === 0) {
