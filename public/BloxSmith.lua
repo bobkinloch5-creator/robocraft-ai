@@ -24,7 +24,7 @@ local Terrain               = Workspace.Terrain
 -- API base is user-configurable so the plugin works against bloxsmith.pro
 -- (production) AND any Lovable preview / staging URL the user is testing.
 local DEFAULT_API   = "https://bloxsmith.pro/api/public/plugin"
-local POLL_SECONDS  = 0.5
+local POLL_SECONDS  = 0.2
 local CTX_SECONDS   = 15  -- how often we re-send workspace context to the AI
 local SCAN_TIMEOUT_SECONDS = 15
 local pushSnapshot
