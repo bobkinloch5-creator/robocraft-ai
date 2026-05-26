@@ -70,6 +70,19 @@ function McpServersPage() {
     }
   };
 
+  useEffect(() => {
+    load();
+  }, []);
+
+  useEffect(() => {
+    servers.forEach((s) => {
+      if (s.enabled && !tests[s.id]) testServer(s, true);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [servers]);
+
+
+
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
