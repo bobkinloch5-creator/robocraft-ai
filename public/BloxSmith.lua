@@ -607,7 +607,7 @@ organizeBtn.MouseButton1Click:Connect(function()
 		if not getClearMode() then
 			pcall(pushSnapshot)
 		end
-		local data, err = postJSON("/organize", { projectId = activeProjectId })
+		local data, err = postJSON("/organize", { projectId = activeProjectId, ignores = getIgnoreList() })
 		if err then
 			organizeBtn.Text = "🗂  Organize Workspace (AI)"
 			organizeBtn.TextColor3 = C.accent
