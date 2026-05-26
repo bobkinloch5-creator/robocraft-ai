@@ -156,6 +156,42 @@ function Dashboard() {
           </div>
         </div>
 
+        {!isOwner && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="glass rounded-2xl p-5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-primary/15 grid place-items-center"><Gift className="h-5 w-5 text-primary-glow" /></div>
+                <div>
+                  <div className="font-medium">Daily free credits</div>
+                  <div className="text-xs text-muted-foreground">Claim +10 credits, once per day.</div>
+                </div>
+              </div>
+              <button onClick={claimDaily} disabled={claiming} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+                {claiming ? "Claiming…" : "Claim +10"}
+              </button>
+            </div>
+            <div className="glass rounded-2xl p-5 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-primary/15 grid place-items-center shrink-0"><Ticket className="h-5 w-5 text-primary-glow" /></div>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium">Have a promo code?</div>
+                <div className="mt-1.5 flex gap-2">
+                  <input
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    placeholder="ENTER CODE"
+                    className="flex-1 min-w-0 rounded-lg bg-surface-elevated border border-border px-3 py-2 text-sm uppercase"
+                    onKeyDown={(e) => { if (e.key === "Enter") redeemPromo(); }}
+                  />
+                  <button onClick={redeemPromo} disabled={redeeming || !promoCode.trim()} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+                    {redeeming ? "…" : "Redeem"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: Gamepad2, label: "Open Roblox Studio", external: "roblox-studio:" },
