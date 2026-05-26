@@ -425,6 +425,35 @@ local function appendLog(message)
 	print("[BloxSmith] " .. tostring(message))
 end
 
+-- Session counters + last-sync heartbeat. Reset every plugin load. Surfaced
+-- in the STATS info row so the user can tell at a glance how many actions
+-- actually landed vs. failed without scrolling through the log buffer.
+local statsApplied, statsSkipped, statsErrors = 0, 0, 0
+local lastSyncAt = 0
+local statsInfo = infoRow(5, "STATS")
+local function refreshStatsInfo()
+	local agoText
+	if lastSyncAt == 0 then
+		agoText = "never"
+	else
+		local d = os.time() - lastSyncAt
+		if d < 2 then agoText = "just now"
+		elseif d < 60 then agoText = d .. "s ago"
+		elseif d < 3600 then agoText = math.floor(d/60) .. "m ago"
+		else agoText = math.floor(d/3600) .. "h ago"
+		end
+	end
+	statsInfo.Text = ("Applied %d · Skipped %d · Errors %d · Last sync: %s"):format(
+		statsApplied, statsSkipped, statsErrors, agoText)
+end
+refreshStatsInfo()
+task.spawn(function()
+	while true do
+		task.wait(2)
+		pcall(refreshStatsInfo)
+	end
+end)
+
 local footer = Instance.new("TextLabel", root)
 footer.LayoutOrder = 7
 footer.BackgroundTransparency = 1
