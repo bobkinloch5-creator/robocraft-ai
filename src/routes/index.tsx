@@ -62,13 +62,40 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "BloxSmith AI helps creators build real, playable Roblox games from simple prompts. Generate scripts, insert Toolbox assets, build maps, create UI, add game systems, fix errors, and sync everything into Roblox Studio.",
+          "BloxSmith turns prompts into real, playable Roblox games — Luau scripts, UI, systems, and Toolbox assets synced into Roblox Studio.",
       },
       { property: "og:title", content: "BloxSmith — Build Real Playable Roblox Games With AI" },
       { property: "og:description", content: "Describe a Roblox game and BloxSmith builds it — scripts, systems, UI, and assets — and syncs them into Studio." },
       { property: "og:url", content: "https://bloxsmith.pro/" },
     ],
     links: [{ rel: "canonical", href: "https://bloxsmith.pro/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "BloxSmith",
+          url: "https://bloxsmith.pro/",
+          potentialAction: {
+            "@type": "SearchAction",
+            target: "https://bloxsmith.pro/docs?q={search_term_string}",
+            "query-input": "required name=search_term_string",
+          },
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "BloxSmith",
+          url: "https://bloxsmith.pro/",
+          logo: "https://bloxsmith.pro/logo.png",
+          sameAs: [],
+        }),
+      },
+    ],
   }),
 });
 
