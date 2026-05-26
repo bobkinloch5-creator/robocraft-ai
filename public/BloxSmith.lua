@@ -1780,6 +1780,47 @@ local function openPreviewOverlay()
 	scrollPad.PaddingLeft = UDim.new(0, 8)
 	scrollPad.PaddingRight = UDim.new(0, 8)
 
+	-- Build a human-readable summary line for any action type so the user
+	-- can tell at a glance which folders/files will be created, moved, or
+	-- renamed before clicking Apply.
+	local function describeAction(a)
+		local t = tostring(a.type or "?")
+		if t == "move" then
+			return ("Move  %s  →  %s"):format(tostring(a.path or "?"), tostring(a.newParent or a.parent or "?"))
+		elseif t == "rename" then
+			return ("Rename  %s  →  %s"):format(tostring(a.path or "?"), tostring(a.newName or a.name or "?"))
+		elseif t == "organize" then
+			local items = a.items or a.objects or {}
+			local dest = tostring(a.parent or "Workspace") .. "/" .. tostring(a.name or a.folderName or "Folder")
+			local sample = {}
+			for i = 1, math.min(4, #items) do table.insert(sample, tostring(items[i])) end
+			local more = (#items > 4) and (" (+ " .. (#items - 4) .. " more)") or ""
+			return ("Organize  →  %s  [%d item(s)]\n  • %s%s"):format(dest, #items, table.concat(sample, "\n  • "), more)
+		elseif t == "delete" then
+			return ("Delete  %s"):format(tostring(a.path or "?"))
+		elseif t == "script" then
+			return ("Script  %s  in  %s  (%s)"):format(
+				tostring(a.name or "?"),
+				tostring(a.parent or a.service_location or "ServerScriptService"),
+				tostring(a.className or a.file_type or "Script"))
+		elseif t == "create" then
+			return ("Create  %s  '%s'  in  %s"):format(
+				tostring(a.className or "Instance"),
+				tostring(a.name or "?"),
+				tostring(a.parent or "Workspace"))
+		elseif t == "set" then
+			return ("Set props on  %s"):format(tostring(a.path or "?"))
+		elseif t == "insertAsset" then
+			return ("Insert asset  %s  →  %s/%s"):format(
+				tostring(a.assetId or "?"), tostring(a.parent or "Workspace"), tostring(a.name or "Asset"))
+		end
+		return ("%s  %s"):format(t, tostring(a.name or a.path or a.parent or ""))
+	end
+
+	-- Track per-action skip state. Skipped items stay in pendingPreview
+	-- but are filtered out at Apply time.
+	local skipFlags = {}
+
 	for i, a in ipairs(pendingPreview) do
 		local row = Instance.new("Frame", scroll)
 		row.LayoutOrder = i
@@ -1796,8 +1837,51 @@ local function openPreviewOverlay()
 		local rl = Instance.new("UIListLayout", row)
 		rl.Padding = UDim.new(0, 4); rl.SortOrder = Enum.SortOrder.LayoutOrder
 
+		-- Top line: skip toggle + action type tag
+		local topRow = Instance.new("Frame", row)
+		topRow.LayoutOrder = 1
+		topRow.BackgroundTransparency = 1
+		topRow.Size = UDim2.new(1, 0, 0, 18)
+		topRow.ZIndex = 64
+
+		local skipBtn = Instance.new("TextButton", topRow)
+		skipBtn.Size = UDim2.fromOffset(64, 18)
+		skipBtn.Position = UDim2.new(1, -64, 0, 0)
+		skipBtn.BackgroundColor3 = C.bg
+		skipBtn.TextColor3 = C.textDim
+		skipBtn.Font = Enum.Font.GothamMedium
+		skipBtn.TextSize = 10
+		skipBtn.Text = "Include"
+		skipBtn.BorderSizePixel = 0
+		skipBtn.AutoButtonColor = false
+		skipBtn.ZIndex = 65
+		corner(skipBtn, 4); stroke(skipBtn, C.stroke, 1)
+
+		local typeTag = Instance.new("TextLabel", topRow)
+		typeTag.BackgroundTransparency = 1
+		typeTag.Size = UDim2.new(1, -72, 1, 0)
+		typeTag.Font = Enum.Font.GothamBold
+		typeTag.TextSize = 10
+		typeTag.TextColor3 = C.accent
+		typeTag.TextXAlignment = Enum.TextXAlignment.Left
+		typeTag.Text = ("#%d  ·  %s"):format(i, string.upper(tostring(a.type or "?")))
+		typeTag.ZIndex = 65
+
+		skipBtn.MouseButton1Click:Connect(function()
+			skipFlags[i] = not skipFlags[i]
+			if skipFlags[i] then
+				skipBtn.Text = "Skipped"
+				skipBtn.TextColor3 = Color3.fromRGB(240, 140, 80)
+				row.BackgroundTransparency = 0.55
+			else
+				skipBtn.Text = "Include"
+				skipBtn.TextColor3 = C.textDim
+				row.BackgroundTransparency = 0
+			end
+		end)
+
 		local header = Instance.new("TextLabel", row)
-		header.LayoutOrder = 1
+		header.LayoutOrder = 2
 		header.BackgroundTransparency = 1
 		header.AutomaticSize = Enum.AutomaticSize.Y
 		header.Size = UDim2.new(1, 0, 0, 0)
@@ -1807,16 +1891,14 @@ local function openPreviewOverlay()
 		header.TextXAlignment = Enum.TextXAlignment.Left
 		header.TextYAlignment = Enum.TextYAlignment.Top
 		header.TextWrapped = true
-		local headerText = ("%s — %s"):format(tostring(a.type or "?"), tostring(a.name or a.className or a.parent or ""))
-		if a.parent then headerText = headerText .. ("   ·  in %s"):format(tostring(a.parent)) end
-		header.Text = headerText
+		header.Text = describeAction(a)
 		header.ZIndex = 64
 
 		if a.source and #a.source > 0 then
 			local snippet = a.source
 			if #snippet > 1200 then snippet = snippet:sub(1, 1200) .. "\n... (truncated)" end
 			local code = Instance.new("TextLabel", row)
-			code.LayoutOrder = 2
+			code.LayoutOrder = 3
 			code.BackgroundColor3 = C.bg
 			code.BorderSizePixel = 0
 			code.AutomaticSize = Enum.AutomaticSize.Y
@@ -1880,12 +1962,22 @@ local function openPreviewOverlay()
 		syncInfo.Text = ("Discarded %d pending action(s)"):format(#batch)
 	end)
 	apply.MouseButton1Click:Connect(function()
-		local batch = pendingPreview
+		-- Split pending into "apply now" vs "skipped" based on per-row toggles.
+		local toApply, toDiscard = {}, {}
+		for i, act in ipairs(pendingPreview) do
+			if skipFlags[i] then table.insert(toDiscard, act) else table.insert(toApply, act) end
+		end
 		pendingPreview = {}
 		previewSeenIds = {}
 		refreshReviewBtnLabel()
 		closePreviewOverlay()
-		applyActions(batch, "preview apply")
+		if #toDiscard > 0 then reportDiscarded(toDiscard) end
+		if #toApply > 0 then
+			applyActions(toApply, "preview apply")
+			syncInfo.Text = ("Applied %d, skipped %d"):format(#toApply, #toDiscard)
+		else
+			syncInfo.Text = ("Nothing applied — skipped %d"):format(#toDiscard)
+		end
 	end)
 end
 
@@ -1926,8 +2018,11 @@ local function pull(manual)
 		end
 		refreshReviewBtnLabel()
 		if added > 0 then
-			syncInfo.Text = ("Preview mode: %d new action(s) queued · click Review Pending"):format(added)
+			syncInfo.Text = ("Preview: %d new action(s) queued · opening review…"):format(added)
 			setPill("idle")
+			-- Auto-open the preview overlay so the user immediately sees
+			-- what's about to run before they approve it.
+			task.defer(openPreviewOverlay)
 		end
 		return
 	end
