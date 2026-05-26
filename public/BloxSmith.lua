@@ -24,7 +24,7 @@ local Terrain               = Workspace.Terrain
 -- API base is user-configurable so the plugin works against bloxsmith.pro
 -- (production) AND any Lovable preview / staging URL the user is testing.
 local DEFAULT_API   = "https://bloxsmith.pro/api/public/plugin"
-local POLL_SECONDS  = 0.5
+local POLL_SECONDS  = 0.2
 local CTX_SECONDS   = 15  -- how often we re-send workspace context to the AI
 local SCAN_TIMEOUT_SECONDS = 15
 local pushSnapshot
@@ -2515,13 +2515,15 @@ end)
 
 button.Click:Connect(function() widget.Enabled = not widget.Enabled end)
 
--- Background loop: pull actions + push context + auto-reconnect retries
+-- Action-pull loop: tight 0.2s tick so scan/script actions get picked up almost
+-- instantly. Auto-reconnect lives here too. We deliberately DO NOT call the
+-- heavier pushContext() here — that runs on its own slower loop below so a
+-- big buildContext() can't stall pulling the next action.
 task.spawn(function()
 	local lastRetryTime = 0
 	while true do
 		task.wait(POLL_SECONDS)
-		
-		-- Auto-reconnect/retry connection if shouldBeConnected is true but we are offline
+
 		if shouldBeConnected and not connected then
 			local now = os.time()
 			if now - lastRetryTime >= 5 then
@@ -2529,9 +2531,19 @@ task.spawn(function()
 				pcall(doConnect)
 			end
 		end
-		
+
 		if connected then
 			pcall(pull)
+		end
+	end
+end)
+
+-- Context-push loop: heavier workspace snapshot, throttled internally by
+-- CTX_SECONDS. Runs on its own thread so it never blocks action polling.
+task.spawn(function()
+	while true do
+		task.wait(2)
+		if connected then
 			pcall(pushContext, false)
 		end
 	end
