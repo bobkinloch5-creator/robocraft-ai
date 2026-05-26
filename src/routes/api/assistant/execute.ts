@@ -1383,14 +1383,15 @@ export const Route = createFileRoute("/api/assistant/execute")({
                     const systemWithRules = projectRules
                       ? `${SYSTEM_PROMPT}\n\n=== PROJECT-SPECIFIC RULES (override defaults) ===\n${projectRules}`
                       : SYSTEM_PROMPT;
+                    const { generateTextWithToolFallback } = await import("@/lib/ai-retry.server");
                     const textRes = await withRateLimitRetry("ai-execute", () =>
-                      generateText({
+                      generateTextWithToolFallback(generateText, {
                         model,
                         system: systemWithRules,
                         messages,
                         tools: buildBloxSmithTools({ projectId }) as any,
                         stopWhen: stepCountIs(thinking ? 60 : 45),
-                      }),
+                      }, `ai-execute attempt#${i} model=${att.modelId}`),
                     );
                     rawText = textRes.text;
                     result = normalizeResult(tryParseJSON(rawText));
