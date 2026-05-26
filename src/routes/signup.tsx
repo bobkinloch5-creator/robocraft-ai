@@ -81,6 +81,7 @@ function SignupPage() {
           className="mt-3 block text-center text-xs rounded-lg bg-[#5865F2]/10 border border-[#5865F2]/30 text-[#a3b1ff] hover:bg-[#5865F2]/20 py-2 font-semibold transition"
         >
           + Join our Discord for an extra 5 credits
+        </a>
         <button onClick={handleGoogle} className="mt-6 w-full rounded-lg border border-border bg-surface py-2.5 text-sm font-medium hover:bg-surface-elevated">Continue with Google</button>
         <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground"><div className="flex-1 h-px bg-border" />or<div className="flex-1 h-px bg-border" /></div>
         <form onSubmit={handle} className="space-y-3">
