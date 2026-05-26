@@ -1633,7 +1633,7 @@ function ProjectEditor() {
                 </button>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-[11px]">
+            <div className="grid grid-cols-4 gap-2 text-[11px]">
               <button
                 onClick={() => setShowAuto(true)}
                 className="rounded-lg border border-border bg-background/35 px-2 py-2 text-left hover:bg-surface-elevated transition"
