@@ -64,7 +64,11 @@ export const Route = createFileRoute("/")({
         content:
           "BloxSmith AI helps creators build real, playable Roblox games from simple prompts. Generate scripts, insert Toolbox assets, build maps, create UI, add game systems, fix errors, and sync everything into Roblox Studio.",
       },
+      { property: "og:title", content: "BloxSmith — Build Real Playable Roblox Games With AI" },
+      { property: "og:description", content: "Describe a Roblox game and BloxSmith builds it — scripts, systems, UI, and assets — and syncs them into Studio." },
+      { property: "og:url", content: "https://bloxsmith.pro/" },
     ],
+    links: [{ rel: "canonical", href: "https://bloxsmith.pro/" }],
   }),
 });
 

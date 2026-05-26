@@ -12,5 +12,12 @@ export const Route = createFileRoute("/terms")({
       <Footer />
     </div>
   ),
-  head: () => ({ meta: [{ title: "Terms — BloxSmith" }, { name: "description", content: "BloxSmith terms of service." }] }),
+  head: () => ({
+    meta: [
+      { title: "Terms — BloxSmith" },
+      { name: "description", content: "BloxSmith terms of service." },
+      { property: "og:url", content: "https://bloxsmith.pro/terms" },
+    ],
+    links: [{ rel: "canonical", href: "https://bloxsmith.pro/terms" }],
+  }),
 });

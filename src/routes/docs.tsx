@@ -3,7 +3,16 @@ import { Header, Footer } from "@/components/layout";
 
 export const Route = createFileRoute("/docs")({
   component: Docs,
-  head: () => ({ meta: [{ title: "Docs — BloxSmith" }, { name: "description", content: "BloxSmith documentation, plugin setup and Roblox AI builder guides." }] }),
+  head: () => ({
+    meta: [
+      { title: "Docs — BloxSmith" },
+      { name: "description", content: "BloxSmith documentation, plugin setup and Roblox AI builder guides." },
+      { property: "og:title", content: "Docs — BloxSmith" },
+      { property: "og:description", content: "Guides for building Roblox games with BloxSmith AI and the Studio plugin." },
+      { property: "og:url", content: "https://bloxsmith.pro/docs" },
+    ],
+    links: [{ rel: "canonical", href: "https://bloxsmith.pro/docs" }],
+  }),
 });
 
 function Docs() {

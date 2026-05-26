@@ -160,7 +160,11 @@ export const Route = createFileRoute("/changelog")({
   head: () => ({
     meta: [
       { title: "Changelog — BloxSmith" },
-      { name: "description", content: "Stay updated with the latest releases, features, security updates, and bug fixes for BloxSmith." }
-    ]
+      { name: "description", content: "Stay updated with the latest releases, features, security updates, and bug fixes for BloxSmith." },
+      { property: "og:title", content: "Changelog — BloxSmith" },
+      { property: "og:description", content: "Latest BloxSmith releases, features and fixes." },
+      { property: "og:url", content: "https://bloxsmith.pro/changelog" },
+    ],
+    links: [{ rel: "canonical", href: "https://bloxsmith.pro/changelog" }],
   }),
 });
