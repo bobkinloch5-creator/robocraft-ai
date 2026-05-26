@@ -1546,6 +1546,8 @@ local function scanProject(timeoutSeconds)
 		if shouldStop() then return end
 		scanned += 1
 		local currentPath = parentPath == "" and inst.Name or (parentPath .. "/" .. inst.Name)
+		-- Honor ignore filters: skip this subtree entirely.
+		if pathIsIgnored(currentPath) then return end
 		local isScript = inst:IsA("LuaSourceContainer")
 		local includeObj = false
 		
