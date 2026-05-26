@@ -84,6 +84,24 @@ export type Database = {
           },
         ]
       }
+      ai_usage_events: {
+        Row: {
+          created_at: string
+          id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       credit_transactions: {
         Row: {
           amount: number
@@ -683,7 +701,9 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      check_and_record_ai_usage: { Args: never; Returns: Json }
       claim_daily_credits: { Args: never; Returns: Json }
+      get_ai_usage: { Args: never; Returns: Json }
       grant_credits_service: {
         Args: { _amount: number; _reason: string; _user_id: string }
         Returns: number
