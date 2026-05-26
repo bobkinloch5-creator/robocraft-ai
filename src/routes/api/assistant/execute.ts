@@ -8,8 +8,144 @@ import {
   SYSTEM_PROMPT,
   BLOXSMITH_MODEL,
   BLOXSMITH_THINK_MODEL,
+  BLOXSMITH_LARGE_MODEL,
+  BLOXSMITH_MODEL_TOKEN_BUDGET,
+  BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET,
 } from "@/lib/ai-gateway.server";
 import { buildBloxSmithTools } from "@/lib/ai-tools.server";
+
+// ---------- Prompt-size protection helpers ----------
+// Rough token estimate: 1 token ≈ 4 chars of English. Good enough for budgeting.
+function estimateTokens(s: string): number {
+  if (!s) return 0;
+  return Math.ceil(s.length / 4);
+}
+
+const STOP_WORDS = new Set([
+  "the","a","an","and","or","but","for","to","of","in","on","at","is","it","be","i",
+  "my","me","you","your","we","our","please","add","make","create","build","fix",
+  "place","put","spawn","insert","new","with","this","that","game","roblox","studio",
+  "can","do","need","want","into","from","just","like","some","more","really","very",
+]);
+
+function extractKeywords(prompt: string): string[] {
+  const out = new Set<string>();
+  for (const raw of prompt.toLowerCase().split(/[^a-z0-9]+/)) {
+    if (!raw || raw.length < 3 || STOP_WORDS.has(raw)) continue;
+    out.add(raw);
+  }
+  return Array.from(out);
+}
+
+type DbFile = { path: string; file_type: string; service_location: string; content: string };
+
+function scoreFile(f: DbFile, keywords: string[]): number {
+  if (keywords.length === 0) return 0;
+  const hay = `${f.path}\n${f.content}`.toLowerCase();
+  let score = 0;
+  for (const k of keywords) {
+    if (f.path.toLowerCase().includes(k)) score += 5;
+    if (hay.includes(k)) score += 1;
+  }
+  return score;
+}
+
+function pickRelevantFiles(files: DbFile[], keywords: string[], maxFiles: number, perFileChars: number): DbFile[] {
+  if (files.length === 0) return [];
+  const scored = files
+    .map((f) => ({ f, s: scoreFile(f, keywords) }))
+    .sort((a, b) => b.s - a.s);
+  const relevant = scored.filter((x) => x.s > 0).slice(0, maxFiles).map((x) => x.f);
+  // Always include at least a short manifest of paths so the model knows what's there.
+  return relevant.map((f) => ({ ...f, content: (f.content ?? "").slice(0, perFileChars) }));
+}
+
+function summarizeLive(live: any, charBudget: number): string {
+  if (!live) return "";
+  try {
+    const json = JSON.stringify(live);
+    if (json.length <= charBudget) return json;
+    // Walk top-level services and only keep instance names/classes (no
+    // properties / nested source) to stay under budget.
+    if (typeof live === "object") {
+      const slim: Record<string, unknown> = {};
+      for (const [service, value] of Object.entries(live)) {
+        if (Array.isArray(value)) {
+          slim[service] = value.slice(0, 30).map((c: any) =>
+            typeof c === "object" && c
+              ? { name: c.Name ?? c.name, class: c.ClassName ?? c.className }
+              : c,
+          );
+        } else if (value && typeof value === "object") {
+          const v = value as any;
+          slim[service] = { name: v.Name ?? v.name, class: v.ClassName ?? v.className };
+        }
+      }
+      return JSON.stringify(slim).slice(0, charBudget);
+    }
+    return json.slice(0, charBudget);
+  } catch {
+    return "";
+  }
+}
+
+// Builds a context block at one of three compression levels. Level 0 is full
+// context, level 2 strips everything except the user request — used as the
+// last-resort retry when the model rejects the prompt for being too large.
+type ContextInputs = {
+  prompt: string;
+  studioConnected: boolean;
+  liveContext: any;
+  liveUpdatedAt?: string;
+  liveInstanceCount?: number;
+  files: DbFile[];
+  history: { role: "user" | "assistant"; content: string }[];
+  keywords: string[];
+};
+
+function buildContextBlock(level: 0 | 1 | 2, inp: ContextInputs): {
+  contextBlock: string;
+  trimmedHistory: { role: "user" | "assistant"; content: string }[];
+  filesIncluded: number;
+} {
+  const liveCharBudget = level === 0 ? 6000 : level === 1 ? 1500 : 0;
+  const maxFiles = level === 0 ? 6 : level === 1 ? 3 : 0;
+  const perFileChars = level === 0 ? 800 : level === 1 ? 400 : 0;
+  const historyTurns = level === 0 ? 6 : level === 1 ? 2 : 0;
+  const historyChars = level === 0 ? 600 : 200;
+
+  const relevant = maxFiles > 0
+    ? pickRelevantFiles(inp.files, inp.keywords, maxFiles, perFileChars)
+    : [];
+  const manifestPaths = inp.files.slice(0, 40).map((f) => f.path).join(", ");
+  const filesBlock = relevant.length
+    ? relevant
+        .map((f) => `--- ${f.path} (${f.file_type} in ${f.service_location}) ---\n${f.content}`)
+        .join("\n\n")
+    : "(no relevant files matched — full path list: " + (manifestPaths || "empty") + ")";
+
+  const liveSummary = liveCharBudget > 0 ? summarizeLive(inp.liveContext, liveCharBudget) : "";
+  const liveBlock = liveSummary
+    ? `LIVE STUDIO WORKSPACE (summary, ${inp.liveInstanceCount ?? "?"} instances @ ${inp.liveUpdatedAt ?? "?"}):\n${liveSummary}`
+    : inp.liveContext
+      ? `LIVE STUDIO WORKSPACE: present but omitted to stay within token limit.`
+      : `LIVE STUDIO WORKSPACE: (not yet reported by plugin — assume empty baseplate)`;
+
+  const trimmedHistory = inp.history.slice(-historyTurns).map((m) => ({
+    role: m.role,
+    content: String(m.content ?? "").slice(0, historyChars),
+  }));
+
+  const contextBlock =
+    `${liveBlock}\n\n` +
+    `Studio plugin status: ${inp.studioConnected ? "connected" : "not connected"}.\n\n` +
+    `Relevant project files:\n${filesBlock}\n\n` +
+    `User request:\n${inp.prompt}\n\n` +
+    `Return ONLY the strict JSON object from the output contract.`;
+
+  return { contextBlock, trimmedHistory, filesIncluded: relevant.length };
+}
+
 
 const ALLOWED_ORIGIN_EXACT = new Set([
   "https://bloxsmith.pro",
@@ -1121,7 +1257,6 @@ export const Route = createFileRoute("/api/assistant/execute")({
             } else {
               try {
                 const gateway = createGroqProvider(apiKey);
-                const model = gateway(thinking ? BLOXSMITH_THINK_MODEL : BLOXSMITH_MODEL);
 
                 const { data: liveContext } = await supabaseUser
                   .from("plugin_context")
@@ -1133,21 +1268,9 @@ export const Route = createFileRoute("/api/assistant/execute")({
                   .from("project_files")
                   .select("path,file_type,service_location,content")
                   .eq("project_id", projectId)
-                  .limit(40);
+                  .limit(60);
 
-                const filesBlock = (existingFiles ?? [])
-                  .map(
-                    (f) =>
-                      `--- ${f.path} (${f.file_type} in ${f.service_location}) ---\n${(f.content ?? "").slice(0, 1500)}`,
-                  )
-                  .join("\n\n");
-
-                const liveBlock = liveContext?.context
-                  ? `LIVE STUDIO WORKSPACE (snapshot at ${liveContext.updated_at}, ${liveContext.instance_count} instances):\n${JSON.stringify(liveContext.context, null, 0).slice(0, 18000)}`
-                  : "LIVE STUDIO WORKSPACE: (not yet reported by plugin — assume empty baseplate)";
-
-                // Pull recent chat history for this project so the AI has
-                // memory of prior turns (collaborators share one conversation).
+                // Pull recent chat history.
                 const { data: convoRow } = await supabaseUser
                   .from("agent_conversations")
                   .select("id")
@@ -1162,50 +1285,122 @@ export const Route = createFileRoute("/api/assistant/execute")({
                     .select("role,content,created_at")
                     .eq("conversation_id", convoRow.id)
                     .order("created_at", { ascending: false })
-                    .limit(20);
+                    .limit(10);
                   history = (msgs ?? [])
                     .reverse()
                     .filter((m: any) => m.role === "user" || m.role === "assistant")
                     .map((m: any) => ({
                       role: m.role as "user" | "assistant",
-                      content: String(m.content ?? "").slice(0, 4000),
+                      content: String(m.content ?? ""),
                     }));
                 }
 
-                const contextBlock = `${liveBlock}\n\nStudio plugin status: ${studioConnected ? "connected or recently synced" : "not connected / no recent sync"}. Still emit the full files/actions so they are ready to apply once Studio is connected.\n\nProject files in DB:\n${filesBlock || "(empty)"}\n\nUser request:\n${prompt}\n\nExecute the request as fully as possible. For any Roblox build/edit request, return files and/or actions that the website can queue for the Studio plugin. If you need current Roblox API details, free asset IDs, thumbnails, or docs, call the available tools before answering. If the user request is just casual chat or a general question, reply naturally in the message field with empty files and actions.\n\nReturn ONLY the strict JSON object from the output contract.`;
+                const keywords = extractKeywords(prompt);
+                const ctxInputs: ContextInputs = {
+                  prompt,
+                  studioConnected: !!studioConnected,
+                  liveContext: liveContext?.context ?? null,
+                  liveUpdatedAt: liveContext?.updated_at,
+                  liveInstanceCount: liveContext?.instance_count,
+                  files: (existingFiles ?? []) as DbFile[],
+                  history,
+                  keywords,
+                };
 
-                const messages = [
-                  ...history,
-                  { role: "user" as const, content: contextBlock },
+                // Try increasingly compressed prompts. If still too big for the
+                // default model, switch to the large-context fallback. Each
+                // attempt logs an estimate so token issues are easy to diagnose.
+                const attempts: Array<{
+                  level: 0 | 1 | 2;
+                  modelId: string;
+                  budget: number;
+                }> = [
+                  { level: 0, modelId: thinking ? BLOXSMITH_THINK_MODEL : BLOXSMITH_MODEL, budget: BLOXSMITH_MODEL_TOKEN_BUDGET },
+                  { level: 1, modelId: thinking ? BLOXSMITH_THINK_MODEL : BLOXSMITH_MODEL, budget: BLOXSMITH_MODEL_TOKEN_BUDGET },
+                  { level: 2, modelId: BLOXSMITH_LARGE_MODEL, budget: BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET },
                 ];
 
+                const systemTokens = estimateTokens(SYSTEM_PROMPT);
+                let lastErr: any = null;
                 let rawText = "";
-                try {
-                  const textRes = await generateText({
-                    model,
-                    system: SYSTEM_PROMPT,
-                    messages,
-                    tools: buildBloxSmithTools({ projectId }) as any,
-                    stopWhen: stepCountIs(thinking ? 60 : 45),
-                  });
-                  rawText = textRes.text;
-                  result = normalizeResult(tryParseJSON(rawText));
-                } catch (err: any) {
-                  console.error("AI generation or parsing failed, trying repair:", err);
-                  if (rawText) {
-                    try {
-                      result = normalizeResult(await repairJsonWithGroq(rawText, gateway, model));
-                    } catch (repairErr) {
-                      throw new Error("AI returned malformed JSON and repair failed.");
+
+                for (let i = 0; i < attempts.length; i++) {
+                  const att = attempts[i];
+                  const built = buildContextBlock(att.level, ctxInputs);
+                  const promptTokens =
+                    systemTokens +
+                    estimateTokens(built.contextBlock) +
+                    built.trimmedHistory.reduce((sum, m) => sum + estimateTokens(m.content), 0);
+
+                  console.log(
+                    `[ai-execute] attempt=${i} level=${att.level} model=${att.modelId} ` +
+                      `est_tokens=${promptTokens} budget=${att.budget} files_included=${built.filesIncluded}`,
+                  );
+
+                  // Skip attempt if it's still too large for this model's budget.
+                  if (promptTokens > att.budget && i < attempts.length - 1) {
+                    console.log(`[ai-execute] skipping attempt ${i}: over budget, compressing further`);
+                    continue;
+                  }
+
+                  const model = gateway(att.modelId);
+                  const messages = [
+                    ...built.trimmedHistory,
+                    { role: "user" as const, content: built.contextBlock },
+                  ];
+
+                  rawText = "";
+                  try {
+                    const textRes = await generateText({
+                      model,
+                      system: SYSTEM_PROMPT,
+                      messages,
+                      tools: buildBloxSmithTools({ projectId }) as any,
+                      stopWhen: stepCountIs(thinking ? 60 : 45),
+                    });
+                    rawText = textRes.text;
+                    result = normalizeResult(tryParseJSON(rawText));
+                    lastErr = null;
+                    break;
+                  } catch (err: any) {
+                    lastErr = err;
+                    const msg = String(err?.message ?? err);
+                    const isTooLarge = /too large|context length|token|tpm|413/i.test(msg);
+                    console.error(
+                      `[ai-execute] attempt ${i} failed (tooLarge=${isTooLarge}): ${msg.slice(0, 300)}`,
+                    );
+                    // For non-size errors, try repair before giving up.
+                    if (!isTooLarge && rawText) {
+                      try {
+                        result = normalizeResult(
+                          await repairJsonWithGroq(rawText, gateway, gateway(att.modelId)),
+                        );
+                        lastErr = null;
+                        break;
+                      } catch {
+                        // fall through to next attempt
+                      }
                     }
-                  } else {
-                    throw err;
+                    // Only keep retrying for size-related errors. Other errors
+                    // (auth, network, etc.) won't be fixed by shrinking.
+                    if (!isTooLarge && i < attempts.length - 1) {
+                      // try once more with smaller context anyway
+                      continue;
+                    }
+                    if (i === attempts.length - 1) break;
                   }
                 }
+
+                if (!result && lastErr) throw lastErr;
               } catch (outerErr: any) {
                 console.error("AI client initialisation/generation failed:", outerErr);
                 await refundOnFailure("ai generation failed");
                 const msg = String(outerErr?.message ?? outerErr);
+                if (/too large|context length|tpm/i.test(msg)) {
+                  throw new Error(
+                    "Your request was too large for the AI model even after compressing the project context. Try a more specific prompt or focus on one system at a time.",
+                  );
+                }
                 if (msg.includes("429")) throw new Error("AI rate limit. Try again in a moment.");
                 if (msg.includes("402"))
                   throw new Error("AI credits exhausted. Add credits in workspace settings.");
@@ -1213,6 +1408,7 @@ export const Route = createFileRoute("/api/assistant/execute")({
               }
             }
           }
+
 
           if (!result) {
             await refundOnFailure("ai generation returned no result");
