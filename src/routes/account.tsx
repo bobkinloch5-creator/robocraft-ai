@@ -51,6 +51,8 @@ function Account() {
   const { user, profile, loading, refresh, roles } = useAuth();
   const nav = useNavigate();
   const [token, setToken] = useState<string | null>(null);
+  const [showToken, setShowToken] = useState(false);
+
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
   const [specialization, setSpecialization] = useState("");
