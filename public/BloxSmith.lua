@@ -267,11 +267,11 @@ title.TextYAlignment = Enum.TextYAlignment.Center
 local pill = Instance.new("Frame", header)
 pill.AnchorPoint = Vector2.new(1, 0.5)
 pill.Position = UDim2.new(1, 0, 0.5, 0)
-pill.Size = UDim2.fromOffset(94, 22)
+pill.Size = UDim2.fromOffset(86, 20)
 pill.BackgroundColor3 = C.panel
 register(pill, "panel")
 pill.BorderSizePixel = 0
-corner(pill, 11)
+corner(pill, 10)
 stroke(pill, C.stroke, 1)
 
 local pillDot = Instance.new("Frame", pill)
