@@ -318,24 +318,38 @@ function ProjectEditor() {
   const [thinking, setThinking] = useState(false);
   const [mcpServers, setMcpServers] = useState<Array<{ name: string; enabled: boolean; ok: boolean | null }>>([]);
   const [mcpClient, setMcpClient] = useState<{ client: string | null; lastUsedAt: string | null } | null>(null);
+  const [aiSettings, setAiSettings] = useState<{ mode: "mcp" | "api_key"; provider: string | null; model: string | null }>({
+    mode: "mcp",
+    provider: null,
+    model: null,
+  });
+  const [showAiSourceModal, setShowAiSourceModal] = useState(false);
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const [serversRes, tokenRes] = await Promise.all([
+      const [serversRes, tokenRes, aiRes] = await Promise.all([
         supabase.from("user_mcp_servers").select("name,enabled,last_test_ok").eq("enabled", true),
         supabase.from("mcp_tokens").select("last_client,last_used_at").maybeSingle(),
+        supabase
+          .from("project_ai_settings")
+          .select("mode,provider,model")
+          .eq("project_id", projectId)
+          .maybeSingle(),
       ]);
       if (cancelled) return;
       setMcpServers(((serversRes.data ?? []) as Array<{ name: string; enabled: boolean; last_test_ok: boolean | null }>)
         .map((s) => ({ name: s.name, enabled: s.enabled, ok: s.last_test_ok })));
       const t = tokenRes.data as { last_client: string | null; last_used_at: string | null } | null;
       setMcpClient(t ? { client: t.last_client, lastUsedAt: t.last_used_at } : null);
+      const a = aiRes.data as { mode: "mcp" | "api_key"; provider: string | null; model: string | null } | null;
+      setAiSettings(a ?? { mode: "mcp", provider: null, model: null });
     };
     load();
     const ch = supabase
-      .channel("mcp-indicator")
+      .channel("ai-indicator")
       .on("postgres_changes", { event: "*", schema: "public", table: "user_mcp_servers" }, load)
       .on("postgres_changes", { event: "*", schema: "public", table: "mcp_tokens" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "project_ai_settings" }, load)
       .subscribe();
     const poll = setInterval(load, 15000);
     return () => {
@@ -343,7 +357,8 @@ function ProjectEditor() {
       clearInterval(poll);
       supabase.removeChannel(ch);
     };
-  }, []);
+  }, [projectId]);
+
 
   const [plansByMsg, setPlansByMsg] = useState<Record<string, { prompt: string; plan: string }>>(
     {},
