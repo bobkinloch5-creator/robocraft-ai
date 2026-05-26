@@ -7,7 +7,7 @@ import {
   getMcpTokenStatus,
 } from "@/lib/mcp-tokens.functions";
 import { toast } from "sonner";
-import { Copy, KeyRound, RefreshCw, Trash2, AlertTriangle, Eye, EyeOff } from "lucide-react";
+import { Copy, KeyRound, RefreshCw, Trash2, AlertTriangle, Eye, EyeOff, CheckCircle2, XCircle, Activity } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 type Status = {
@@ -15,6 +15,9 @@ type Status = {
   createdAt: string | null;
   updatedAt: string | null;
   lastUsedAt: string | null;
+  lastAttemptAt: string | null;
+  lastAttemptOk: boolean | null;
+  lastAttemptError: string | null;
 };
 
 export function McpTokenManager() {
