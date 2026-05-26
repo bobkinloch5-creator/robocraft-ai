@@ -259,6 +259,55 @@ export function validateGenerated(
       continue;
     }
 
+    // Catch hallucinated Instance classes (e.g. "DirectionalLight") before
+    // they reach the Studio plugin and throw "Unable to create an Instance
+    // of type X". Remap to a real equivalent when we know one; otherwise drop.
+    if (a.type === "create" && typeof a.className === "string" && a.className in INVALID_CLASS_REMAP) {
+      const remap = INVALID_CLASS_REMAP[a.className];
+      if (remap) {
+        warnings.push({
+          level: "warning",
+          scope: "action",
+          target,
+          message: `"${a.className}" is not a real Roblox Instance — remapped to "${remap}"`,
+        });
+        a.className = remap;
+      } else {
+        errors.push({
+          level: "error",
+          scope: "action",
+          target,
+          message: `"${a.className}" is not a real Roblox Instance class — dropped (use Lighting service properties instead)`,
+        });
+        continue;
+      }
+    }
+    if (a.type === "create" && typeof a.children === "object" && Array.isArray(a.children)) {
+      a.children = a.children.filter((c: any) => {
+        if (c && typeof c.className === "string" && c.className in INVALID_CLASS_REMAP) {
+          const remap = INVALID_CLASS_REMAP[c.className];
+          if (remap) {
+            warnings.push({
+              level: "warning",
+              scope: "action",
+              target: `${target}>${c.name ?? c.className}`,
+              message: `child "${c.className}" is not a real Roblox Instance — remapped to "${remap}"`,
+            });
+            c.className = remap;
+            return true;
+          }
+          warnings.push({
+            level: "warning",
+            scope: "action",
+            target: `${target}>${c.name ?? c.className}`,
+            message: `child "${c.className}" is not a real Roblox Instance — dropped`,
+          });
+          return false;
+        }
+        return true;
+      });
+    }
+
     if (a.type === "remote") {
       const parent = (a.parent ?? "") as string;
       const className = (a.className ?? "RemoteEvent") as string;
