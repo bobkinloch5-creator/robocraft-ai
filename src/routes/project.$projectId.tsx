@@ -1377,7 +1377,9 @@ function ProjectEditor() {
                   onClearChat={clearChat}
                   canClearChat={messages.length > 0}
                   studioConnected={isStudioConnected}
+                  projectId={projectId}
                 />
+
 
               </div>
             </div>
