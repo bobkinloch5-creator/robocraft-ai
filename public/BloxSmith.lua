@@ -2071,6 +2071,30 @@ local function openPreviewOverlay()
 			cp.PaddingTop = UDim.new(0, 4); cp.PaddingBottom = UDim.new(0, 4)
 			cp.PaddingLeft = UDim.new(0, 6); cp.PaddingRight = UDim.new(0, 6)
 		end
+
+		-- Render the captured error from a previous Apply All run, so the
+		-- user can see exactly why this action failed and decide to skip,
+		-- fix it on the website side, or retry.
+		if a.error then
+			local errLabel = Instance.new("TextLabel", row)
+			errLabel.LayoutOrder = 4
+			errLabel.BackgroundColor3 = Color3.fromRGB(70, 24, 32)
+			errLabel.BorderSizePixel = 0
+			errLabel.AutomaticSize = Enum.AutomaticSize.Y
+			errLabel.Size = UDim2.new(1, 0, 0, 0)
+			errLabel.Font = Enum.Font.GothamMedium
+			errLabel.TextSize = 11
+			errLabel.TextColor3 = Color3.fromRGB(255, 190, 190)
+			errLabel.TextXAlignment = Enum.TextXAlignment.Left
+			errLabel.TextYAlignment = Enum.TextYAlignment.Top
+			errLabel.TextWrapped = true
+			errLabel.Text = "⚠ " .. tostring(a.error)
+			errLabel.ZIndex = 64
+			corner(errLabel, 4)
+			local ep = Instance.new("UIPadding", errLabel)
+			ep.PaddingTop = UDim.new(0, 4); ep.PaddingBottom = UDim.new(0, 4)
+			ep.PaddingLeft = UDim.new(0, 6); ep.PaddingRight = UDim.new(0, 6)
+		end
 	end
 
 	-- Bottom button row
