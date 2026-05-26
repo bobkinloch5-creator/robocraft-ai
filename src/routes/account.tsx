@@ -24,6 +24,7 @@ import {
   Gift,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useDailyClaimCooldown } from "@/hooks/useDailyClaimCooldown";
 
 export const Route = createFileRoute("/account")({
   component: Account,
