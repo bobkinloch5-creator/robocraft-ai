@@ -7,7 +7,16 @@ import logo from "@/assets/logo.png";
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
-  head: () => ({ meta: [{ title: "Sign up — BloxSmith" }, { name: "description", content: "Create your BloxSmith account." }] }),
+  head: () => ({
+    meta: [
+      { title: "Sign up — BloxSmith" },
+      { name: "description", content: "Create a free BloxSmith account to start building Roblox games with AI — 10 starter credits, no card required, sync straight into Studio." },
+      { property: "og:title", content: "Sign up for BloxSmith — Free Roblox AI Builder" },
+      { property: "og:description", content: "Start building Roblox games with AI in minutes. Free starter credits, no credit card, instant Roblox Studio sync." },
+      { property: "og:url", content: "https://bloxsmith.pro/signup" },
+    ],
+    links: [{ rel: "canonical", href: "https://bloxsmith.pro/signup" }],
+  }),
 });
 
 function SignupPage() {
