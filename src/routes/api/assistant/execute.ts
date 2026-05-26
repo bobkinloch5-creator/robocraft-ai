@@ -8,8 +8,144 @@ import {
   SYSTEM_PROMPT,
   BLOXSMITH_MODEL,
   BLOXSMITH_THINK_MODEL,
+  BLOXSMITH_LARGE_MODEL,
+  BLOXSMITH_MODEL_TOKEN_BUDGET,
+  BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET,
 } from "@/lib/ai-gateway.server";
 import { buildBloxSmithTools } from "@/lib/ai-tools.server";
+
+// ---------- Prompt-size protection helpers ----------
+// Rough token estimate: 1 token ≈ 4 chars of English. Good enough for budgeting.
+function estimateTokens(s: string): number {
+  if (!s) return 0;
+  return Math.ceil(s.length / 4);
+}
+
+const STOP_WORDS = new Set([
+  "the","a","an","and","or","but","for","to","of","in","on","at","is","it","be","i",
+  "my","me","you","your","we","our","please","add","make","create","build","fix",
+  "place","put","spawn","insert","new","with","this","that","game","roblox","studio",
+  "can","do","need","want","into","from","just","like","some","more","really","very",
+]);
+
+function extractKeywords(prompt: string): string[] {
+  const out = new Set<string>();
+  for (const raw of prompt.toLowerCase().split(/[^a-z0-9]+/)) {
+    if (!raw || raw.length < 3 || STOP_WORDS.has(raw)) continue;
+    out.add(raw);
+  }
+  return Array.from(out);
+}
+
+type DbFile = { path: string; file_type: string; service_location: string; content: string };
+
+function scoreFile(f: DbFile, keywords: string[]): number {
+  if (keywords.length === 0) return 0;
+  const hay = `${f.path}\n${f.content}`.toLowerCase();
+  let score = 0;
+  for (const k of keywords) {
+    if (f.path.toLowerCase().includes(k)) score += 5;
+    if (hay.includes(k)) score += 1;
+  }
+  return score;
+}
+
+function pickRelevantFiles(files: DbFile[], keywords: string[], maxFiles: number, perFileChars: number): DbFile[] {
+  if (files.length === 0) return [];
+  const scored = files
+    .map((f) => ({ f, s: scoreFile(f, keywords) }))
+    .sort((a, b) => b.s - a.s);
+  const relevant = scored.filter((x) => x.s > 0).slice(0, maxFiles).map((x) => x.f);
+  // Always include at least a short manifest of paths so the model knows what's there.
+  return relevant.map((f) => ({ ...f, content: (f.content ?? "").slice(0, perFileChars) }));
+}
+
+function summarizeLive(live: any, charBudget: number): string {
+  if (!live) return "";
+  try {
+    const json = JSON.stringify(live);
+    if (json.length <= charBudget) return json;
+    // Walk top-level services and only keep instance names/classes (no
+    // properties / nested source) to stay under budget.
+    if (typeof live === "object") {
+      const slim: Record<string, unknown> = {};
+      for (const [service, value] of Object.entries(live)) {
+        if (Array.isArray(value)) {
+          slim[service] = value.slice(0, 30).map((c: any) =>
+            typeof c === "object" && c
+              ? { name: c.Name ?? c.name, class: c.ClassName ?? c.className }
+              : c,
+          );
+        } else if (value && typeof value === "object") {
+          const v = value as any;
+          slim[service] = { name: v.Name ?? v.name, class: v.ClassName ?? v.className };
+        }
+      }
+      return JSON.stringify(slim).slice(0, charBudget);
+    }
+    return json.slice(0, charBudget);
+  } catch {
+    return "";
+  }
+}
+
+// Builds a context block at one of three compression levels. Level 0 is full
+// context, level 2 strips everything except the user request — used as the
+// last-resort retry when the model rejects the prompt for being too large.
+type ContextInputs = {
+  prompt: string;
+  studioConnected: boolean;
+  liveContext: any;
+  liveUpdatedAt?: string;
+  liveInstanceCount?: number;
+  files: DbFile[];
+  history: { role: "user" | "assistant"; content: string }[];
+  keywords: string[];
+};
+
+function buildContextBlock(level: 0 | 1 | 2, inp: ContextInputs): {
+  contextBlock: string;
+  trimmedHistory: { role: "user" | "assistant"; content: string }[];
+  filesIncluded: number;
+} {
+  const liveCharBudget = level === 0 ? 6000 : level === 1 ? 1500 : 0;
+  const maxFiles = level === 0 ? 6 : level === 1 ? 3 : 0;
+  const perFileChars = level === 0 ? 800 : level === 1 ? 400 : 0;
+  const historyTurns = level === 0 ? 6 : level === 1 ? 2 : 0;
+  const historyChars = level === 0 ? 600 : 200;
+
+  const relevant = maxFiles > 0
+    ? pickRelevantFiles(inp.files, inp.keywords, maxFiles, perFileChars)
+    : [];
+  const manifestPaths = inp.files.slice(0, 40).map((f) => f.path).join(", ");
+  const filesBlock = relevant.length
+    ? relevant
+        .map((f) => `--- ${f.path} (${f.file_type} in ${f.service_location}) ---\n${f.content}`)
+        .join("\n\n")
+    : "(no relevant files matched — full path list: " + (manifestPaths || "empty") + ")";
+
+  const liveSummary = liveCharBudget > 0 ? summarizeLive(inp.liveContext, liveCharBudget) : "";
+  const liveBlock = liveSummary
+    ? `LIVE STUDIO WORKSPACE (summary, ${inp.liveInstanceCount ?? "?"} instances @ ${inp.liveUpdatedAt ?? "?"}):\n${liveSummary}`
+    : inp.liveContext
+      ? `LIVE STUDIO WORKSPACE: present but omitted to stay within token limit.`
+      : `LIVE STUDIO WORKSPACE: (not yet reported by plugin — assume empty baseplate)`;
+
+  const trimmedHistory = inp.history.slice(-historyTurns).map((m) => ({
+    role: m.role,
+    content: String(m.content ?? "").slice(0, historyChars),
+  }));
+
+  const contextBlock =
+    `${liveBlock}\n\n` +
+    `Studio plugin status: ${inp.studioConnected ? "connected" : "not connected"}.\n\n` +
+    `Relevant project files:\n${filesBlock}\n\n` +
+    `User request:\n${inp.prompt}\n\n` +
+    `Return ONLY the strict JSON object from the output contract.`;
+
+  return { contextBlock, trimmedHistory, filesIncluded: relevant.length };
+}
+
 
 const ALLOWED_ORIGIN_EXACT = new Set([
   "https://bloxsmith.pro",
