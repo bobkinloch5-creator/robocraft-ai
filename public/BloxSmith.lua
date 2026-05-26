@@ -1759,6 +1759,51 @@ cancelScanBtn.MouseButton1Click:Connect(function()
 	scanCancelRequested = true
 	appendLog("Scan cancel requested")
 end)
+cleanSyncedBtn.MouseButton1Click:Connect(function()
+	-- Remove the artifacts the old buggy sync left behind:
+	--   1) ServerStorage/__BloxSmithPreloadToken
+	--   2) Duplicate / recursively-nested StarterPlayerScripts folders inside StarterPlayer
+	--   3) Stray loose script copies directly under StarterPlayer (they belong in StarterPlayerScripts)
+	local removed = 0
+	local recId
+	if ChangeHistoryService.TryBeginRecording then
+		recId = ChangeHistoryService:TryBeginRecording("BloxSmith clean synced", "Remove auto-sync artifacts")
+	end
+
+	local tok = ServerStorage:FindFirstChild("__BloxSmithPreloadToken")
+	if tok then tok:Destroy(); removed = removed + 1 end
+
+	local sps = StarterPlayer:FindFirstChild("StarterPlayerScripts")
+	if sps then
+		-- Kill any nested StarterPlayerScripts inside StarterPlayerScripts
+		local function killNested(parent, depth)
+			if depth > 8 then return end
+			for _, child in ipairs(parent:GetChildren()) do
+				if child.Name == "StarterPlayerScripts" then
+					child:Destroy(); removed = removed + 1
+				else
+					killNested(child, depth + 1)
+				end
+			end
+		end
+		killNested(sps, 0)
+	end
+
+	-- Remove any loose script (Script/LocalScript/ModuleScript) directly under StarterPlayer
+	for _, child in ipairs(StarterPlayer:GetChildren()) do
+		if child:IsA("LuaSourceContainer") then
+			child:Destroy(); removed = removed + 1
+		end
+	end
+
+	if recId and ChangeHistoryService.FinishRecording then
+		ChangeHistoryService:FinishRecording(recId, Enum.FinishRecordingOperation.Commit)
+	end
+
+	syncInfo.Text = ("Cleaned %d auto-synced artifact(s)"):format(removed)
+	appendLog("Clean Synced: removed " .. tostring(removed) .. " object(s)")
+	task.defer(pushSnapshot)
+end)
 button.Click:Connect(function() widget.Enabled = not widget.Enabled end)
 
 -- Background loop: pull actions + push context + auto-reconnect retries
