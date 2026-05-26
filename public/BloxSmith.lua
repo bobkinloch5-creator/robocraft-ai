@@ -317,23 +317,23 @@ tokenLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 local tokenWrap = Instance.new("Frame", root)
 tokenWrap.LayoutOrder = 4
-tokenWrap.Size = UDim2.new(1,0,0,34)
+tokenWrap.Size = UDim2.new(1,0,0,30)
 tokenWrap.BackgroundColor3 = C.panel
 register(tokenWrap, "panel")
 tokenWrap.BorderSizePixel = 0
-corner(tokenWrap, 8)
+corner(tokenWrap, 6)
 local tokenStroke = stroke(tokenWrap, C.stroke, 1)
 
 local tokenBox = Instance.new("TextBox", tokenWrap)
-tokenBox.Size = UDim2.new(1,-20,1,0)
-tokenBox.Position = UDim2.new(0,10,0,0)
+tokenBox.Size = UDim2.new(1,-18,1,0)
+tokenBox.Position = UDim2.new(0,9,0,0)
 tokenBox.BackgroundTransparency = 1
 tokenBox.TextColor3 = C.text
 register(tokenBox, "text")
 tokenBox.Text = getToken()
 tokenBox.PlaceholderText = "Paste your plugin token"
 tokenBox.PlaceholderColor3 = C.textMute
-tokenBox.Font = Enum.Font.Code; tokenBox.TextSize = 12
+tokenBox.Font = Enum.Font.Code; tokenBox.TextSize = 11
 tokenBox.ClearTextOnFocus = false
 tokenBox.TextXAlignment = Enum.TextXAlignment.Left
 tokenBox.Focused:Connect(function() tokenStroke.Color = C.primary; tokenStroke.Thickness = 1.5 end)
