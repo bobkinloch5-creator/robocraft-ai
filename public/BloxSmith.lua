@@ -1267,6 +1267,17 @@ function Actions.update_script(a)
 	return true
 end
 
+-- Delete a script (web workspace delete reflects into Studio)
+function Actions.delete_script(a)
+	local path = a.path or a.file_path
+	if not path then return false, "missing path" end
+	local inst = resolvePath(path, false)
+	if not inst then return true end -- already gone, treat as success
+	pcall(function() inst:Destroy() end)
+	task.defer(pushSnapshot)
+	return true
+end
+
 -- Scan the project and push the snapshot
 function Actions.scan_project()
 	task.defer(pushSnapshot)

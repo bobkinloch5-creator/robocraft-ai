@@ -93,6 +93,34 @@ function ProjectEditor() {
     localStorage.setItem("bs_auto_execute", String(val));
   };
 
+  // Resizable AI chat panel (drag the handle on its left edge)
+  const [chatWidth, setChatWidth] = useState<number>(() => {
+    if (typeof window === "undefined") return 420;
+    const v = Number(localStorage.getItem("bs_chat_width"));
+    return Number.isFinite(v) && v >= 320 && v <= 900 ? v : 420;
+  });
+  const resizing = useRef(false);
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!resizing.current) return;
+      const next = Math.min(900, Math.max(320, window.innerWidth - e.clientX));
+      setChatWidth(next);
+    };
+    const onUp = () => {
+      if (!resizing.current) return;
+      resizing.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      localStorage.setItem("bs_chat_width", String(chatWidth));
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [chatWidth]);
+
   // Action status polling state
   const [actionStatuses, setActionStatuses] = useState<
     Record<string, { status: "pending" | "executing" | "complete" | "error"; error?: string }>
@@ -383,6 +411,18 @@ function ProjectEditor() {
     chatEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Best-effort: try to queue a Studio action without blocking the UI.
+  // Studio plugin will no-op if it's offline; if the action isn't allowed yet, we just toast.
+  const tryQueueStudio = async (actionType: string, payload: any) => {
+    try {
+      await runQueuePluginAction({ data: { projectId, actionType, payload } });
+      return true;
+    } catch (err) {
+      console.warn("[studio-sync] queue failed", actionType, err);
+      return false;
+    }
+  };
+
   const saveFile = async () => {
     if (!active) return;
     const { error } = await supabase
@@ -390,32 +430,52 @@ function ProjectEditor() {
       .update({ content: draft, updated_at: new Date().toISOString() })
       .eq("id", active.id);
     if (error) return toast.error(error.message);
-    toast.success("Saved");
+    // Mirror change into Studio so the workspace file edit reflects live.
+    void tryQueueStudio("update_script", { path: active.path, source: draft });
+    toast.success("Saved — syncing to Studio");
   };
 
   const deleteFile = async (id: string) => {
-    if (!confirm("Delete this file?")) return;
+    if (!confirm("Delete this file? It will also be removed from Roblox Studio.")) return;
+    const target = files.find((f) => f.id === id);
     await supabase.from("project_files").delete().eq("id", id);
     if (activeId === id) setActiveId(null);
+    if (target) {
+      void tryQueueStudio("delete_script", { path: target.path });
+      toast.success("Deleted — syncing to Studio");
+    }
   };
 
   const newFile = async () => {
     const path =
       prompt?.trim() || window.prompt("New file path (e.g. ServerScriptService/MyScript)") || "";
     if (!path) return;
+    const service = path.split("/")[0] || "ServerScriptService";
+    const name = path.split("/").slice(-1)[0] || "Script";
+    const parentPath = path.split("/").slice(0, -1).join("/") || service;
+    const content = "-- new file\n";
     const { data, error } = await supabase
       .from("project_files")
       .insert({
         project_id: projectId,
         path,
         file_type: "Script",
-        service_location: path.split("/")[0] || "ServerScriptService",
-        content: "-- new file\n",
+        service_location: service,
+        content,
       })
       .select()
       .single();
     if (error) return toast.error(error.message);
-    if (data) setActiveId(data.id);
+    if (data) {
+      setActiveId(data.id);
+      // Create the script in Studio too so the workspace stays in sync.
+      void tryQueueStudio("script", {
+        parent: parentPath,
+        name,
+        className: "Script",
+        source: content,
+      });
+    }
   };
 
   const pushToStudio = async () => {
@@ -1057,7 +1117,10 @@ function ProjectEditor() {
         </div>
       </div>
 
-      <main className="flex-1 grid lg:grid-cols-[240px_minmax(0,1fr)_420px] gap-0">
+      <main
+        className="flex-1 grid lg:grid-cols-[240px_minmax(0,1fr)_var(--chat-w)] gap-0"
+        style={{ ["--chat-w" as any]: `${chatWidth}px` }}
+      >
         {/* File tree */}
         <aside
           className={`${mobileTab === "files" ? "block" : "hidden"} lg:block border-r border-border bg-surface/20 overflow-y-auto max-h-[calc(100vh-8rem)] flex flex-col`}
@@ -1287,8 +1350,25 @@ function ProjectEditor() {
 
         {/* AI chat */}
         <aside
-          className={`${mobileTab === "chat" ? "flex" : "hidden"} lg:flex border-l border-border bg-surface/20 flex-col max-h-[calc(100vh-8rem)] min-h-[60vh]`}
+          className={`${mobileTab === "chat" ? "flex" : "hidden"} lg:flex relative border-l border-border bg-surface/20 flex-col max-h-[calc(100vh-8rem)] min-h-[60vh]`}
         >
+          {/* Drag handle to stretch chat panel wider/narrower */}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            title="Drag to resize chat"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              resizing.current = true;
+              document.body.style.cursor = "col-resize";
+              document.body.style.userSelect = "none";
+            }}
+            onDoubleClick={() => {
+              setChatWidth(420);
+              localStorage.setItem("bs_chat_width", "420");
+            }}
+            className="hidden lg:block absolute left-0 top-0 h-full w-1.5 -ml-[3px] cursor-col-resize z-20 hover:bg-primary/40 active:bg-primary/60 transition-colors"
+          />
           <div className="px-4 py-3 border-b border-border/60 space-y-3">
             <div className="flex items-center justify-between gap-2">
               {(() => {
