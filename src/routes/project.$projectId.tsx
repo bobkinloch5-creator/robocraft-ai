@@ -277,6 +277,8 @@ function ProjectEditor() {
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [convoId, setConvoId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<Array<{ id: string; title: string | null; updated_at: string }>>([]);
+  const [showHistory, setShowHistory] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
