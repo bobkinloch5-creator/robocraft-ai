@@ -357,6 +357,8 @@ export function ChatSettings(props: Props) {
                 </div>
               </div>
 
+              <StudioSyncSection />
+
               <McpServersSection />
 
               <div className="space-y-2">
