@@ -1278,15 +1278,34 @@ export const Route = createFileRoute("/api/assistant/execute")({
             result = getLeaderstatsTemplate();
           }
 
-          // If no instant template, call Groq
+          // If no instant template, call AI through the resolved gateway
+          // (per-project setting: built-in Groq, or user's own API key for
+          // OpenAI / Anthropic / Google / Groq).
           if (!result) {
-            const apiKey = process.env.GROQ_API_KEY;
-            if (!apiKey) {
+            // Resolve the gateway for THIS user + project. Falls back to
+            // built-in Groq if no api_key mode configured or key missing.
+            let resolved;
+            try {
+              resolved = await resolveAiGateway({
+                userId,
+                projectId,
+                kind: "build",
+                thinking: !!thinking,
+              });
+            } catch (e: any) {
               await refundOnFailure("ai gateway not configured");
-              throw new Error("AI gateway not configured — GROQ_API_KEY missing.");
-            } else {
+              throw new Error(e?.message || "AI gateway not configured.");
+            }
+            console.log(
+              `[ai-execute] resolved gateway source=${resolved.source} provider=${resolved.provider} model=${resolved.modelName}`,
+            );
+            // Keep a Groq provider handle around ONLY for the size-fallback
+            // path (which needs gpt-oss-120b). External-key sources don't get
+            // the fallback — they use the user's chosen model directly.
+            const apiKey = process.env.GROQ_API_KEY;
+            if (true) {
               try {
-                const gateway = createGroqProvider(apiKey);
+                const gateway = apiKey ? createGroqProvider(apiKey) : null;
 
                 const { data: liveContext } = await supabaseUser
                   .from("plugin_context")
