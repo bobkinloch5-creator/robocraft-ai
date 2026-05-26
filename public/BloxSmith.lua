@@ -514,6 +514,37 @@ local function refreshPreviewToggleLabel()
 end
 refreshPreviewToggleLabel()
 
+-- Clear Mode row: when ON, the plugin acts as an apply-only client.
+-- No project scans, no snapshot uploads, no auto-context — incoming
+-- build actions are still executed (or queued in Preview Mode).
+local clearRow = Instance.new("Frame", root)
+clearRow.LayoutOrder = 13
+clearRow.BackgroundTransparency = 1
+clearRow.Size = UDim2.new(1,0,0,28)
+local clearList = Instance.new("UIListLayout", clearRow)
+clearList.FillDirection = Enum.FillDirection.Horizontal
+clearList.Padding = UDim.new(0,6)
+clearList.SortOrder = Enum.SortOrder.LayoutOrder
+
+local clearModeBtn = utilityButton(clearRow, "", 1, 1)
+local function refreshClearModeLabel()
+	clearModeBtn.Text = getClearMode()
+		and "🧹  Clear Mode: ON  (apply-only, no file sync)"
+		or  "🧹  Clear Mode: OFF  (full sync)"
+	clearModeBtn.TextColor3 = getClearMode() and C.accent or C.textDim
+end
+refreshClearModeLabel()
+clearModeBtn.MouseButton1Click:Connect(function()
+	setClearMode(not getClearMode())
+	refreshClearModeLabel()
+	if getClearMode() then
+		appendLog("Clear Mode enabled — file sync disabled")
+		syncInfo.Text = "Clear Mode — apply-only"
+	else
+		appendLog("Clear Mode disabled — full sync resumed")
+	end
+end)
+
 local function setPill(state)
 	local dotColor, label, textColor
 	if state == "connected" or state == "idle" then
