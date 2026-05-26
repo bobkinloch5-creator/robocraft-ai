@@ -1894,6 +1894,10 @@ end
 
 local function pushContext(force)
 	if not activeProjectId then return end
+	if getClearMode() then
+		ctxInfo.Text = "Clear Mode — context skipped"
+		return
+	end
 	local now = os.time()
 	if not force and (now - lastContextSentAt) < CTX_SECONDS then return end
 	lastContextSentAt = now
