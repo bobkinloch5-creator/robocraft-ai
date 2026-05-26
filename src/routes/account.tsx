@@ -27,7 +27,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/account")({
   component: Account,
-  head: () => ({ meta: [{ title: "Profile — BloxSmith" }] }),
+  head: () => ({ meta: [{ title: "Profile — BloxSmith" }, { name: "robots", content: "noindex, nofollow" }] }),
 });
 
 type Tx = { id: string; amount: number; type?: string; reason: string | null; created_at: string };
