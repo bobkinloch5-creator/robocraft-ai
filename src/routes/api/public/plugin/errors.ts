@@ -33,16 +33,16 @@ export const Route = createFileRoute("/api/public/plugin/errors")({
         const allowed = new Set<string>();
         if (requestedIds.length > 0) {
           const { data: ownProjects } = await supabaseAdmin
-            .from("projects").select("id").eq("user_id", profile.id).in("id", requestedIds);
+            .from("projects").select("id").eq("user_id", profile.user_id).in("id", requestedIds);
           (ownProjects ?? []).forEach((p: { id: string }) => allowed.add(p.id));
 
           const { data: collabProjects } = await supabaseAdmin
-            .from("project_collaborators").select("project_id").eq("user_id", profile.id).in("project_id", requestedIds);
+            .from("project_collaborators").select("project_id").eq("user_id", profile.user_id).in("project_id", requestedIds);
           (collabProjects ?? []).forEach((c: { project_id: string }) => allowed.add(c.project_id));
         }
         await supabaseAdmin.from("studio_errors").insert(
           sliced.map((e) => ({
-            user_id: profile.id,
+            user_id: profile.user_id,
             project_id: e.projectId && allowed.has(e.projectId) ? e.projectId : null,
             file_path: typeof e.file_path === "string" ? e.file_path.slice(0, 500) : null,
             error_message: String(e.error_message ?? "").slice(0, 2000),
