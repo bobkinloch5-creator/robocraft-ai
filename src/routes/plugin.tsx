@@ -314,19 +314,50 @@ function PluginWizard() {
                     </a>
                   </div>
 
-                  <p className="text-sm text-muted-foreground">
-                    Download the latest <code>.lua</code> file below and drop it into your Studio Plugins folder.
-                  </p>
-                  {user ? (
-                    <PluginSourceReveal source={pluginSource} />
-                  ) : (
-                    <div className="rounded-lg border border-dashed border-border bg-surface/40 px-4 py-3 text-sm text-muted-foreground">
-                      <Lock className="mr-2 inline h-4 w-4" />
-                      Sign in to view the plugin source code inline.
-                    </div>
-                  )}
+                  <AutoPluginInstaller
+                    onInstalled={() => {
+                      setInstalled(true);
+                      setStep(2);
+                    }}
+                  />
+
+                  <div className="pt-2">
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Prefer to install manually? Download the <code>.lua</code> and drop it into your Studio Plugins folder.
+                    </p>
+                    {user ? (
+                      <PluginSourceReveal source={pluginSource} />
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-border bg-surface/40 px-4 py-3 text-sm text-muted-foreground">
+                        <Lock className="mr-2 inline h-4 w-4" />
+                        Sign in to view the plugin source code inline.
+                      </div>
+                    )}
+                  </div>
                 </div>
               }
+              action={
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href={PLUGIN_DOWNLOAD_URL}
+                    download="BloxSmith.lua"
+                    className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-surface"
+                  >
+                    <Download className="h-4 w-4" /> Download .lua ({PLUGIN_VERSION})
+                  </a>
+                  <button
+                    onClick={() => {
+                      setInstalled(true);
+                      setStep(2);
+                    }}
+                    className="rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-surface"
+                  >
+                    I've installed it
+                  </button>
+                </div>
+              }
+            />
+          )}
               action={
                 <div className="flex flex-wrap gap-2">
                   <a
