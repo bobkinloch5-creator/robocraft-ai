@@ -317,27 +317,34 @@ function ProjectEditor() {
   const runChat = useServerFn(chatWithAI);
   const [thinking, setThinking] = useState(false);
   const [mcpServers, setMcpServers] = useState<Array<{ name: string; enabled: boolean; ok: boolean | null }>>([]);
+  const [mcpClient, setMcpClient] = useState<{ client: string | null; lastUsedAt: string | null } | null>(null);
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const { data } = await supabase
-        .from("user_mcp_servers")
-        .select("name,enabled,last_test_ok")
-        .eq("enabled", true);
+      const [serversRes, tokenRes] = await Promise.all([
+        supabase.from("user_mcp_servers").select("name,enabled,last_test_ok").eq("enabled", true),
+        supabase.from("mcp_tokens").select("last_client,last_used_at").maybeSingle(),
+      ]);
       if (cancelled) return;
-      setMcpServers(((data ?? []) as Array<{ name: string; enabled: boolean; last_test_ok: boolean | null }>)
+      setMcpServers(((serversRes.data ?? []) as Array<{ name: string; enabled: boolean; last_test_ok: boolean | null }>)
         .map((s) => ({ name: s.name, enabled: s.enabled, ok: s.last_test_ok })));
+      const t = tokenRes.data as { last_client: string | null; last_used_at: string | null } | null;
+      setMcpClient(t ? { client: t.last_client, lastUsedAt: t.last_used_at } : null);
     };
     load();
     const ch = supabase
       .channel("mcp-indicator")
       .on("postgres_changes", { event: "*", schema: "public", table: "user_mcp_servers" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "mcp_tokens" }, load)
       .subscribe();
+    const poll = setInterval(load, 15000);
     return () => {
       cancelled = true;
+      clearInterval(poll);
       supabase.removeChannel(ch);
     };
   }, []);
+
   const [plansByMsg, setPlansByMsg] = useState<Record<string, { prompt: string; plan: string }>>(
     {},
   );
