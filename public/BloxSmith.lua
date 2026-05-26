@@ -545,6 +545,54 @@ clearModeBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
+-- Organize Workspace row: asks the BloxSmith AI to plan organize / move /
+-- rename actions for the current project's live workspace snapshot. The
+-- resulting actions land in the normal pull queue and apply automatically.
+local organizeRow = Instance.new("Frame", root)
+organizeRow.LayoutOrder = 14
+organizeRow.BackgroundTransparency = 1
+organizeRow.Size = UDim2.new(1,0,0,28)
+local organizeList = Instance.new("UIListLayout", organizeRow)
+organizeList.FillDirection = Enum.FillDirection.Horizontal
+organizeList.Padding = UDim.new(0,6)
+organizeList.SortOrder = Enum.SortOrder.LayoutOrder
+
+local organizeBtn = utilityButton(organizeRow, "🗂  Organize Workspace (AI)", 1, 1)
+organizeBtn.TextColor3 = C.accent
+
+organizeBtn.MouseButton1Click:Connect(function()
+	if not connected or not activeProjectId then
+		syncInfo.Text = "Connect a project before organizing"
+		appendLog("Organize requested while offline")
+		return
+	end
+	organizeBtn.Text = "🗂  Organizing…"
+	organizeBtn.TextColor3 = C.textDim
+	appendLog("Organize Workspace requested")
+	task.spawn(function()
+		-- Make sure the server has a fresh snapshot to plan against, unless
+		-- the user has Clear Mode on (in which case we trust whatever the
+		-- server last saw).
+		if not getClearMode() then
+			pcall(pushSnapshot)
+		end
+		local data, err = postJSON("/organize", { projectId = activeProjectId })
+		if err then
+			organizeBtn.Text = "🗂  Organize Workspace (AI)"
+			organizeBtn.TextColor3 = C.accent
+			syncInfo.Text = "Organize error: " .. tostring(err)
+			appendLog("Organize error: " .. tostring(err))
+			return
+		end
+		local queued = (data and data.queued) or 0
+		local msg = (data and data.message) or ("Queued " .. tostring(queued) .. " action(s).")
+		syncInfo.Text = msg
+		appendLog("Organize: " .. msg)
+		organizeBtn.Text = "🗂  Organize Workspace (AI)"
+		organizeBtn.TextColor3 = C.accent
+	end)
+end)
+
 local function setPill(state)
 	local dotColor, label, textColor
 	if state == "connected" or state == "idle" then
