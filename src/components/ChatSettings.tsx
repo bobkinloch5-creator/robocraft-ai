@@ -484,7 +484,10 @@ export function ChatSettings(props: Props) {
 
               <StudioSyncSection />
 
+              {props.projectId && <ProjectRulesSection projectId={props.projectId} />}
+
               <McpServersSection />
+
 
               <div className="space-y-2">
                 <SectionTitle>Account & integrations</SectionTitle>
