@@ -244,7 +244,12 @@ function Admin() {
     await adjustCredits(row.id, amt, reason);
   };
 
-  const filtered = rows.filter((r) => r.email.toLowerCase().includes(q.toLowerCase()) || (r.display_name ?? "").toLowerCase().includes(q.toLowerCase()));
+  const filtered = rows.filter((r) => {
+    if (!showBanned && r.banned) return false;
+    const term = q.toLowerCase();
+    return r.email.toLowerCase().includes(term) || (r.display_name ?? "").toLowerCase().includes(term);
+  });
+  const bannedCount = rows.filter((r) => r.banned).length;
 
   if (loading || !isAdmin) return null;
   return (
