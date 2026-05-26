@@ -13,6 +13,7 @@ import {
   BLOXSMITH_MODEL_TOKEN_BUDGET,
   BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET,
 } from "@/lib/ai-gateway.server";
+import { resolveAiGateway } from "@/lib/ai-providers.server";
 import { buildBloxSmithTools } from "@/lib/ai-tools.server";
 
 // ---------- Prompt-size protection helpers ----------
