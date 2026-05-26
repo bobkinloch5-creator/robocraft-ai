@@ -25,6 +25,21 @@ function SignupPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [refCode, setRefCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const r = params.get("ref");
+    if (r) {
+      const clean = r.trim().toLowerCase();
+      setRefCode(clean);
+      localStorage.setItem("bloxsmith_ref", clean);
+    } else {
+      const stored = localStorage.getItem("bloxsmith_ref");
+      if (stored) setRefCode(stored);
+    }
+  }, []);
 
   const handle = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +47,7 @@ function SignupPage() {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}/dashboard`, data: { display_name: name } },
+      options: { emailRedirectTo: `${window.location.origin}/dashboard`, data: { display_name: name, ref: refCode ?? undefined } },
     });
     setLoading(false);
     if (error) return toast.error(error.message);
