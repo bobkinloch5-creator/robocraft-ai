@@ -75,6 +75,19 @@ const REMOTE_CLASSES = new Set([
   "UnreliableRemoteEvent",
 ]);
 
+// Invented / non-existent Roblox Instance classes that the AI sometimes
+// hallucinates. We auto-remap to a real equivalent when possible, otherwise
+// drop the action. Studio's `Instance.new("DirectionalLight")` throws
+// "Unable to create an Instance of type 'DirectionalLight'" — we catch it here.
+const INVALID_CLASS_REMAP: Record<string, string | null> = {
+  DirectionalLight: "SpotLight",
+  AmbientLight: null, // belongs on the Lighting service, not an instance
+  GlobalLight: null,
+  Light: "PointLight",
+  DirectionalForce: "VectorForce",
+  Wind: null,
+};
+
 function rootOf(loc: string): string {
   const trimmed = (loc ?? "").replace(/^\/+/, "").trim();
   return trimmed.split(/[/.]/)[0] ?? "";
