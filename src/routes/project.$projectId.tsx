@@ -304,6 +304,17 @@ function ProjectEditor() {
   const [mobileTab, setMobileTab] = useState<"files" | "editor" | "chat">("editor");
   const [previewsByMsg, setPreviewsByMsg] = useState<Record<string, PreviewPayload>>({});
   const [planMode, setPlanMode] = useState(false);
+  const [chatMode, setChatMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("bs_chat_mode") === "true";
+  });
+  const toggleChatMode = (v: boolean) => {
+    setChatMode(v);
+    if (typeof window !== "undefined") localStorage.setItem("bs_chat_mode", String(v));
+    if (v) setPlanMode(false);
+  };
+  const CHAT_COST = 1;
+  const runChat = useServerFn(chatWithAI);
   const [thinking, setThinking] = useState(false);
   const [plansByMsg, setPlansByMsg] = useState<Record<string, { prompt: string; plan: string }>>(
     {},
