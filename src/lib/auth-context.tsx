@@ -71,6 +71,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Idle auto-logout: sign out after 30 minutes of no user activity, then bounce to /login.
+  useEffect(() => {
+    if (!session?.user) return;
+    const IDLE_MS = 30 * 60 * 1000;
+    let timer: ReturnType<typeof setTimeout>;
+    const reset = () => {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        await supabase.auth.signOut();
+        try { router.navigate({ to: "/login", search: { reason: "idle" } as any }); } catch { /* noop */ }
+      }, IDLE_MS);
+    };
+    const events = ["mousemove", "keydown", "click", "touchstart", "scroll", "visibilitychange"];
+    events.forEach((e) => window.addEventListener(e, reset, { passive: true }));
+    reset();
+    return () => {
+      clearTimeout(timer);
+      events.forEach((e) => window.removeEventListener(e, reset));
+    };
+  }, [session?.user?.id, router]);
+
   const value: AuthCtx = {
     session,
     user: session?.user ?? null,
