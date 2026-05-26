@@ -23,6 +23,12 @@ const mcp = createMcpServer({
   ],
 });
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
 const methodNotAllowed = () =>
   new Response(
     JSON.stringify({
@@ -32,9 +38,55 @@ const methodNotAllowed = () =>
     }),
     {
       status: 405,
-      headers: { "Content-Type": "application/json", Allow: "POST, OPTIONS" },
+      headers: { "Content-Type": "application/json", Allow: "GET, POST, OPTIONS", ...corsHeaders },
     },
   );
+
+// Public discovery — returns tool metadata (name, description, JSON schema) with NO auth.
+// Execution still requires a Bearer bsmcp_... token via POST. Safe to expose.
+function publicDiscovery() {
+  const tools = [
+    buildRobloxTool,
+    listProjectFilesTool,
+    readProjectFileTool,
+    listProjectsTool,
+    searchToolboxTool,
+  ].map((t: any) => {
+    let inputSchema: unknown = { type: "object" };
+    try {
+      // zod-to-json-schema is not available here; emit a minimal shape.
+      const shape = t.parameters?._def?.shape?.();
+      if (shape) {
+        inputSchema = {
+          type: "object",
+          properties: Object.fromEntries(
+            Object.keys(shape).map((k) => [k, { description: shape[k]?.description ?? "" }]),
+          ),
+          required: Object.keys(shape).filter((k) => !shape[k]?.isOptional?.()),
+        };
+      }
+    } catch {
+      // ignore
+    }
+    return { name: t.name, description: t.description, inputSchema };
+  });
+  return new Response(
+    JSON.stringify({
+      name: "bloxsmith",
+      version: "1.0.0",
+      description:
+        "BloxSmith MCP server. POST tools/call requests with Authorization: Bearer bsmcp_… (generate a token at https://bloxsmith.pro/mcp).",
+      endpoint: "https://bloxsmith.pro/api/public/mcp",
+      transport: "streamable-http",
+      auth: { type: "bearer", scheme: "bsmcp_", obtain_token_url: "https://bloxsmith.pro/mcp" },
+      tools,
+    }),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    },
+  );
+}
 
 async function sha256(text: string) {
   const buf = new TextEncoder().encode(text);
