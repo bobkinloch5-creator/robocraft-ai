@@ -22,6 +22,7 @@ import {
   Wifi,
 } from "lucide-react";
 import pluginSource from "../../plugin-src/BloxSmith.server.lua?raw";
+import { AutoPluginInstaller } from "@/components/AutoPluginInstaller";
 
 const PLUGIN_DOWNLOAD_URL = "/BloxSmith.lua";
 const PLUGIN_VERSION = "latest";
@@ -313,17 +314,26 @@ function PluginWizard() {
                     </a>
                   </div>
 
-                  <p className="text-sm text-muted-foreground">
-                    Download the latest <code>.lua</code> file below and drop it into your Studio Plugins folder.
-                  </p>
-                  {user ? (
-                    <PluginSourceReveal source={pluginSource} />
-                  ) : (
-                    <div className="rounded-lg border border-dashed border-border bg-surface/40 px-4 py-3 text-sm text-muted-foreground">
-                      <Lock className="mr-2 inline h-4 w-4" />
-                      Sign in to view the plugin source code inline.
-                    </div>
-                  )}
+                  <AutoPluginInstaller
+                    onInstalled={() => {
+                      setInstalled(true);
+                      setStep(2);
+                    }}
+                  />
+
+                  <div className="pt-2">
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Prefer to install manually? Download the <code>.lua</code> and drop it into your Studio Plugins folder.
+                    </p>
+                    {user ? (
+                      <PluginSourceReveal source={pluginSource} />
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-border bg-surface/40 px-4 py-3 text-sm text-muted-foreground">
+                        <Lock className="mr-2 inline h-4 w-4" />
+                        Sign in to view the plugin source code inline.
+                      </div>
+                    )}
+                  </div>
                 </div>
               }
               action={
