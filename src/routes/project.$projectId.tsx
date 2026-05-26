@@ -497,14 +497,18 @@ function ProjectEditor() {
   useEffect(() => {
     if (!scanRequestedAt) return;
     const contextTime = aiContext?.updatedAt ? new Date(aiContext.updatedAt).getTime() : 0;
-    if (files.length > 0 || contextTime > scanRequestedAt) {
+    // Only consider the scan complete when the plugin reports back AFTER our request.
+    if (contextTime > scanRequestedAt) {
       setScanRequestedAt(null);
       setScanTimedOut(false);
       return;
     }
-    const timeout = window.setTimeout(() => setScanTimedOut(true), 15_000);
+    // Give the plugin generous time: 60s for it to pick up the action when
+    // disconnected, or up to 2 minutes when actively scanning a real project.
+    const timeoutMs = isStudioConnected ? 120_000 : 60_000;
+    const timeout = window.setTimeout(() => setScanTimedOut(true), timeoutMs);
     return () => window.clearTimeout(timeout);
-  }, [scanRequestedAt, files.length, aiContext?.updatedAt]);
+  }, [scanRequestedAt, aiContext?.updatedAt, isStudioConnected]);
 
   const scannerState = scanTimedOut
     ? {
