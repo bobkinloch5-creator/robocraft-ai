@@ -107,7 +107,7 @@ export function TeamChat({ projectId }: { projectId: string }) {
       </button>
 
       {open && (
-        <div className="fixed bottom-4 right-4 z-50 w-[min(380px,calc(100vw-2rem))] h-[min(560px,calc(100vh-6rem))] glass rounded-2xl border border-border shadow-2xl flex flex-col">
+        <div className="fixed bottom-4 right-4 z-50 w-[min(380px,calc(100vw-2rem))] h-[min(560px,calc(100vh-6rem))] bg-background/95 backdrop-blur-xl rounded-2xl border border-border shadow-2xl flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-primary-glow" />
