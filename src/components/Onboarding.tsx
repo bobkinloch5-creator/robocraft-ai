@@ -15,7 +15,7 @@ const STEPS: Step[] = [
   {
     icon: Sparkles,
     title: "Welcome to BloxSmith 👋",
-    body: "Describe your game in plain English and BloxSmith generates scripts, UI, and full systems straight into Roblox Studio. You start with 200 free credits, refilled daily.",
+    body: "Describe your game in plain English and BloxSmith generates scripts, UI, and full systems straight into Roblox Studio. You start with 10 free credits, plus 10 free daily and promo codes.",
     cta: { label: "Show me how" },
   },
   {

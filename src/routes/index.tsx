@@ -256,7 +256,7 @@ function Landing() {
 
               <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-success" /> 200 free starter credits
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success" /> 10 free starter credits + 10 daily
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <CheckCircle2 className="h-3.5 w-3.5 text-success" /> No card required

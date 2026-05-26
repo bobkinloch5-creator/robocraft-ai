@@ -28,7 +28,7 @@ export const Route = createFileRoute("/faq")({
 });
 
 const QA = [
-  { q: "How do credits work?", a: "Every action that uses AI costs credits. Chat replies cost 1, script generation 1, system generation 3, full system 5, and a full game scaffold 12. You start with 200 free credits and buy more whenever you need." },
+  { q: "How do credits work?", a: "Every action that uses AI costs credits. Chat replies cost 1, script generation 1, system generation 3, full system 5, and a full game scaffold 12. You start with 10 free credits, plus +10 every day and promo codes and buy more whenever you need." },
   { q: "Do you have subscriptions?", a: "No. BloxSmith is credit-only. You buy what you need, when you need it. No recurring charges, ever." },
   { q: "How do I pay?", a: "We accept PayPal. On the checkout page, click the PayPal button to send payment to paypal.me/kinloch930, then paste your PayPal Transaction ID for verification." },
   { q: "How long does verification take?", a: "Usually a few hours. Once an admin confirms your payment in PayPal, credits are added to your account automatically and you'll see them on the dashboard." },

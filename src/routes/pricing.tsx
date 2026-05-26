@@ -7,9 +7,9 @@ export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
       { title: "Pricing — BloxSmith" },
-      { name: "description", content: "Simple, fair credit-based pricing. Start free with 200 daily credits, then pay only for what you use." },
+      { name: "description", content: "Simple, fair credit-based pricing. Start free with 10 daily credits, then pay only for what you use." },
       { property: "og:title", content: "Pricing — BloxSmith" },
-      { property: "og:description", content: "Simple, fair credit-based pricing. Start free with 200 daily credits, then pay only for what you use." },
+      { property: "og:description", content: "Simple, fair credit-based pricing. Start free with 10 daily credits, then pay only for what you use." },
       { property: "og:url", content: "https://bloxsmith.pro/pricing" },
     ],
     links: [{ rel: "canonical", href: "https://bloxsmith.pro/pricing" }],
@@ -27,8 +27,8 @@ function Pricing() {
           <div className="glass rounded-2xl p-6">
             <h3 className="font-semibold">Free</h3>
             <div className="mt-3 text-3xl font-bold">$0</div>
-            <div className="text-sm text-muted-foreground mt-1">200 starter credits</div>
-            <div className="text-sm text-primary mt-1 font-medium">+ refilled to 200 every day</div>
+            <div className="text-sm text-muted-foreground mt-1">10 starter credits</div>
+            <div className="text-sm text-primary mt-1 font-medium">+ +10 free credits every day</div>
             <div className="text-xs text-muted-foreground mt-4">Best for: trying it out — no card required</div>
           </div>
           {CREDIT_PACKS.map((p) => (
