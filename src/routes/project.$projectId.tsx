@@ -1117,7 +1117,10 @@ function ProjectEditor() {
         </div>
       </div>
 
-      <main className="flex-1 grid lg:grid-cols-[240px_minmax(0,1fr)_420px] gap-0">
+      <main
+        className="flex-1 grid lg:grid-cols-[240px_minmax(0,1fr)_var(--chat-w)] gap-0"
+        style={{ ["--chat-w" as any]: `${chatWidth}px` }}
+      >
         {/* File tree */}
         <aside
           className={`${mobileTab === "files" ? "block" : "hidden"} lg:block border-r border-border bg-surface/20 overflow-y-auto max-h-[calc(100vh-8rem)] flex flex-col`}
