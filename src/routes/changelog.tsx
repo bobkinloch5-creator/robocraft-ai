@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Header, Footer } from "@/components/layout";
-import { Cpu, ShieldCheck, Play, FolderKanban, FileCode, CheckCircle, RefreshCw, KeyRound } from "lucide-react";
+import { Cpu, ShieldCheck, Play, FolderKanban, FileCode, CheckCircle, RefreshCw, KeyRound, Server, Megaphone, Shield, Gavel, Bot } from "lucide-react";
 
 export const Route = createFileRoute("/changelog")({
   component: () => {
