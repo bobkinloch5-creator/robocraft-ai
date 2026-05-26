@@ -14,8 +14,10 @@ export const Route = createFileRoute("/terms")({
   ),
   head: () => ({
     meta: [
-      { title: "Terms — BloxSmith" },
-      { name: "description", content: "BloxSmith terms of service." },
+      { title: "Terms of Service — BloxSmith" },
+      { name: "description", content: "The terms that govern your use of BloxSmith — accounts, credits, generated Roblox content, payments, and acceptable use." },
+      { property: "og:title", content: "Terms of Service — BloxSmith" },
+      { property: "og:description", content: "Terms covering BloxSmith accounts, credits, generated Roblox content, payments, and acceptable use." },
       { property: "og:url", content: "https://bloxsmith.pro/terms" },
     ],
     links: [{ rel: "canonical", href: "https://bloxsmith.pro/terms" }],
