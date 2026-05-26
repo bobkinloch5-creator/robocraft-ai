@@ -64,6 +64,8 @@ local function getConsent()  return plugin:GetSetting("bs_consent_v1") == true e
 local function setConsent(v) plugin:SetSetting("bs_consent_v1", v) end
 local function getPaused()   return plugin:GetSetting("bs_paused") == true end
 local function setPaused(v)  plugin:SetSetting("bs_paused", v) end
+local function getPreview()  return plugin:GetSetting("bs_preview") == true end
+local function setPreview(v) plugin:SetSetting("bs_preview", v) end
 
 local function postJSON(path, body)
 	local apiBase = getApiBase()
