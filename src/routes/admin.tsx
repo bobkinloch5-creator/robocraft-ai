@@ -21,6 +21,7 @@ export const Route = createFileRoute("/admin")({
 type Row = { id: string; email: string; display_name: string | null; credits: number };
 type PR = { id: string; user_id: string; pack_id: string; credits: number; amount: number; paypal_transaction_id: string; paypal_note: string | null; status: string; created_at: string };
 type Promo = { id: string; code: string; credits: number; max_redemptions: number | null; redemption_count: number; expires_at: string | null; active: boolean; created_at: string };
+type PromoSub = { id: string; user_id: string; platform: string; url: string; note: string | null; status: string; created_at: string };
 
 function Admin() {
   const { user, isAdmin, loading } = useAuth();
@@ -35,6 +36,43 @@ function Admin() {
   const [newCredits, setNewCredits] = useState(50);
   const [newMax, setNewMax] = useState<string>("");
   const [newExpires, setNewExpires] = useState<string>("");
+  const [promoSubs, setPromoSubs] = useState<PromoSub[]>([]);
+
+  const loadPromoSubs = async () => {
+    const { data } = await supabase
+      .from("promotion_submissions")
+      .select("id,user_id,platform,url,note,status,created_at")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+    const list = (data ?? []) as PromoSub[];
+    setPromoSubs(list);
+    const ids = Array.from(new Set(list.map((r) => r.user_id))).filter((id) => !emails[id]);
+    if (ids.length) {
+      const { data: profs } = await supabase.from("profiles").select("id,email").in("id", ids);
+      const map: Record<string, string> = { ...emails };
+      (profs ?? []).forEach((p: { id: string; email: string }) => { map[p.id] = p.email; });
+      setEmails(map);
+    }
+  };
+
+  const reviewPromo = async (s: PromoSub, approve: boolean) => {
+    if (approve) {
+      const raw = window.prompt(`Credits to award for ${s.platform} (max 500)?`, s.platform === "youtube" ? "100" : "30");
+      if (!raw) return;
+      const amt = parseInt(raw, 10);
+      if (!Number.isFinite(amt) || amt <= 0) return toast.error("Invalid amount");
+      const { error } = await supabase.rpc("admin_approve_promotion", { _submission_id: s.id, _credits: amt });
+      if (error) return toast.error(error.message);
+      toast.success(`Awarded ${amt} credits`);
+    } else {
+      const reason = window.prompt("Reason?", "Does not meet promo guidelines");
+      if (!reason) return;
+      const { error } = await supabase.rpc("admin_reject_promotion", { _submission_id: s.id, _reason: reason });
+      if (error) return toast.error(error.message);
+      toast.success("Rejected");
+    }
+    loadPromoSubs();
+  };
 
   const loadPromos = async () => {
     const { data } = await supabase.from("promo_codes").select("*").order("created_at", { ascending: false });
