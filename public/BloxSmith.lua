@@ -255,9 +255,9 @@ logoText.TextColor3 = Color3.new(1,1,1); logoText.Text = "B"
 
 local title = Instance.new("TextLabel", header)
 title.BackgroundTransparency = 1
-title.Position = UDim2.new(0,32,0,0)
-title.Size = UDim2.new(1,-130,1,0)
-title.Font = Enum.Font.GothamBold; title.TextSize = 14
+title.Position = UDim2.new(0,28,0,0)
+title.Size = UDim2.new(1,-126,1,0)
+title.Font = Enum.Font.GothamBold; title.TextSize = 12
 title.TextColor3 = C.text
 register(title, "text")
 title.Text = "BloxSmith AI"
