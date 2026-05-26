@@ -59,6 +59,8 @@ import { PushPreview, type PreviewPayload } from "@/components/PushPreview";
 import { ChatSettings } from "@/components/ChatSettings";
 import { SyncValidationDrawer } from "@/components/SyncValidationDrawer";
 import { TeamChat } from "@/components/TeamChat";
+import { AssistantMessage } from "@/components/AssistantMessage";
+import { MessagesSquare } from "lucide-react";
 
 export const Route = createFileRoute("/project/$projectId")({
   component: ProjectEditor,
