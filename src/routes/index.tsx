@@ -210,9 +210,10 @@ function Landing() {
         <div className="aurora" aria-hidden />
 
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-20 pb-20 sm:pt-28 sm:pb-28">
-          <div className="grid lg:grid-cols-[1.05fr_1fr] gap-12 lg:gap-16 items-center">
+          <div className="grid lg:grid-cols-[1.05fr_1fr] gap-12 lg:gap-16 items-center min-w-0">
             {/* Left — copy */}
-            <div className="text-left">
+            <div className="text-left min-w-0">
+
               <div className="inline-flex items-center gap-2 rounded-full glass-strong pl-1.5 pr-3 py-1 text-xs text-muted-foreground mb-6">
                 <img
                   src={logo}
@@ -313,7 +314,7 @@ function Landing() {
                       <div className="text-[10px] text-muted-foreground uppercase tracking-[0.18em] font-sans mb-2">
                         ServerScriptService / DataService.lua
                       </div>
-                      <pre className="text-muted-foreground notranslate" translate="no">
+                      <pre className="text-muted-foreground notranslate whitespace-pre-wrap break-words" translate="no">
                         <span className="text-primary-glow">local</span> DataService = {"{}"}
                         {"\n"}
                         <span className="text-primary-glow">local</span> Players = game:GetService(
