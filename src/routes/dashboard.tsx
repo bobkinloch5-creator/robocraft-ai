@@ -29,6 +29,7 @@ function Dashboard() {
   const [promoCode, setPromoCode] = useState("");
   const [redeeming, setRedeeming] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const dailyCd = useDailyClaimCooldown(user?.id);
 
   const refreshCredits = async () => {
     if (!user) return;
