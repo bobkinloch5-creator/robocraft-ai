@@ -224,7 +224,7 @@ function Admin() {
     if (error) return toast.error(error.message);
     toast.success(approve ? `Approved — +${pr.credits} credits` : "Rejected");
     setRequests((arr) => arr.filter((r) => r.id !== pr.id));
-    supabase.from("profiles").select("id,email,display_name,credits").order("created_at", { ascending: false }).limit(100).then(({ data }) => setRows((data ?? []) as Row[]));
+    loadUsers();
   };
 
   const adjustCredits = async (id: string, delta: number, reason = "admin adjust") => {
