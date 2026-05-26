@@ -853,8 +853,8 @@ export const autopilotBuild = createServerFn({ method: "POST" })
       if (spendErr) throw new Error("Not enough credits. Autopilot needs 10 credits.");
     }
 
-    const { generateText, Output, stepCountIs } = await import("ai");
-    const { createGroqProvider, BLOXSMITH_MODEL } = await import("./ai-gateway.server");
+    const { generateText, stepCountIs } = await import("ai");
+    const { createGroqProvider, BLOXSMITH_LARGE_MODEL } = await import("./ai-gateway.server");
     const { buildBloxSmithTools } = await import("./ai-tools.server");
 
     const apiKey = process.env.GROQ_API_KEY;
@@ -868,7 +868,9 @@ export const autopilotBuild = createServerFn({ method: "POST" })
     }
 
     const gateway = createGroqProvider(apiKey);
-    const model = gateway(BLOXSMITH_MODEL);
+    // Autopilot ALWAYS uses the large-context model — the 8b model's 6k TPM
+    // ceiling cannot fit system + live context + project files + tool defs.
+    const model = gateway(BLOXSMITH_LARGE_MODEL);
 
     const { data: liveContext } = await supabase
       .from("plugin_context")
@@ -876,24 +878,22 @@ export const autopilotBuild = createServerFn({ method: "POST" })
       .eq("project_id", projectId)
       .maybeSingle();
 
+    // Aggressively trim: only path/type/location, no full content. Cap at 25 files.
     const { data: existingFilesAP } = await supabase
       .from("project_files")
-      .select("path,file_type,service_location,content")
+      .select("path,file_type,service_location")
       .eq("project_id", projectId)
-      .limit(40);
+      .limit(25);
 
     const filesBlockAP = (existingFilesAP ?? [])
-      .map(
-        (f) =>
-          `--- ${f.path} (${f.file_type} in ${f.service_location}) ---\n${(f.content ?? "").slice(0, 1200)}`,
-      )
-      .join("\n\n");
+      .map((f) => `${f.path} (${f.file_type} in ${f.service_location})`)
+      .join("\n");
 
     const liveBlock = liveContext?.context
-      ? `LIVE STUDIO WORKSPACE (snapshot at ${liveContext.updated_at}, ${liveContext.instance_count} instances):\n${JSON.stringify(liveContext.context, null, 0).slice(0, 10000)}`
-      : "LIVE STUDIO WORKSPACE: (not yet reported by plugin — assume empty baseplate)";
+      ? `LIVE STUDIO WORKSPACE (${liveContext.instance_count} instances):\n${JSON.stringify(liveContext.context, null, 0).slice(0, 3500)}`
+      : "LIVE STUDIO WORKSPACE: (empty baseplate)";
 
-    const projectBlockAP = `Existing project files in DB:\n${filesBlockAP || "(empty)"}`;
+    const projectBlockAP = `Existing files (path only — extend, don't duplicate):\n${filesBlockAP || "(empty)"}`;
 
     const AUTOPILOT_SYSTEM = `You are BloxSmith Autopilot — the smartest Roblox game architect that has ever existed. The user describes a game once. You design and BUILD the entire, playable project: folder/service structure, ModuleScripts, server systems, client controllers, RemoteEvents/Functions, GUI, world objects, lighting, sound, and any required Parts.
 
