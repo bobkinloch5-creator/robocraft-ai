@@ -684,6 +684,48 @@ export type Database = {
           },
         ]
       }
+      promotion_submissions: {
+        Row: {
+          created_at: string
+          credits_awarded: number
+          id: string
+          note: string | null
+          platform: string
+          reject_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits_awarded?: number
+          id?: string
+          note?: string | null
+          platform: string
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits_awarded?: number
+          id?: string
+          note?: string | null
+          platform?: string
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       studio_errors: {
         Row: {
           created_at: string
@@ -801,8 +843,16 @@ export type Database = {
         Args: { _request_id: string }
         Returns: undefined
       }
+      admin_approve_promotion: {
+        Args: { _credits: number; _submission_id: string }
+        Returns: undefined
+      }
       admin_reject_payment: {
         Args: { _reason: string; _request_id: string }
+        Returns: undefined
+      }
+      admin_reject_promotion: {
+        Args: { _reason: string; _submission_id: string }
         Returns: undefined
       }
       apply_referral: { Args: { _code: string }; Returns: Json }

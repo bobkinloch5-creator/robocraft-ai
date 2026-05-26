@@ -26,6 +26,7 @@ import {
 import { toast } from "sonner";
 import { useDailyClaimCooldown } from "@/hooks/useDailyClaimCooldown";
 import { DiscordRewards } from "@/components/DiscordRewards";
+import { PromoteAndEarn } from "@/components/PromoteAndEarn";
 
 export const Route = createFileRoute("/account")({
   component: Account,
@@ -492,6 +493,8 @@ function Account() {
             </section>
 
             <DiscordRewards />
+
+            <PromoteAndEarn />
           </div>
 
           {/* Right Column: Projects & Ledger (5 Cols) */}
