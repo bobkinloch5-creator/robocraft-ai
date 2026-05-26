@@ -503,21 +503,27 @@ export const chatWithAI = createServerFn({ method: "POST" })
       if (spendErr) throw new Error("Not enough credits. Buy more on the Pricing page.");
     }
 
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
+    const { resolveAiGateway } = await import("./ai-providers.server");
+    let resolved;
+    try {
+      resolved = await resolveAiGateway({
+        userId,
+        projectId: projectId ?? null,
+        kind: "fast",
+        thinking,
+      });
+    } catch (e) {
       if (!isOwner)
         await supabase.rpc("refund_credits", {
           _amount: CHAT_COST,
           _reason: "ai gateway not configured",
         });
-      throw new Error("AI gateway not configured — GROQ_API_KEY missing.");
+      throw e;
     }
 
     const { generateText } = await import("ai");
-    const { createGroqProvider, BLOXSMITH_MODEL, BLOXSMITH_THINK_MODEL, BLOXSMITH_FAST_MODEL } =
-      await import("./ai-gateway.server");
-    const gateway = createGroqProvider(apiKey);
-    const model = gateway(thinking ? BLOXSMITH_THINK_MODEL : BLOXSMITH_FAST_MODEL);
+    const model = resolved.model;
+
 
     // Light project context so chat answers stay relevant.
     let projectBlock = "";
