@@ -44,6 +44,18 @@ function McpPage() {
             (Notion, Linear, GitHub, custom…) so the BloxSmith AI can use their tools
             while building.
           </p>
+          <p className="text-sm">
+            Need help or want to share what you're building?{" "}
+            <a
+              href="https://discord.gg/ypjzApsz3S"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline font-medium"
+            >
+              Join the BloxSmith Discord
+            </a>
+            .
+          </p>
         </header>
 
         <section className="space-y-3">
