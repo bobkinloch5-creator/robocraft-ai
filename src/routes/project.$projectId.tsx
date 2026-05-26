@@ -1978,11 +1978,15 @@ function ProjectEditor() {
                       disabled={!prompt.trim()}
                       className="inline-flex h-8 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:opacity-90 transition disabled:opacity-30"
                       title={
-                        planMode ? `Generate plan · ${PLAN_COST} cr` : `Build · ${GENERATE_COST} cr`
+                        chatMode
+                          ? `Send chat · ${CHAT_COST} cr`
+                          : planMode
+                            ? `Generate plan · ${PLAN_COST} cr`
+                            : `Build · ${GENERATE_COST} cr`
                       }
                     >
                       <Send className="h-3.5 w-3.5" />
-                      {planMode ? "Plan" : autoExecute ? "Execute" : "Preview"}
+                      {chatMode ? "Chat" : planMode ? "Plan" : autoExecute ? "Execute" : "Preview"}
                     </button>
                   )}
                 </div>
