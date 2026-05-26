@@ -133,10 +133,16 @@ export const Route = createFileRoute("/api/public/plugin/organize")({
         }
         void services;
 
-        if (instances.length === 0)
+        // Drop any instance that lives under an ignored path/segment.
+        const visibleInstances = instances.filter((i) => !isIgnored(i.path));
+
+        if (visibleInstances.length === 0)
           return new Response(
             JSON.stringify({
-              error: "Workspace snapshot is empty — nothing to organize yet.",
+              error:
+                ignores.length > 0
+                  ? "Every instance in the snapshot matched your ignore filters — nothing left to organize."
+                  : "Workspace snapshot is empty — nothing to organize yet.",
             }),
             { status: 409, headers: cors },
           );
