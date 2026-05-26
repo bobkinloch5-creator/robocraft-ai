@@ -56,6 +56,56 @@ function Account() {
   const runDelete = useServerFn(deleteOwnAccount);
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+  const [redemptions, setRedemptions] = useState<{ id: string; credits: number; redeemed_at: string; promo_codes: { code: string } | null }[]>([]);
+
+  const loadRedemptions = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("promo_redemptions")
+      .select("id,credits,redeemed_at,promo_codes(code)")
+      .eq("user_id", user.id)
+      .order("redeemed_at", { ascending: false })
+      .limit(10);
+    setRedemptions((data ?? []) as any);
+  };
+
+  const redeemPromo = async () => {
+    const code = promoCode.trim();
+    if (!code) return toast.error("Enter a promo code");
+    setRedeeming(true);
+    const { data, error } = await supabase.rpc("redeem_promo_code", { _code: code });
+    setRedeeming(false);
+    if (error) {
+      const map: Record<string, string> = {
+        invalid_code: "Invalid promo code",
+        inactive_code: "This code is no longer active",
+        expired_code: "This code has expired",
+        limit_reached: "This code has reached its redemption limit",
+        already_redeemed: "You already redeemed this code",
+        not_authenticated: "Please sign in to redeem",
+      };
+      const key = Object.keys(map).find((k) => error.message.includes(k));
+      return toast.error(key ? map[key] : error.message);
+    }
+    toast.success(`Redeemed! New balance: ${data} credits`);
+    setPromoCode("");
+    await refresh();
+    await loadRedemptions();
+  };
+
+  const claimDaily = async () => {
+    setClaiming(true);
+    const { data, error } = await supabase.rpc("claim_daily_credits");
+    setClaiming(false);
+    if (error) return toast.error(error.message);
+    const res = data as { claimed: boolean; reason?: string; amount?: number; credits?: number };
+    if (!res.claimed) return toast.info("Already claimed today — come back tomorrow!");
+    toast.success(`+${res.amount} daily credits! Balance: ${res.credits}`);
+    await refresh();
+  };
 
   const signOut = async () => {
     await supabase.auth.signOut();
