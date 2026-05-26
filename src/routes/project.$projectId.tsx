@@ -45,6 +45,11 @@ import {
   Plug,
   Search,
   AlertCircle,
+  PanelLeft,
+  PanelRight,
+  Square,
+  Mic,
+  MicOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { downloadRbxmx } from "@/lib/rbxmx-export";
@@ -120,6 +125,92 @@ function ProjectEditor() {
       window.removeEventListener("mouseup", onUp);
     };
   }, [chatWidth]);
+
+  // Collapsible side panels (desktop). Persisted.
+  const [showFiles, setShowFiles] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("bs_show_files") !== "false";
+  });
+  const [showChat, setShowChat] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("bs_show_chat") !== "false";
+  });
+  const toggleFiles = (v: boolean) => {
+    setShowFiles(v);
+    localStorage.setItem("bs_show_files", String(v));
+  };
+  const toggleChat = (v: boolean) => {
+    setShowChat(v);
+    localStorage.setItem("bs_show_chat", String(v));
+  };
+
+  // Stop button for in-flight AI generations
+  const stopRequested = useRef(false);
+  const stopGeneration = () => {
+    stopRequested.current = true;
+    setAiBusy(false);
+    setAutoBusy(false);
+    setFixBusy(false);
+    setImproving(false);
+    setAutoFixingMsg(null);
+    toast.message("Generation stopped");
+  };
+
+  // Microphone dictation (Web Speech API)
+  const [listening, setListening] = useState(false);
+  const recogRef = useRef<any>(null);
+  const toggleMic = () => {
+    const SR: any =
+      typeof window !== "undefined" &&
+      ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+    if (!SR) {
+      toast.error("Voice input isn't supported in this browser. Try Chrome or Edge.");
+      return;
+    }
+    if (listening && recogRef.current) {
+      recogRef.current.stop();
+      return;
+    }
+    const rec = new SR();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = navigator.language || "en-US";
+    let base = "";
+    rec.onstart = () => {
+      base = prompt ? prompt.trimEnd() + " " : "";
+      setListening(true);
+    };
+    rec.onresult = (e: any) => {
+      let finalText = "";
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) finalText += r[0].transcript;
+        else interim += r[0].transcript;
+      }
+      setPrompt(base + finalText + interim);
+      if (finalText) base += finalText;
+    };
+    rec.onerror = (e: any) => {
+      console.warn("[speech]", e);
+      if (e.error === "not-allowed") toast.error("Microphone permission denied.");
+    };
+    rec.onend = () => {
+      setListening(false);
+      recogRef.current = null;
+    };
+    recogRef.current = rec;
+    try {
+      rec.start();
+    } catch (err) {
+      console.warn("[speech]", err);
+    }
+  };
+  useEffect(() => () => {
+    try {
+      recogRef.current?.stop();
+    } catch {}
+  }, []);
 
   // Action status polling state
   const [actionStatuses, setActionStatuses] = useState<
@@ -1118,12 +1209,35 @@ function ProjectEditor() {
       </div>
 
       <main
-        className="flex-1 grid lg:grid-cols-[240px_minmax(0,1fr)_var(--chat-w)] gap-0"
-        style={{ ["--chat-w" as any]: `${chatWidth}px` }}
+        className="flex-1 grid gap-0 relative lg:[grid-template-columns:var(--files-w)_minmax(0,1fr)_var(--chat-col-w)]"
+        style={{
+          ["--chat-w" as any]: `${chatWidth}px`,
+          ["--files-w" as any]: showFiles ? "240px" : "0px",
+          ["--chat-col-w" as any]: showChat ? `${chatWidth}px` : "0px",
+        }}
       >
+        {/* Floating toggles for collapsed side panels (desktop only) */}
+        {!showFiles && (
+          <button
+            onClick={() => toggleFiles(true)}
+            title="Show file panel"
+            className="hidden lg:flex absolute left-2 top-2 z-30 h-8 w-8 items-center justify-center rounded-md border border-border bg-surface/80 backdrop-blur text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition"
+          >
+            <PanelLeft className="h-4 w-4" />
+          </button>
+        )}
+        {!showChat && (
+          <button
+            onClick={() => toggleChat(true)}
+            title="Show AI chat"
+            className="hidden lg:flex absolute right-2 top-2 z-30 h-8 w-8 items-center justify-center rounded-md border border-border bg-surface/80 backdrop-blur text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition"
+          >
+            <PanelRight className="h-4 w-4" />
+          </button>
+        )}
         {/* File tree */}
         <aside
-          className={`${mobileTab === "files" ? "block" : "hidden"} lg:block border-r border-border bg-surface/20 overflow-y-auto max-h-[calc(100vh-8rem)] flex flex-col`}
+          className={`${mobileTab === "files" ? "block" : "hidden"} ${showFiles ? "lg:block" : "lg:hidden"} border-r border-border bg-surface/20 overflow-y-auto max-h-[calc(100vh-8rem)] flex flex-col`}
         >
           <div className="p-3 space-y-3 border-b border-border/40 shrink-0">
             <div className="flex items-center justify-between">
@@ -1144,6 +1258,13 @@ function ProjectEditor() {
                   title="New script file"
                 >
                   <Plus className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => toggleFiles(false)}
+                  className="hidden lg:inline-flex text-muted-foreground hover:text-foreground p-1 rounded hover:bg-surface transition cursor-pointer"
+                  title="Hide file panel"
+                >
+                  <PanelLeft className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>
@@ -1350,7 +1471,7 @@ function ProjectEditor() {
 
         {/* AI chat */}
         <aside
-          className={`${mobileTab === "chat" ? "flex" : "hidden"} lg:flex relative border-l border-border bg-surface/20 flex-col max-h-[calc(100vh-8rem)] min-h-[60vh]`}
+          className={`${mobileTab === "chat" ? "flex" : "hidden"} ${showChat ? "lg:flex" : "lg:hidden"} relative border-l border-border bg-surface/20 flex-col max-h-[calc(100vh-8rem)] min-h-[60vh]`}
         >
           {/* Drag handle to stretch chat panel wider/narrower */}
           <div
@@ -1463,8 +1584,13 @@ function ProjectEditor() {
                   studioConnected={isStudioConnected}
                   projectId={projectId}
                 />
-
-
+                <button
+                  onClick={() => toggleChat(false)}
+                  title="Hide AI chat panel"
+                  className="hidden lg:grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition"
+                >
+                  <PanelRight className="h-3.5 w-3.5" />
+                </button>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2 text-[11px]">
@@ -1774,22 +1900,37 @@ function ProjectEditor() {
                     >
                       <Bug className="h-4 w-4" />
                     </button>
+                    <button
+                      type="button"
+                      onClick={toggleMic}
+                      title={listening ? "Stop dictation" : "Voice input"}
+                      className={`h-8 w-8 grid place-items-center rounded-lg transition ${listening ? "text-rose-300 bg-rose-500/15 animate-pulse" : "text-muted-foreground hover:text-foreground hover:bg-surface"}`}
+                    >
+                      {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </button>
                   </div>
-                  <button
-                    onClick={send}
-                    disabled={aiBusy || !prompt.trim()}
-                    className="inline-flex h-8 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:opacity-90 transition disabled:opacity-30"
-                    title={
-                      planMode ? `Generate plan · ${PLAN_COST} cr` : `Build · ${GENERATE_COST} cr`
-                    }
-                  >
-                    {aiBusy ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
+                  {aiBusy ? (
+                    <button
+                      onClick={stopGeneration}
+                      className="inline-flex h-8 items-center gap-2 rounded-lg bg-rose-500/90 px-3 text-xs font-semibold text-white hover:bg-rose-500 transition"
+                      title="Stop generating"
+                    >
+                      <Square className="h-3.5 w-3.5 fill-current" />
+                      Stop
+                    </button>
+                  ) : (
+                    <button
+                      onClick={send}
+                      disabled={!prompt.trim()}
+                      className="inline-flex h-8 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:opacity-90 transition disabled:opacity-30"
+                      title={
+                        planMode ? `Generate plan · ${PLAN_COST} cr` : `Build · ${GENERATE_COST} cr`
+                      }
+                    >
                       <Send className="h-3.5 w-3.5" />
-                    )}
-                    {planMode ? "Plan" : autoExecute ? "Execute" : "Preview"}
-                  </button>
+                      {planMode ? "Plan" : autoExecute ? "Execute" : "Preview"}
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="flex items-center justify-between">
