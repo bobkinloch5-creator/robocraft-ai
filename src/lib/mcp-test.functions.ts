@@ -51,12 +51,28 @@ export const testMcpServer = createServerFn({ method: "POST" })
       }, 1);
       const list = await rpc("tools/list", {}, 2);
       const tools = (list?.tools ?? []) as Array<{ name: string; description?: string }>;
-      return {
-        ok: true as const,
-        toolCount: tools.length,
-        tools: tools.slice(0, 20).map((t) => ({ name: t.name, description: t.description ?? "" })),
-      };
+      const trimmed = tools.slice(0, 20).map((t) => ({ name: t.name, description: t.description ?? "" }));
+      await supabase
+        .from("user_mcp_servers")
+        .update({
+          last_tested_at: new Date().toISOString(),
+          last_test_ok: true,
+          last_test_error: null,
+          tool_count: tools.length,
+          tools_cache: trimmed,
+        })
+        .eq("id", data.serverId);
+      return { ok: true as const, toolCount: tools.length, tools: trimmed };
     } catch (e: any) {
-      return { ok: false as const, error: e?.message ?? String(e) };
+      const msg = e?.message ?? String(e);
+      await supabase
+        .from("user_mcp_servers")
+        .update({
+          last_tested_at: new Date().toISOString(),
+          last_test_ok: false,
+          last_test_error: msg,
+        })
+        .eq("id", data.serverId);
+      return { ok: false as const, error: msg };
     }
   });
