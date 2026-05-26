@@ -168,6 +168,8 @@ function ProjectEditor() {
   const runAutopilot = useServerFn(autopilotBuild);
   const runInvite = useServerFn(inviteCollaborator);
   const runQueuePluginAction = useServerFn(queuePluginAction);
+  const runImprovePrompt = useServerFn(improvePrompt);
+  const [improving, setImproving] = useState(false);
   const chatEnd = useRef<HTMLDivElement>(null);
   const [showFix, setShowFix] = useState(false);
   const [fixLogs, setFixLogs] = useState("");
