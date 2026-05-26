@@ -11,6 +11,7 @@ import {
   planBuild,
   queuePluginAction,
   improvePrompt,
+  chatWithAI,
 } from "@/lib/ai.functions";
 import { inviteCollaborator } from "@/lib/projects.functions";
 import {
