@@ -16,6 +16,17 @@ export const createGroqProvider = (groqApiKey: string) =>
 export const BLOXSMITH_MODEL = "llama-3.1-8b-instant";
 export const BLOXSMITH_THINK_MODEL = "llama-3.1-8b-instant";
 export const BLOXSMITH_FAST_MODEL = "llama-3.1-8b-instant";
+// Fallback model with a much larger context window, used when the request
+// is too large for the default 8b model (TPM limit on llama-3.1-8b-instant
+// is ~6k tokens/min on free tier). gpt-oss-120b is hosted on Groq and has
+// a ~128k context window, which gives us plenty of headroom on retry.
+export const BLOXSMITH_LARGE_MODEL = "openai/gpt-oss-120b";
+
+// Rough token budget for the default model. We keep prompts well under this
+// so we don't trip the TPM ceiling even when the user is sending requests
+// back-to-back. ~4 chars ≈ 1 token.
+export const BLOXSMITH_MODEL_TOKEN_BUDGET = 4500;
+export const BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET = 30000;
 
 
 export const SYSTEM_PROMPT = `You are BloxSmith — a friendly, premium AI Roblox game builder. Think of yourself as the user's senior Roblox dev pair-programming with them. You are warm, fast, and confident. You build things; you don't lecture.
