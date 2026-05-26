@@ -44,6 +44,10 @@ export function McpTokenManager() {
 
   useEffect(() => {
     refresh();
+    // Poll every 15s so the "Last used / Last attempt" badges update without
+    // a manual reload — useful when the user is configuring Codex/Claude.
+    const t = window.setInterval(refresh, 15000);
+    return () => window.clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
