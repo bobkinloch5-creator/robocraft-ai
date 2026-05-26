@@ -521,10 +521,18 @@ function ProjectEditor() {
       .insert({ conversation_id: convoId, role, content, actions: actions ?? null })
       .select("id")
       .single();
-    await supabase
-      .from("agent_conversations")
-      .update({ updated_at: new Date().toISOString() })
-      .eq("id", convoId);
+    // Auto-title from first user message if still "New chat"
+    const cur = conversations.find((c) => c.id === convoId);
+    const patch: any = { updated_at: new Date().toISOString() };
+    if (role === "user" && cur && (!cur.title || cur.title === "New chat" || cur.title === "Team Chat" || cur.title === "Chat")) {
+      patch.title = content.slice(0, 60).replace(/\s+/g, " ").trim() || "New chat";
+    }
+    await supabase.from("agent_conversations").update(patch).eq("id", convoId);
+    setConversations((prev) => {
+      const next = prev.map((c) => (c.id === convoId ? { ...c, ...patch } : c));
+      next.sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
+      return next;
+    });
     return data?.id ?? null;
   };
 
