@@ -71,11 +71,21 @@ function Admin() {
     supabase.from("profiles").select("id,email,display_name,credits").order("created_at", { ascending: false }).limit(100).then(({ data }) => setRows((data ?? []) as Row[]));
   };
 
-  const adjustCredits = async (id: string, delta: number) => {
-    const { data, error } = await supabase.rpc("admin_adjust_credits", { _user_id: id, _amount: delta, _reason: "admin adjust" });
+  const adjustCredits = async (id: string, delta: number, reason = "admin adjust") => {
+    const { data, error } = await supabase.rpc("admin_adjust_credits", { _user_id: id, _amount: delta, _reason: reason });
     if (error) return toast.error(error.message);
     const next = typeof data === "number" ? data : 0;
     setRows((p) => p.map((x) => (x.id === id ? { ...x, credits: next } : x)));
+    toast.success(`${delta >= 0 ? "Gifted" : "Removed"} ${Math.abs(delta)} credits`);
+  };
+
+  const giftCustom = async (row: Row) => {
+    const amtStr = window.prompt(`Gift credits to ${row.email}\nPositive to add, negative to remove. Current: ${row.credits}`, "100");
+    if (!amtStr) return;
+    const amt = parseInt(amtStr, 10);
+    if (!Number.isFinite(amt) || amt === 0) return toast.error("Enter a non-zero integer");
+    const reason = window.prompt("Reason (logged in credit history)", "gift from admin") || "gift from admin";
+    await adjustCredits(row.id, amt, reason);
   };
 
   const filtered = rows.filter((r) => r.email.toLowerCase().includes(q.toLowerCase()) || (r.display_name ?? "").toLowerCase().includes(q.toLowerCase()));
