@@ -1720,6 +1720,8 @@ local function dispatch(action)
 	if not fn then return false, "unknown action: " .. tostring(action.type) end
 	if actionTouchesIgnored(action) then
 		appendLog("Skipped " .. tostring(action.type) .. " — matches ignore filter")
+		statsSkipped = statsSkipped + 1
+		pcall(refreshStatsInfo)
 		return true
 	end
 	return fn(action)
