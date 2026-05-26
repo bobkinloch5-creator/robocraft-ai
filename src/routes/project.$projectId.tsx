@@ -1662,6 +1662,17 @@ function ProjectEditor() {
                     </button>
                   );
                 })()}
+                <button
+                  onClick={() => {
+                    if (messages.length === 0) return;
+                    if (confirm("Clear all chat messages? This cannot be undone.")) clearChat();
+                  }}
+                  disabled={messages.length === 0}
+                  title="Clear chat"
+                  className="h-7 w-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
                 <ChatSettings
                   thinking={thinking}
                   onToggleThinking={setThinking}
