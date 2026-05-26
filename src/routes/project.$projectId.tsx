@@ -341,6 +341,32 @@ function ProjectEditor() {
     };
   }, [user, projectId]);
 
+  // realtime AI chat (so collaborators see each other's prompts + AI replies live)
+  useEffect(() => {
+    if (!convoId) return;
+    const ch = supabase
+      .channel(`agent_messages:${convoId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "agent_messages", filter: `conversation_id=eq.${convoId}` },
+        (payload) => {
+          setMessages((prev) => {
+            if (payload.eventType === "INSERT") {
+              const m = payload.new as any;
+              if (prev.some((x) => x.id === m.id)) return prev;
+              return [...prev, { id: m.id, role: m.role, content: m.content }];
+            }
+            if (payload.eventType === "DELETE") {
+              return prev.filter((x) => x.id !== (payload.old as any).id);
+            }
+            return prev;
+          });
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [convoId]);
+
   const active = files.find((f) => f.id === activeId) ?? null;
 
   useEffect(() => {
