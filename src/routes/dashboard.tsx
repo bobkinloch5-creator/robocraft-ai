@@ -178,8 +178,8 @@ function Dashboard() {
                   <div className="text-xs text-muted-foreground">Claim +10 credits, once per day.</div>
                 </div>
               </div>
-              <button onClick={claimDaily} disabled={claiming} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
-                {claiming ? "Claiming…" : "Claim +10"}
+              <button onClick={claimDaily} disabled={claiming || dailyCd.onCooldown} title={dailyCd.onCooldown ? `Next claim in ${dailyCd.label}` : undefined} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+                {claiming ? "Claiming…" : dailyCd.onCooldown ? `Next in ${dailyCd.label}` : "Claim +10"}
               </button>
             </div>
             <div className="glass rounded-2xl p-5 flex items-center gap-3">
