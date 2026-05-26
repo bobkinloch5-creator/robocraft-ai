@@ -1475,10 +1475,10 @@ local function dispatch(action)
 	return fn(action)
 end
 
-local function pull()
+local function pull(manual)
 	if not activeProjectId then return end
 	if getPaused() then syncInfo.Text = "Paused — incoming actions are ignored"; return end
-	local data, err = postJSON("/sync", { projectId = activeProjectId })
+	local data, err = postJSON("/sync", { projectId = activeProjectId, manual = manual == true })
 	if not data then syncInfo.Text = "Sync error: " .. tostring(err); return end
 
 	-- Backwards-compat: server may send {files = ...} OR {actions = ...}
@@ -1756,6 +1756,7 @@ syncNowBtn.MouseButton1Click:Connect(function()
 	end
 	task.spawn(function()
 		pushContext(true)
+		pull(true) -- user-initiated: bypass "Manual sync only" gating server-side
 		pushSnapshot()
 	end)
 end)

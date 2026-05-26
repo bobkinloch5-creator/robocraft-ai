@@ -14,6 +14,7 @@ import {
   User as UserIcon,
   Server,
   ExternalLink,
+  Hand,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -243,6 +244,55 @@ function McpServersSection() {
   );
 }
 
+function StudioSyncSection() {
+  const [manualOnly, setManualOnly] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
+      const { data } = await supabase
+        .from("profiles")
+        .select("manual_sync_only")
+        .eq("id", user.id)
+        .maybeSingle();
+      setManualOnly(!!data?.manual_sync_only);
+      setLoading(false);
+    })();
+  }, []);
+
+  async function toggle() {
+    const next = !manualOnly;
+    setManualOnly(next);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ manual_sync_only: next })
+      .eq("id", user.id);
+    if (error) {
+      setManualOnly(!next);
+      toast.error("Couldn't save setting");
+    } else {
+      toast.success(next ? "Manual sync only — click Sync Now in Studio to apply" : "Auto-sync enabled");
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <SectionTitle>Studio sync</SectionTitle>
+      <Row
+        icon={<Hand className="h-3.5 w-3.5" />}
+        title="Manual sync only"
+        desc="Never auto-apply queued actions in Studio. Use the Sync Now button to pull."
+        checked={manualOnly}
+        onChange={loading ? () => {} : toggle}
+      />
+    </div>
+  );
+}
+
 function LinkRow({
   icon,
   title,
@@ -355,6 +405,8 @@ export function ChatSettings(props: Props) {
                   </div>
                 </div>
               </div>
+
+              <StudioSyncSection />
 
               <McpServersSection />
 
