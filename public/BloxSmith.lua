@@ -581,7 +581,7 @@ refreshPreviewToggleLabel()
 local clearRow = Instance.new("Frame", root)
 clearRow.LayoutOrder = 13
 clearRow.BackgroundTransparency = 1
-clearRow.Size = UDim2.new(1,0,0,28)
+clearRow.Size = UDim2.new(1,0,0,24)
 local clearList = Instance.new("UIListLayout", clearRow)
 clearList.FillDirection = Enum.FillDirection.Horizontal
 clearList.Padding = UDim.new(0,6)
