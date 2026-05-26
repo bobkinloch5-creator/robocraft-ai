@@ -1289,7 +1289,7 @@ export const Route = createFileRoute("/api/assistant/execute")({
                     .select("role,content,created_at")
                     .eq("conversation_id", convoRow.id)
                     .order("created_at", { ascending: false })
-                    .limit(10);
+                    .limit(20);
                   history = (msgs ?? [])
                     .reverse()
                     .filter((m: any) => m.role === "user" || m.role === "assistant")
@@ -1298,6 +1298,7 @@ export const Route = createFileRoute("/api/assistant/execute")({
                       content: String(m.content ?? ""),
                     }));
                 }
+
 
                 const keywords = extractKeywords(prompt);
                 const ctxInputs: ContextInputs = {
