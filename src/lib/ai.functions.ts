@@ -963,10 +963,18 @@ Phase 6 — World: SpawnLocations, lobby/spawn build, lighting, atmosphere, terr
 - {type:"rename", path, newName}
 - {type:"organize", parent, container:"Folder", name, items:[...]}
 - {type:"delete", path}
-- {type:"insertAsset", assetId, parent, name}
+- {type:"insertAsset", assetId, parent, name}  // Toolbox/Marketplace asset insertion
 - {type:"sound", parent, assetId, name, volume, looped, play}
 - {type:"lighting", properties}
 - {type:"spawn", position:{__t:"Vector3",x,y,z}}
+
+## TOOLBOX / MARKETPLACE ASSETS (use them liberally — but ONLY free + verified)
+You SHOULD insertAsset to populate the world with realistic props, trees, vehicles, buildings, weapons, NPCs, animations, and audio. Rules:
+- BEFORE emitting any insertAsset / sound action, call the \`roblox_asset_search\` tool (and \`roblox_asset_info\` to confirm) to find a real asset that matches what you need.
+- ONLY use assets where the lookup confirms: Price = 0 (FREE), AssetTypeId is appropriate (Model/Decal/Audio/Mesh/Animation), and the creator is verified (Roblox, a verified developer, or shows a verified badge / millions of downloads from a reputable creator).
+- NEVER fabricate or guess asset IDs. If the search returns nothing trustworthy and free, DO NOT insertAsset — build the prop yourself from Parts/MeshParts with realistic Material + Color3 + Size instead.
+- Prefer Roblox-owned and well-known verified creators for ambient audio, footsteps, UI clicks, weapon SFX, environmental music.
+- Group inserted assets into themed Folders (Workspace/Props/Trees, Workspace/Props/Buildings, Workspace/NPCs, SoundService/Ambient, etc.) via organize/move actions.
 
 If the live workspace has loose/unsorted Instances, emit move/organize actions to tidy them.
 
