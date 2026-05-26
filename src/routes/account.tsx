@@ -466,10 +466,11 @@ function Account() {
                 </div>
                 <button
                   onClick={claimDaily}
-                  disabled={claiming}
+                  disabled={claiming || dailyCd.onCooldown}
+                  title={dailyCd.onCooldown ? `Next claim in ${dailyCd.label}` : undefined}
                   className="rounded-lg bg-primary/10 border border-primary/20 text-primary-glow hover:bg-primary/15 px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50"
                 >
-                  {claiming ? "…" : "Claim +10"}
+                  {claiming ? "…" : dailyCd.onCooldown ? `Next in ${dailyCd.label}` : "Claim +10"}
                 </button>
               </div>
 
