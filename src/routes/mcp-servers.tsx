@@ -224,9 +224,50 @@ function McpServersPage() {
                   className="border border-border rounded-lg p-4 bg-card flex flex-col gap-3"
                 >
                   <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium flex items-center gap-2">
+                    <div className="min-w-0 flex-1 flex items-start gap-3">
+                      {(() => {
+                        const dotClass = !s.enabled
+                          ? "bg-muted-foreground/40"
+                          : t?.status === "loading"
+                            ? "bg-amber-500 animate-pulse"
+                            : t?.status === "ok"
+                              ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+                              : t?.status === "fail"
+                                ? "bg-destructive"
+                                : "bg-muted-foreground/40";
+                        const label = !s.enabled
+                          ? "Disabled"
+                          : t?.status === "loading"
+                            ? "Testing connection…"
+                            : t?.status === "ok"
+                              ? "Connected"
+                              : t?.status === "fail"
+                                ? "Connection failed"
+                                : "Not tested";
+                        return (
+                          <span
+                            className={`mt-1.5 h-2.5 w-2.5 rounded-full shrink-0 ${dotClass}`}
+                            title={label}
+                            aria-label={label}
+                          />
+                        );
+                      })()}
+                      <div className="min-w-0 flex-1">
+                      <div className="font-medium flex items-center gap-2 flex-wrap">
                         {s.name}
+                        <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded border ${
+                          !s.enabled
+                            ? "border-border text-muted-foreground"
+                            : t?.status === "loading"
+                              ? "border-amber-500/40 text-amber-500"
+                              : t?.status === "ok"
+                                ? "border-emerald-500/40 text-emerald-500"
+                                : t?.status === "fail"
+                                  ? "border-destructive/40 text-destructive"
+                                  : "border-border text-muted-foreground"
+                        }`}>
+                          {!s.enabled ? "off" : t?.status === "loading" ? "testing" : t?.status === "ok" ? "live" : t?.status === "fail" ? "error" : "idle"}
+                        </span>
                         {t?.status === "loading" && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
                         {t?.status === "ok" && (
                           <span className="inline-flex items-center gap-1 text-xs font-normal text-emerald-500">
@@ -240,12 +281,16 @@ function McpServersPage() {
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">{s.url}</div>
-                      {s.auth_header && (
-                        <div className="text-xs text-muted-foreground">🔐 auth set</div>
-                      )}
+                      <div className="text-xs text-muted-foreground">
+                        {s.auth_header && <span className="mr-2">🔐 auth set</span>}
+                        {s.last_tested_at && (
+                          <span>Last checked {new Date(s.last_tested_at).toLocaleString()}</span>
+                        )}
+                      </div>
                       {t?.status === "fail" && t.error && (
                         <div className="text-xs text-destructive mt-1 break-words">{t.error}</div>
                       )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <Button variant="outline" size="sm" onClick={() => testServer(s)} disabled={t?.status === "loading"}>
