@@ -27,6 +27,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjectProjectIdRouteImport } from './routes/project.$projectId'
 import { Route as CheckoutCustomRouteImport } from './routes/checkout.custom'
 import { Route as CheckoutPackRouteImport } from './routes/checkout.$pack'
+import { Route as AuthenticatedMcpServersRouteImport } from './routes/_authenticated/mcp-servers'
 import { Route as ApiStudioSnapshotRouteImport } from './routes/api/studio/snapshot'
 import { Route as ApiStudioResultRouteImport } from './routes/api/studio/result'
 import { Route as ApiStudioPollRouteImport } from './routes/api/studio/poll'
@@ -129,6 +130,11 @@ const CheckoutPackRoute = CheckoutPackRouteImport.update({
   path: '/checkout/$pack',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedMcpServersRoute = AuthenticatedMcpServersRouteImport.update({
+  id: '/_authenticated/mcp-servers',
+  path: '/mcp-servers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiStudioSnapshotRoute = ApiStudioSnapshotRouteImport.update({
   id: '/api/studio/snapshot',
   path: '/api/studio/snapshot',
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/mcp-servers': typeof AuthenticatedMcpServersRoute
   '/checkout/$pack': typeof CheckoutPackRoute
   '/checkout/custom': typeof CheckoutCustomRoute
   '/project/$projectId': typeof ProjectProjectIdRoute
@@ -232,6 +239,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/mcp-servers': typeof AuthenticatedMcpServersRoute
   '/checkout/$pack': typeof CheckoutPackRoute
   '/checkout/custom': typeof CheckoutCustomRoute
   '/project/$projectId': typeof ProjectProjectIdRoute
@@ -264,6 +272,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/_authenticated/mcp-servers': typeof AuthenticatedMcpServersRoute
   '/checkout/$pack': typeof CheckoutPackRoute
   '/checkout/custom': typeof CheckoutCustomRoute
   '/project/$projectId': typeof ProjectProjectIdRoute
@@ -297,6 +306,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/terms'
+    | '/mcp-servers'
     | '/checkout/$pack'
     | '/checkout/custom'
     | '/project/$projectId'
@@ -328,6 +338,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/terms'
+    | '/mcp-servers'
     | '/checkout/$pack'
     | '/checkout/custom'
     | '/project/$projectId'
@@ -359,6 +370,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/terms'
+    | '/_authenticated/mcp-servers'
     | '/checkout/$pack'
     | '/checkout/custom'
     | '/project/$projectId'
@@ -391,6 +403,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
+  AuthenticatedMcpServersRoute: typeof AuthenticatedMcpServersRoute
   CheckoutPackRoute: typeof CheckoutPackRoute
   CheckoutCustomRoute: typeof CheckoutCustomRoute
   ProjectProjectIdRoute: typeof ProjectProjectIdRoute
@@ -535,6 +548,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckoutPackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/mcp-servers': {
+      id: '/_authenticated/mcp-servers'
+      path: '/mcp-servers'
+      fullPath: '/mcp-servers'
+      preLoaderRoute: typeof AuthenticatedMcpServersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/studio/snapshot': {
       id: '/api/studio/snapshot'
       path: '/api/studio/snapshot'
@@ -631,6 +651,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
+  AuthenticatedMcpServersRoute: AuthenticatedMcpServersRoute,
   CheckoutPackRoute: CheckoutPackRoute,
   CheckoutCustomRoute: CheckoutCustomRoute,
   ProjectProjectIdRoute: ProjectProjectIdRoute,
