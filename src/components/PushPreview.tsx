@@ -4,7 +4,7 @@ import { applyGeneration } from "@/lib/ai.functions";
 import { toast } from "sonner";
 import {
   FileCode, Radio, Box, Folder, Image as ImageIcon, Wand2, Send, X,
-  ChevronDown, ChevronRight, Loader2, CheckCircle2, Zap,
+  ChevronDown, ChevronRight, Loader2, CheckCircle2, Zap, Eye, Copy,
 } from "lucide-react";
 
 type AnyAction = { type: string; [k: string]: any };
@@ -89,6 +89,7 @@ export function PushPreview({
   const apply = useServerFn(applyGeneration);
   const [status, setStatus] = useState<"idle" | "applying" | "done" | "skipped">("idle");
   const [openSection, setOpenSection] = useState<string | null>("scripts");
+  const [openScript, setOpenScript] = useState<string | null>(null);
   const autoFiredRef = useRef(false);
 
   const grouped = useMemo(
@@ -97,11 +98,10 @@ export function PushPreview({
   );
 
   const totalOps =
-    grouped.scripts.length + grouped.remotes.length + grouped.builds.length +
+    preview.files.length + grouped.remotes.length + grouped.builds.length +
     grouped.ui.length + grouped.assets.length + grouped.structure.length + grouped.other.length;
 
-  const sections: { id: string; title: string; icon: any; items: { icon: any; label: string; sub: string }[] }[] = [
-    { id: "scripts",   title: "Scripts",          icon: FileCode,  items: grouped.scripts },
+  const nonScriptSections: { id: string; title: string; icon: any; items: { icon: any; label: string; sub: string }[] }[] = [
     { id: "remotes",   title: "Remotes & Events", icon: Radio,     items: grouped.remotes },
     { id: "ui",        title: "UI elements",      icon: Wand2,     items: grouped.ui },
     { id: "builds",    title: "Parts & models",   icon: Box,       items: grouped.builds },
@@ -182,8 +182,74 @@ export function PushPreview({
         </div>
       )}
 
-      <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
-        {sections.map((sec) => {
+      <div className="space-y-1 max-h-[28rem] overflow-y-auto pr-1">
+        {preview.files.length > 0 && (() => {
+          const open = openSection === "scripts";
+          return (
+            <div className="rounded-lg border border-border bg-surface/40 overflow-hidden">
+              <button
+                onClick={() => setOpenSection(open ? null : "scripts")}
+                className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs hover:bg-surface text-left"
+              >
+                <span className="inline-flex items-center gap-1.5 font-medium">
+                  {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  <FileCode className="h-3.5 w-3.5 text-primary-glow" />
+                  Scripts
+                </span>
+                <span className="text-[10px] tabular-nums text-muted-foreground bg-background px-1.5 py-0.5 rounded">
+                  {preview.files.length}
+                </span>
+              </button>
+              {open && (
+                <ul className="border-t border-border divide-y divide-border/60">
+                  {preview.files.map((f, i) => {
+                    const key = `${f.path}-${i}`;
+                    const codeOpen = openScript === key;
+                    const lines = (f.content ?? "").split("\n").length;
+                    return (
+                      <li key={key} className="text-[11px]">
+                        <div className="px-2.5 py-1.5 flex items-start gap-2">
+                          <FileCode className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-mono text-foreground">{f.path}</div>
+                            <div className="text-muted-foreground truncate">
+                              {f.file_type} · {f.service_location} · {lines} line{lines === 1 ? "" : "s"}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setOpenScript(codeOpen ? null : key)}
+                            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:bg-surface shrink-0"
+                            title={codeOpen ? "Hide code" : "View code"}
+                          >
+                            <Eye className="h-3 w-3" />
+                            {codeOpen ? "Hide" : "View"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(f.content ?? "");
+                              toast.success("Copied script");
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:bg-surface shrink-0"
+                            title="Copy code"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                        </div>
+                        {codeOpen && (
+                          <pre className="mx-2.5 mb-2 max-h-72 overflow-auto rounded-md border border-border bg-background/80 p-2 text-[10.5px] leading-snug font-mono text-foreground/90 whitespace-pre">
+{f.content || "// (empty file)"}
+                          </pre>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          );
+        })()}
+
+        {nonScriptSections.map((sec) => {
           const open = openSection === sec.id;
           return (
             <div key={sec.id} className="rounded-lg border border-border bg-surface/40 overflow-hidden">
@@ -222,6 +288,7 @@ export function PushPreview({
           );
         })}
       </div>
+
 
       <div className="flex items-center justify-end gap-2 pt-1">
         <button

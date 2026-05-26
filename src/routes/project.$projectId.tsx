@@ -10,6 +10,7 @@ import {
   autopilotBuild,
   planBuild,
   queuePluginAction,
+  improvePrompt,
 } from "@/lib/ai.functions";
 import { inviteCollaborator } from "@/lib/projects.functions";
 import {
@@ -31,6 +32,7 @@ import {
   Hammer,
   ShieldCheck,
   Sparkles,
+  Wand2,
   User as UserIcon,
   Brain,
   Code2,
@@ -166,6 +168,8 @@ function ProjectEditor() {
   const runAutopilot = useServerFn(autopilotBuild);
   const runInvite = useServerFn(inviteCollaborator);
   const runQueuePluginAction = useServerFn(queuePluginAction);
+  const runImprovePrompt = useServerFn(improvePrompt);
+  const [improving, setImproving] = useState(false);
   const chatEnd = useRef<HTMLDivElement>(null);
   const [showFix, setShowFix] = useState(false);
   const [fixLogs, setFixLogs] = useState("");
@@ -1655,6 +1659,32 @@ function ProjectEditor() {
                       className={`h-8 w-8 grid place-items-center rounded-lg transition ${thinking ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-surface"}`}
                     >
                       <Brain className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const current = prompt.trim();
+                        if (!current || improving) return;
+                        setImproving(true);
+                        try {
+                          const out = await runImprovePrompt({ data: { prompt: current } });
+                          setPrompt(out.prompt);
+                          toast.success("Prompt improved");
+                        } catch (e: any) {
+                          toast.error(e?.message ?? "Couldn't improve prompt");
+                        } finally {
+                          setImproving(false);
+                        }
+                      }}
+                      disabled={improving || !prompt.trim()}
+                      title="Improve prompt"
+                      className="h-8 w-8 grid place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition disabled:opacity-40"
+                    >
+                      {improving ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Wand2 className="h-4 w-4" />
+                      )}
                     </button>
                     <button
                       type="button"
