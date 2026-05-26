@@ -1158,7 +1158,7 @@ export const Route = createFileRoute("/api/assistant/execute")({
           // RLS only returns projects the authenticated user can access.
           const { data: project, error: projectErr } = await supabaseUser
             .from("projects")
-            .select("id,user_id,name")
+            .select("id,user_id,name,ai_rules")
             .eq("id", projectId)
             .maybeSingle();
           if (projectErr || !project)
@@ -1166,6 +1166,10 @@ export const Route = createFileRoute("/api/assistant/execute")({
               status: 404,
               headers: corsHeaders,
             });
+          const projectRules = typeof (project as any).ai_rules === "string"
+            ? String((project as any).ai_rules).trim().slice(0, 4000)
+            : "";
+
 
           // Spend Credits
           const cost = 3;
