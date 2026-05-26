@@ -32,21 +32,22 @@ function isOwnMcpUrl(url: string): boolean {
 }
 
 /**
- * If the user wired their own MCP server to point at this same BloxSmith
- * deployment but the auth header is missing/invalid, mint a fresh token on
- * the fly so the Test button always works for "your own server".
+ * If the user wired their own MCP server to point at this BloxSmith
+ * deployment but the auth header is missing/invalid, mint a fresh token via
+ * the admin client (RLS-bypassing) so the Test button always works.
  */
 async function ensureOwnToken(userId: string): Promise<string> {
   const token = "bsmcp_" + randomToken(32);
   const hash = await sha256(token);
-  await supabaseAdmin.from("mcp_tokens").upsert(
-    {
-      user_id: userId,
-      token_hash: hash,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id" },
-  );
+  const { error } = await supabaseAdmin
+    .from("mcp_tokens")
+    .upsert(
+      { user_id: userId, token_hash: hash, updated_at: new Date().toISOString() },
+      { onConflict: "user_id" },
+    );
+  if (error) {
+    throw new Error(`Could not mint MCP token: ${error.message}`);
+  }
   return token;
 }
 
@@ -70,11 +71,17 @@ export const testMcpServer = createServerFn({ method: "POST" })
       authHeader = `Bearer ${authHeader}`;
     }
 
-    // If pointing at our own MCP endpoint, always use a guaranteed-valid token.
+    // If pointing at our own MCP endpoint, prefer the server-side admin
+    // secret (always valid). Fall back to minting a per-user token.
     const pointsAtUs = isOwnMcpUrl(server.url);
     if (pointsAtUs) {
-      const token = await ensureOwnToken(userId);
-      authHeader = `Bearer ${token}`;
+      const adminSecret = process.env.MCP_SECRET;
+      if (adminSecret) {
+        authHeader = `Bearer ${adminSecret}`;
+      } else {
+        const token = await ensureOwnToken(userId);
+        authHeader = `Bearer ${token}`;
+      }
     }
 
     const headers: Record<string, string> = {
