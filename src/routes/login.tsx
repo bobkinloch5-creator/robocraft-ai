@@ -7,7 +7,16 @@ import logo from "@/assets/logo.png";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
-  head: () => ({ meta: [{ title: "Log in — BloxSmith" }, { name: "description", content: "Log in to BloxSmith." }] }),
+  head: () => ({
+    meta: [
+      { title: "Log in — BloxSmith" },
+      { name: "description", content: "Log in to your BloxSmith account to keep building Roblox games with AI, manage your projects, and sync to Roblox Studio." },
+      { property: "og:title", content: "Log in to BloxSmith — Roblox AI Builder" },
+      { property: "og:description", content: "Sign back in to BloxSmith to continue building Roblox games with AI and sync them into Roblox Studio." },
+      { property: "og:url", content: "https://bloxsmith.pro/login" },
+    ],
+    links: [{ rel: "canonical", href: "https://bloxsmith.pro/login" }],
+  }),
 });
 
 function LoginPage() {
