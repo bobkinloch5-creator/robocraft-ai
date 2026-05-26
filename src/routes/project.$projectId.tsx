@@ -1,5 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Header } from "@/components/layout";
+import { AiSourceSettings } from "@/components/AiSourceSettings";
+
 import { useAuth } from "@/lib/auth-context";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -318,24 +320,38 @@ function ProjectEditor() {
   const [thinking, setThinking] = useState(false);
   const [mcpServers, setMcpServers] = useState<Array<{ name: string; enabled: boolean; ok: boolean | null }>>([]);
   const [mcpClient, setMcpClient] = useState<{ client: string | null; lastUsedAt: string | null } | null>(null);
+  const [aiSettings, setAiSettings] = useState<{ mode: "mcp" | "api_key"; provider: string | null; model: string | null }>({
+    mode: "mcp",
+    provider: null,
+    model: null,
+  });
+  const [showAiSourceModal, setShowAiSourceModal] = useState(false);
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const [serversRes, tokenRes] = await Promise.all([
+      const [serversRes, tokenRes, aiRes] = await Promise.all([
         supabase.from("user_mcp_servers").select("name,enabled,last_test_ok").eq("enabled", true),
         supabase.from("mcp_tokens").select("last_client,last_used_at").maybeSingle(),
+        supabase
+          .from("project_ai_settings")
+          .select("mode,provider,model")
+          .eq("project_id", projectId)
+          .maybeSingle(),
       ]);
       if (cancelled) return;
       setMcpServers(((serversRes.data ?? []) as Array<{ name: string; enabled: boolean; last_test_ok: boolean | null }>)
         .map((s) => ({ name: s.name, enabled: s.enabled, ok: s.last_test_ok })));
       const t = tokenRes.data as { last_client: string | null; last_used_at: string | null } | null;
       setMcpClient(t ? { client: t.last_client, lastUsedAt: t.last_used_at } : null);
+      const a = aiRes.data as { mode: "mcp" | "api_key"; provider: string | null; model: string | null } | null;
+      setAiSettings(a ?? { mode: "mcp", provider: null, model: null });
     };
     load();
     const ch = supabase
-      .channel("mcp-indicator")
+      .channel("ai-indicator")
       .on("postgres_changes", { event: "*", schema: "public", table: "user_mcp_servers" }, load)
       .on("postgres_changes", { event: "*", schema: "public", table: "mcp_tokens" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "project_ai_settings" }, load)
       .subscribe();
     const poll = setInterval(load, 15000);
     return () => {
@@ -343,7 +359,8 @@ function ProjectEditor() {
       clearInterval(poll);
       supabase.removeChannel(ch);
     };
-  }, []);
+  }, [projectId]);
+
 
   const [plansByMsg, setPlansByMsg] = useState<Record<string, { prompt: string; plan: string }>>(
     {},
@@ -2022,15 +2039,34 @@ function ProjectEditor() {
               </div>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <div
-                    className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated/60 border border-border/40 px-2.5 py-0.5 text-[10px]"
+                  <button
+                    type="button"
+                    onClick={() => setShowAiSourceModal(true)}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated/60 border border-border/40 px-2.5 py-0.5 text-[10px] hover:border-primary/60 transition"
                     title={
-                      mcpClient?.lastUsedAt
-                        ? `Last connected via ${mcpClient.client ?? "MCP client"} at ${new Date(mcpClient.lastUsedAt).toLocaleString()}`
-                        : "Waiting for an MCP client to connect"
+                      aiSettings.mode === "api_key"
+                        ? `Using your own ${aiSettings.provider ?? ""} API key — click to change`
+                        : mcpClient?.lastUsedAt
+                          ? `Last connected via ${mcpClient.client ?? "MCP client"} at ${new Date(mcpClient.lastUsedAt).toLocaleString()} — click to change source`
+                          : "Click to switch between MCP and your own API key"
                     }
                   >
                     {(() => {
+                      const providerNames: Record<string, string> = {
+                        openai: "OpenAI",
+                        anthropic: "Anthropic",
+                        google: "Google",
+                        groq: "Groq",
+                      };
+                      if (aiSettings.mode === "api_key" && aiSettings.provider) {
+                        const label = `${providerNames[aiSettings.provider] ?? aiSettings.provider}${aiSettings.model ? ` · ${aiSettings.model}` : ""} · your key`;
+                        return (
+                          <>
+                            <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse" />
+                            <span className="text-muted-foreground">{label}</span>
+                          </>
+                        );
+                      }
                       const recent = mcpClient?.lastUsedAt
                         ? Date.now() - new Date(mcpClient.lastUsedAt).getTime() < 10 * 60 * 1000
                         : false;
@@ -2063,7 +2099,8 @@ function ProjectEditor() {
                         </>
                       );
                     })()}
-                  </div>
+                  </button>
+
                   <div
                     className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated/60 border border-border/40 px-2.5 py-0.5 text-[10px]"
                     title={isStudioConnected ? "Roblox Studio plugin connected" : "Roblox Studio plugin not connected"}
@@ -2092,7 +2129,13 @@ function ProjectEditor() {
         </aside>
       </main>
 
+
+      {showAiSourceModal && (
+        <AiSourceSettings projectId={projectId} onClose={() => setShowAiSourceModal(false)} />
+      )}
+
       {showFix && (
+
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-background/80 backdrop-blur-sm p-4"
           onClick={() => !fixBusy && setShowFix(false)}

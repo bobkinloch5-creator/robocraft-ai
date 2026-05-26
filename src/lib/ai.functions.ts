@@ -44,35 +44,30 @@ export const generateWithAI = createServerFn({ method: "POST" })
     }
 
     const { generateText, Output, stepCountIs } = await import("ai");
-    const {
-      createGroqProvider,
-      SYSTEM_PROMPT,
-      BLOXSMITH_MODEL,
-      BLOXSMITH_THINK_MODEL,
-      BLOXSMITH_FAST_MODEL,
-    } = await import("./ai-gateway.server");
+    const { SYSTEM_PROMPT } = await import("./ai-gateway.server");
+    const { resolveAiGateway } = await import("./ai-providers.server");
 
     const { buildBloxSmithTools } = await import("./ai-tools.server");
 
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
+    let resolved;
+    try {
+      resolved = await resolveAiGateway({
+        userId,
+        projectId,
+        kind: mode === "generate" ? "build" : "fast",
+        thinking,
+      });
+    } catch (e) {
       if (!isOwner)
         await supabase.rpc("refund_credits", {
           _amount: cost,
           _reason: "ai gateway not configured",
         });
-      throw new Error("AI gateway not configured — GROQ_API_KEY missing.");
+      throw e;
     }
 
-    const gateway = createGroqProvider(apiKey);
-    // Thinking mode → stronger model. Otherwise → fastest preview that still ships solid Luau.
-    const model = gateway(
-      mode !== "generate"
-        ? BLOXSMITH_FAST_MODEL
-        : thinking
-          ? BLOXSMITH_THINK_MODEL
-          : BLOXSMITH_MODEL,
-    );
+    const model = resolved.model;
+
 
     // 1. Pull the live workspace snapshot the plugin most recently pushed up.
     const { data: liveContext } = await supabase
@@ -503,21 +498,27 @@ export const chatWithAI = createServerFn({ method: "POST" })
       if (spendErr) throw new Error("Not enough credits. Buy more on the Pricing page.");
     }
 
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
+    const { resolveAiGateway } = await import("./ai-providers.server");
+    let resolved;
+    try {
+      resolved = await resolveAiGateway({
+        userId,
+        projectId: projectId ?? null,
+        kind: "fast",
+        thinking,
+      });
+    } catch (e) {
       if (!isOwner)
         await supabase.rpc("refund_credits", {
           _amount: CHAT_COST,
           _reason: "ai gateway not configured",
         });
-      throw new Error("AI gateway not configured — GROQ_API_KEY missing.");
+      throw e;
     }
 
     const { generateText } = await import("ai");
-    const { createGroqProvider, BLOXSMITH_MODEL, BLOXSMITH_THINK_MODEL, BLOXSMITH_FAST_MODEL } =
-      await import("./ai-gateway.server");
-    const gateway = createGroqProvider(apiKey);
-    const model = gateway(thinking ? BLOXSMITH_THINK_MODEL : BLOXSMITH_FAST_MODEL);
+    const model = resolved.model;
+
 
     // Light project context so chat answers stay relevant.
     let projectBlock = "";
