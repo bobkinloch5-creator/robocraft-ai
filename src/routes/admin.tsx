@@ -173,7 +173,7 @@ function Admin() {
 
   useEffect(() => {
     if (!isAdmin) return;
-    supabase.from("profiles").select("id,email,display_name,credits").order("created_at", { ascending: false }).limit(100).then(({ data }) => setRows((data ?? []) as Row[]));
+    loadUsers();
     Promise.all([
       supabase.from("profiles").select("id", { count: "exact", head: true }),
       supabase.from("projects").select("id", { count: "exact", head: true }),
@@ -182,6 +182,7 @@ function Admin() {
     loadRequests();
     loadPromos();
     loadPromoSubs();
+    loadActivity();
   }, [isAdmin]);
 
   const createPromo = async () => {
