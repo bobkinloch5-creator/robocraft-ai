@@ -59,11 +59,33 @@ function McpPage() {
           </p>
         </header>
 
+        <section className="space-y-4 rounded-2xl border border-primary/30 bg-primary/5 p-6">
+          <h2 className="text-2xl font-semibold">How it works (3 steps)</h2>
+          <ol className="list-decimal list-inside text-muted-foreground space-y-2">
+            <li>
+              <strong className="text-foreground">Generate your token</strong> below
+              and copy it. Keep it secret — it spends your credits.
+            </li>
+            <li>
+              <strong className="text-foreground">Add BloxSmith as an MCP server</strong>
+              {" "}in your AI client (Claude Code, Codex, Antigravity, VS Code,
+              Cursor, Windsurf, or anything else that speaks MCP).
+            </li>
+            <li>
+              <strong className="text-foreground">Prompt your AI</strong> to call
+              {" "}<code className="bg-muted px-1.5 py-0.5 rounded">list_my_projects</code>
+              {" "}then <code className="bg-muted px-1.5 py-0.5 rounded">build_roblox</code>.
+              That's it — your Studio plugin applies the changes.
+            </li>
+          </ol>
+        </section>
+
         <section className="space-y-3">
           <h2 className="text-2xl font-semibold">Endpoint</h2>
           <Code>{endpoint}</Code>
           <p className="text-sm text-muted-foreground">
-            Streamable HTTP MCP transport. Authenticate with{" "}
+            Standard <strong>MCP Streamable HTTP</strong> transport — works with any
+            MCP-compatible client. Authenticate with{" "}
             <code className="bg-muted px-1.5 py-0.5 rounded">
               Authorization: Bearer &lt;YOUR_MCP_TOKEN&gt;
             </code>
@@ -71,6 +93,8 @@ function McpPage() {
             click <strong>Revoke</strong> to kill it instantly.
           </p>
         </section>
+
+
 
         <McpTokenManager />
 
@@ -136,7 +160,32 @@ headers = { Authorization = "Bearer YOUR_MCP_TOKEN" }`}</Code>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-2xl font-semibold">Cursor / Windsurf / generic</h2>
+          <h2 className="text-2xl font-semibold">VS Code (GitHub Copilot Chat)</h2>
+          <p className="text-muted-foreground">
+            VS Code 1.99+ supports MCP servers in Copilot Chat agent mode. Create
+            {" "}<code className="bg-muted px-1.5 py-0.5 rounded">.vscode/mcp.json</code>
+            {" "}in your workspace (or add it to user settings):
+          </p>
+          <Code>{`{
+  "servers": {
+    "bloxsmith": {
+      "type": "http",
+      "url": "${endpoint}",
+      "headers": { "Authorization": "Bearer YOUR_MCP_TOKEN" }
+    }
+  }
+}`}</Code>
+          <p className="text-sm text-muted-foreground">
+            Then open Copilot Chat → switch to <strong>Agent</strong> mode → click the
+            tools icon and enable <strong>bloxsmith</strong>.
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-2xl font-semibold">Cursor / Windsurf / Zed / Continue</h2>
+          <p className="text-muted-foreground">
+            Most editors use the same JSON shape. Add to their MCP settings file:
+          </p>
           <Code>{`{
   "mcpServers": {
     "bloxsmith": {
@@ -146,6 +195,27 @@ headers = { Authorization = "Bearer YOUR_MCP_TOKEN" }`}</Code>
   }
 }`}</Code>
         </section>
+
+        <section className="space-y-3">
+          <h2 className="text-2xl font-semibold">Any other MCP client</h2>
+          <p className="text-muted-foreground">
+            BloxSmith implements the standard MCP <strong>Streamable HTTP</strong>{" "}
+            transport. If your client supports it, point it at the endpoint above
+            with the <code className="bg-muted px-1.5 py-0.5 rounded">Authorization</code>{" "}
+            header. To verify the connection from a terminal:
+          </p>
+          <Code>{`curl -X POST ${endpoint} \\
+  -H "Authorization: Bearer YOUR_MCP_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -H "Accept: application/json, text/event-stream" \\
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`}</Code>
+          <p className="text-sm text-muted-foreground">
+            A successful response lists <code>list_my_projects</code>,{" "}
+            <code>build_roblox</code>, and the other tools below.
+          </p>
+        </section>
+
+
 
         <section className="space-y-3">
           <h2 className="text-2xl font-semibold">Available tools</h2>
