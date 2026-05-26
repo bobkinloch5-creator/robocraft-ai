@@ -166,5 +166,34 @@ export const Route = createFileRoute("/changelog")({
       { property: "og:url", content: "https://bloxsmith.pro/changelog" },
     ],
     links: [{ rel: "canonical", href: "https://bloxsmith.pro/changelog" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Blog",
+          name: "BloxSmith Changelog",
+          url: "https://bloxsmith.pro/changelog",
+          blogPost: [
+            {
+              "@type": "BlogPosting",
+              headline: "Extended Project Scanner & Edit Mode Verification",
+              description: "A major update to the Roblox Studio plugin and website communication layer to improve reliability, security, and project awareness.",
+              datePublished: "2026-05-26",
+              author: { "@type": "Organization", name: "BloxSmith" },
+              url: "https://bloxsmith.pro/changelog#v2-1-0",
+            },
+            {
+              "@type": "BlogPosting",
+              headline: "Migration to Groq AI & Complete UI Overhaul",
+              description: "We've rebuilt our core AI generation engine for lightning-fast responses and redesigned key sections of the dashboard.",
+              datePublished: "2026-05-24",
+              author: { "@type": "Organization", name: "BloxSmith" },
+              url: "https://bloxsmith.pro/changelog#v2-0-0",
+            },
+          ],
+        }),
+      },
+    ],
   }),
 });
