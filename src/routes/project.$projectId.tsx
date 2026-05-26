@@ -1237,7 +1237,7 @@ function ProjectEditor() {
         )}
         {/* File tree */}
         <aside
-          className={`${mobileTab === "files" ? "block" : "hidden"} lg:block border-r border-border bg-surface/20 overflow-y-auto max-h-[calc(100vh-8rem)] flex flex-col`}
+          className={`${mobileTab === "files" ? "block" : "hidden"} ${showFiles ? "lg:block" : "lg:hidden"} border-r border-border bg-surface/20 overflow-y-auto max-h-[calc(100vh-8rem)] flex flex-col`}
         >
           <div className="p-3 space-y-3 border-b border-border/40 shrink-0">
             <div className="flex items-center justify-between">
