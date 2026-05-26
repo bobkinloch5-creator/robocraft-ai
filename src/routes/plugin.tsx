@@ -11,6 +11,8 @@ import {
   Check,
   Copy,
   Download,
+  Eye,
+  EyeOff,
   KeyRound,
   Laptop,
   Loader2,
@@ -21,6 +23,7 @@ import {
   ShieldCheck,
   Wifi,
 } from "lucide-react";
+
 import pluginSource from "../../plugin-src/BloxSmith.server.lua?raw";
 import { AutoPluginInstaller } from "@/components/AutoPluginInstaller";
 
@@ -68,6 +71,8 @@ function PluginWizard() {
   const [installed, setInstalled] = useState(false);
   const [httpEnabled, setHttpEnabled] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  const [showToken, setShowToken] = useState(false);
+
   const [genBusy, setGenBusy] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
@@ -98,6 +103,8 @@ function PluginWizard() {
     try {
       const { token: t } = await runGenToken({});
       setToken(t);
+      setShowToken(false);
+
       setVerified(false);
       toast.success("New plugin token generated");
     } catch (e: any) {
@@ -409,15 +416,25 @@ function PluginWizard() {
                     <div className="mt-4 rounded-xl border border-primary/40 bg-primary/5 p-3">
                       <div className="flex items-center justify-between gap-3">
                         <code className="text-sm font-mono break-all text-primary-glow">
-                          {token}
+                          {showToken ? token : "•".repeat(Math.min(token.length, 48))}
                         </code>
-                        <button
-                          onClick={copy}
-                          className="shrink-0 inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
-                        >
-                          <Copy className="h-3 w-3" /> Copy
-                        </button>
+                        <div className="shrink-0 flex items-center gap-2">
+                          <button
+                            onClick={() => setShowToken((v) => !v)}
+                            className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold hover:bg-surface-elevated"
+                            title={showToken ? "Hide token" : "Show token"}
+                          >
+                            {showToken ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                          </button>
+                          <button
+                            onClick={copy}
+                            className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+                          >
+                            <Copy className="h-3 w-3" /> Copy
+                          </button>
+                        </div>
                       </div>
+
                       <p className="mt-2 text-[11px] text-muted-foreground">
                         Paste this into the BloxSmith plugin panel in Studio, then continue.
                       </p>

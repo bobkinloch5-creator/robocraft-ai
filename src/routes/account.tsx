@@ -22,7 +22,10 @@ import {
   BookOpen,
   Ticket,
   Gift,
+  Eye,
+  EyeOff,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { useDailyClaimCooldown } from "@/hooks/useDailyClaimCooldown";
 import { DiscordRewards } from "@/components/DiscordRewards";
@@ -48,6 +51,8 @@ function Account() {
   const { user, profile, loading, refresh, roles } = useAuth();
   const nav = useNavigate();
   const [token, setToken] = useState<string | null>(null);
+  const [showToken, setShowToken] = useState(false);
+
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
   const [specialization, setSpecialization] = useState("");
@@ -195,6 +200,8 @@ function Account() {
     try {
       const { token } = await runToken({});
       setToken(token);
+      setShowToken(false);
+
       toast.success("Token generated. Save it — it won't be shown again.");
     } catch (e: any) {
       toast.error(e.message);
@@ -397,8 +404,15 @@ function Account() {
               {token ? (
                 <div className="flex gap-2">
                   <code className="flex-1 rounded-lg bg-surface-elevated border border-border px-3 py-2 text-xs font-mono break-all select-all text-primary-glow">
-                    {token}
+                    {showToken ? token : "•".repeat(Math.min(token.length, 48))}
                   </code>
+                  <button
+                    onClick={() => setShowToken((v) => !v)}
+                    className="rounded-lg border border-border px-3 py-2 hover:bg-surface-elevated transition"
+                    title={showToken ? "Hide token" : "Show token"}
+                  >
+                    {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(token);
@@ -410,6 +424,7 @@ function Account() {
                     <Copy className="h-4 w-4" />
                   </button>
                 </div>
+
               ) : (
                 <div className="rounded-lg bg-surface-elevated/40 border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
                   Security Token hidden. Click below to retrieve or generate a token.
