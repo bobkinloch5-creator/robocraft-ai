@@ -425,6 +425,35 @@ local function appendLog(message)
 	print("[BloxSmith] " .. tostring(message))
 end
 
+-- Session counters + last-sync heartbeat. Reset every plugin load. Surfaced
+-- in the STATS info row so the user can tell at a glance how many actions
+-- actually landed vs. failed without scrolling through the log buffer.
+local statsApplied, statsSkipped, statsErrors = 0, 0, 0
+local lastSyncAt = 0
+local statsInfo = infoRow(5, "STATS")
+local function refreshStatsInfo()
+	local agoText
+	if lastSyncAt == 0 then
+		agoText = "never"
+	else
+		local d = os.time() - lastSyncAt
+		if d < 2 then agoText = "just now"
+		elseif d < 60 then agoText = d .. "s ago"
+		elseif d < 3600 then agoText = math.floor(d/60) .. "m ago"
+		else agoText = math.floor(d/3600) .. "h ago"
+		end
+	end
+	statsInfo.Text = ("Applied %d · Skipped %d · Errors %d · Last sync: %s"):format(
+		statsApplied, statsSkipped, statsErrors, agoText)
+end
+refreshStatsInfo()
+task.spawn(function()
+	while true do
+		task.wait(2)
+		pcall(refreshStatsInfo)
+	end
+end)
+
 local footer = Instance.new("TextLabel", root)
 footer.LayoutOrder = 7
 footer.BackgroundTransparency = 1
@@ -515,10 +544,11 @@ local function utilityButton(parent, text, widthScale, order)
 	return b
 end
 
-local syncNowBtn      = utilityButton(utilityRow, "Sync Now",     0.25, 1)
-local reconnectBtn    = utilityButton(utilityRow, "Reconnect",    0.25, 2)
-local cancelScanBtn   = utilityButton(utilityRow, "Cancel Scan",  0.25, 3)
-local cleanSyncedBtn  = utilityButton(utilityRow, "Clean Synced", 0.25, 4)
+local syncNowBtn      = utilityButton(utilityRow, "Sync Now",     0.2, 1)
+local reconnectBtn    = utilityButton(utilityRow, "Reconnect",    0.2, 2)
+local cancelScanBtn   = utilityButton(utilityRow, "Cancel Scan",  0.2, 3)
+local cleanSyncedBtn  = utilityButton(utilityRow, "Clean Synced", 0.2, 4)
+local testConnBtn     = utilityButton(utilityRow, "Test",         0.2, 5)
 
 -- Preview mode row: when ON, incoming AI actions are stashed locally so you
 -- can review every script + change before it touches your place. Stays in
@@ -1690,6 +1720,8 @@ local function dispatch(action)
 	if not fn then return false, "unknown action: " .. tostring(action.type) end
 	if actionTouchesIgnored(action) then
 		appendLog("Skipped " .. tostring(action.type) .. " — matches ignore filter")
+		statsSkipped = statsSkipped + 1
+		pcall(refreshStatsInfo)
 		return true
 	end
 	return fn(action)
@@ -1728,7 +1760,9 @@ local function applyActions(actions, sourceLabel)
 		if #reports > 0 then
 			pcall(function() postJSON("/report", { reports = reports }) end)
 		end
-		return
+		statsErrors = statsErrors + #actions
+		pcall(refreshStatsInfo)
+		return 0, #actions, {}
 	end
 
 	setPill("executing")
@@ -1744,6 +1778,7 @@ local function applyActions(actions, sourceLabel)
 
 	local ok, fail = 0, 0
 	local reports = {}
+	local failedDetails = {}
 	for _, a in ipairs(actions) do
 		local success, e = pcall(dispatch, a)
 		local executed = success and e ~= false
@@ -1753,6 +1788,7 @@ local function applyActions(actions, sourceLabel)
 		else
 			fail = fail + 1
 			local errMsg = tostring(e)
+			table.insert(failedDetails, { action = a, error = errMsg })
 			if a.id then table.insert(reports, { id = a.id, status = "failed", error = errMsg }) end
 			pcall(function()
 				postJSON("/errors", { errors = {{
@@ -1778,6 +1814,11 @@ local function applyActions(actions, sourceLabel)
 	if fail > 0 then setPill("error") else setPill("complete") end
 	appendLog(("Command executed: %d ok, %d failed"):format(ok, fail))
 
+	-- Bump session counters for the STATS row.
+	statsApplied = statsApplied + ok
+	statsErrors  = statsErrors  + fail
+	pcall(refreshStatsInfo)
+
 	task.defer(pushSnapshot)
 	task.delay(3, function()
 		if connected then setPill("connected") end
@@ -1785,6 +1826,8 @@ local function applyActions(actions, sourceLabel)
 
 	syncInfo.Text = ("Built %d action(s)%s · %s · undoable"):format(
 		ok, (fail > 0 and (" · " .. fail .. " failed") or ""), os.date("%H:%M:%S"))
+
+	return ok, fail, failedDetails
 end
 
 -- Tells the website "these actions were rejected" so the build status doesn't
@@ -1965,10 +2008,19 @@ local function openPreviewOverlay()
 		typeTag.Size = UDim2.new(1, -72, 1, 0)
 		typeTag.Font = Enum.Font.GothamBold
 		typeTag.TextSize = 10
-		typeTag.TextColor3 = C.accent
+		typeTag.TextColor3 = a.error and Color3.fromRGB(255, 120, 120) or C.accent
 		typeTag.TextXAlignment = Enum.TextXAlignment.Left
-		typeTag.Text = ("#%d  ·  %s"):format(i, string.upper(tostring(a.type or "?")))
+		typeTag.Text = ("#%d  ·  %s%s"):format(
+			i,
+			string.upper(tostring(a.type or "?")),
+			a.error and "  ·  FAILED" or "")
 		typeTag.ZIndex = 65
+
+		-- If the action previously failed during Apply All, paint the row
+		-- with a red tint so it's visually obvious it needs attention.
+		if a.error then
+			row.BackgroundColor3 = Color3.fromRGB(48, 22, 28)
+		end
 
 		skipBtn.MouseButton1Click:Connect(function()
 			skipFlags[i] = not skipFlags[i]
@@ -2019,6 +2071,30 @@ local function openPreviewOverlay()
 			cp.PaddingTop = UDim.new(0, 4); cp.PaddingBottom = UDim.new(0, 4)
 			cp.PaddingLeft = UDim.new(0, 6); cp.PaddingRight = UDim.new(0, 6)
 		end
+
+		-- Render the captured error from a previous Apply All run, so the
+		-- user can see exactly why this action failed and decide to skip,
+		-- fix it on the website side, or retry.
+		if a.error then
+			local errLabel = Instance.new("TextLabel", row)
+			errLabel.LayoutOrder = 4
+			errLabel.BackgroundColor3 = Color3.fromRGB(70, 24, 32)
+			errLabel.BorderSizePixel = 0
+			errLabel.AutomaticSize = Enum.AutomaticSize.Y
+			errLabel.Size = UDim2.new(1, 0, 0, 0)
+			errLabel.Font = Enum.Font.GothamMedium
+			errLabel.TextSize = 11
+			errLabel.TextColor3 = Color3.fromRGB(255, 190, 190)
+			errLabel.TextXAlignment = Enum.TextXAlignment.Left
+			errLabel.TextYAlignment = Enum.TextYAlignment.Top
+			errLabel.TextWrapped = true
+			errLabel.Text = "⚠ " .. tostring(a.error)
+			errLabel.ZIndex = 64
+			corner(errLabel, 4)
+			local ep = Instance.new("UIPadding", errLabel)
+			ep.PaddingTop = UDim.new(0, 4); ep.PaddingBottom = UDim.new(0, 4)
+			ep.PaddingLeft = UDim.new(0, 6); ep.PaddingRight = UDim.new(0, 6)
+		end
 	end
 
 	-- Bottom button row
@@ -2062,6 +2138,8 @@ local function openPreviewOverlay()
 		refreshReviewBtnLabel()
 		closePreviewOverlay()
 		reportDiscarded(batch)
+		statsSkipped = statsSkipped + #batch
+		pcall(refreshStatsInfo)
 		syncInfo.Text = ("Discarded %d pending action(s)"):format(#batch)
 	end)
 	apply.MouseButton1Click:Connect(function()
@@ -2074,10 +2152,29 @@ local function openPreviewOverlay()
 		previewSeenIds = {}
 		refreshReviewBtnLabel()
 		closePreviewOverlay()
-		if #toDiscard > 0 then reportDiscarded(toDiscard) end
+		if #toDiscard > 0 then
+			reportDiscarded(toDiscard)
+			statsSkipped = statsSkipped + #toDiscard
+			pcall(refreshStatsInfo)
+		end
 		if #toApply > 0 then
-			applyActions(toApply, "preview apply")
-			syncInfo.Text = ("Applied %d, skipped %d"):format(#toApply, #toDiscard)
+			local okN, failN, failedDetails = applyActions(toApply, "preview apply")
+			-- If anything failed, re-queue just the failed actions with their
+			-- error attached, and re-open the overlay so the user can see
+			-- exactly what broke and why.
+			if failedDetails and #failedDetails > 0 then
+				for _, fd in ipairs(failedDetails) do
+					fd.action.error = fd.error
+					table.insert(pendingPreview, fd.action)
+					local key = fd.action.id or (tostring(fd.action.type) .. ":" .. tostring(fd.action.name))
+					previewSeenIds[key] = true
+				end
+				refreshReviewBtnLabel()
+				syncInfo.Text = ("Applied %d, %d failed (review below)"):format(okN or 0, failN or #failedDetails)
+				task.defer(openPreviewOverlay)
+			else
+				syncInfo.Text = ("Applied %d, skipped %d"):format(#toApply, #toDiscard)
+			end
 		else
 			syncInfo.Text = ("Nothing applied — skipped %d"):format(#toDiscard)
 		end
@@ -2103,6 +2200,8 @@ local function pull(manual)
 	if getPaused() then syncInfo.Text = "Paused — incoming actions are ignored"; return end
 	local data, err = postJSON("/sync", { projectId = activeProjectId, manual = manual == true })
 	if not data then syncInfo.Text = "Sync error: " .. tostring(err); return end
+	lastSyncAt = os.time()
+	pcall(refreshStatsInfo)
 
 	local actions = data.actions or {}
 	if #actions == 0 then return end
@@ -2366,6 +2465,54 @@ cleanSyncedBtn.MouseButton1Click:Connect(function()
 	appendLog("Clean Synced: removed " .. tostring(removed) .. " object(s)")
 	task.defer(pushSnapshot)
 end)
+
+-- Test Connection: pings the server with the current token + API URL and
+-- reports whether the token is valid and the server is reachable. Works
+-- whether or not a project is currently connected.
+testConnBtn.MouseButton1Click:Connect(function()
+	if getToken() == "" then
+		syncInfo.Text = "❌ Test failed — no plugin token set"
+		appendLog("Test Connection: no token")
+		return
+	end
+	local originalText = testConnBtn.Text
+	testConnBtn.Text = "Testing…"
+	task.spawn(function()
+		local apiBase = getApiBase()
+		local probeId = activeProjectId or "00000000-0000-0000-0000-000000000000"
+		local ok, res = pcall(function()
+			return HttpService:RequestAsync({
+				Url = apiBase .. "/sync",
+				Method = "POST",
+				Headers = {
+					["Content-Type"] = "application/json",
+					["x-plugin-token"] = getToken(),
+				},
+				Body = HttpService:JSONEncode({ projectId = probeId, manual = true }),
+			})
+		end)
+		testConnBtn.Text = originalText
+		if not ok then
+			syncInfo.Text = "❌ Cannot reach " .. apiBase
+			appendLog("Test Connection failed: " .. tostring(res))
+			return
+		end
+		local code = res.StatusCode
+		if code == 401 or code == 403 then
+			syncInfo.Text = "❌ Token rejected by server (HTTP " .. code .. ")"
+			appendLog("Test Connection: token rejected (" .. code .. ")")
+		elseif code >= 200 and code < 500 then
+			-- 2xx = full success; 404/409/400 = server reachable + token
+			-- valid, just no/invalid project — still a healthy probe.
+			syncInfo.Text = ("✅ Server reachable · token OK (HTTP %d)"):format(code)
+			appendLog("Test Connection: OK (" .. code .. ")")
+		else
+			syncInfo.Text = ("⚠️ Server error HTTP %d"):format(code)
+			appendLog("Test Connection: server error " .. code)
+		end
+	end)
+end)
+
 button.Click:Connect(function() widget.Enabled = not widget.Enabled end)
 
 -- Background loop: pull actions + push context + auto-reconnect retries
