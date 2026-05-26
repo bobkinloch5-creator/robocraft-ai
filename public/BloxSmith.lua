@@ -342,15 +342,15 @@ tokenBox.FocusLost:Connect(function() tokenStroke.Color = C.stroke; tokenStroke.
 -- Primary button
 local connectBtn = Instance.new("TextButton", root)
 connectBtn.LayoutOrder = 5
-connectBtn.Size = UDim2.new(1,0,0,38)
+connectBtn.Size = UDim2.new(1,0,0,32)
 connectBtn.BackgroundColor3 = C.primary
 connectBtn.TextColor3 = Color3.new(1,1,1)
 connectBtn.Text = "Connect"
-connectBtn.Font = Enum.Font.GothamBold; connectBtn.TextSize = 13
+connectBtn.Font = Enum.Font.GothamBold; connectBtn.TextSize = 12
 connectBtn.BorderSizePixel = 0
 connectBtn.AutoButtonColor = false
-corner(connectBtn, 9)
-shadow(connectBtn, 0.7, 9)
+corner(connectBtn, 7)
+shadow(connectBtn, 0.75, 8)
 local connectGrad = gradient(connectBtn,
 	Color3.fromRGB(132, 118, 255), Color3.fromRGB(92, 78, 232), 115)
 connectBtn:SetAttribute("Base", "primary")
