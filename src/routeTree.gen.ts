@@ -29,6 +29,7 @@ import { Route as CheckoutPackRouteImport } from './routes/checkout.$pack'
 import { Route as ApiStudioSnapshotRouteImport } from './routes/api/studio/snapshot'
 import { Route as ApiStudioResultRouteImport } from './routes/api/studio/result'
 import { Route as ApiStudioPollRouteImport } from './routes/api/studio/poll'
+import { Route as ApiPublicMcpRouteImport } from './routes/api/public/mcp'
 import { Route as ApiAssistantExecuteRouteImport } from './routes/api/assistant/execute'
 import { Route as ApiPublicPluginSyncRouteImport } from './routes/api/public/plugin/sync'
 import { Route as ApiPublicPluginReportRouteImport } from './routes/api/public/plugin/report'
@@ -137,6 +138,11 @@ const ApiStudioPollRoute = ApiStudioPollRouteImport.update({
   path: '/api/studio/poll',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicMcpRoute = ApiPublicMcpRouteImport.update({
+  id: '/api/public/mcp',
+  path: '/api/public/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAssistantExecuteRoute = ApiAssistantExecuteRouteImport.update({
   id: '/api/assistant/execute',
   path: '/api/assistant/execute',
@@ -192,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/checkout/custom': typeof CheckoutCustomRoute
   '/project/$projectId': typeof ProjectProjectIdRoute
   '/api/assistant/execute': typeof ApiAssistantExecuteRoute
+  '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/studio/poll': typeof ApiStudioPollRoute
   '/api/studio/result': typeof ApiStudioResultRoute
   '/api/studio/snapshot': typeof ApiStudioSnapshotRoute
@@ -221,6 +228,7 @@ export interface FileRoutesByTo {
   '/checkout/custom': typeof CheckoutCustomRoute
   '/project/$projectId': typeof ProjectProjectIdRoute
   '/api/assistant/execute': typeof ApiAssistantExecuteRoute
+  '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/studio/poll': typeof ApiStudioPollRoute
   '/api/studio/result': typeof ApiStudioResultRoute
   '/api/studio/snapshot': typeof ApiStudioSnapshotRoute
@@ -251,6 +259,7 @@ export interface FileRoutesById {
   '/checkout/custom': typeof CheckoutCustomRoute
   '/project/$projectId': typeof ProjectProjectIdRoute
   '/api/assistant/execute': typeof ApiAssistantExecuteRoute
+  '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/studio/poll': typeof ApiStudioPollRoute
   '/api/studio/result': typeof ApiStudioResultRoute
   '/api/studio/snapshot': typeof ApiStudioSnapshotRoute
@@ -282,6 +291,7 @@ export interface FileRouteTypes {
     | '/checkout/custom'
     | '/project/$projectId'
     | '/api/assistant/execute'
+    | '/api/public/mcp'
     | '/api/studio/poll'
     | '/api/studio/result'
     | '/api/studio/snapshot'
@@ -311,6 +321,7 @@ export interface FileRouteTypes {
     | '/checkout/custom'
     | '/project/$projectId'
     | '/api/assistant/execute'
+    | '/api/public/mcp'
     | '/api/studio/poll'
     | '/api/studio/result'
     | '/api/studio/snapshot'
@@ -340,6 +351,7 @@ export interface FileRouteTypes {
     | '/checkout/custom'
     | '/project/$projectId'
     | '/api/assistant/execute'
+    | '/api/public/mcp'
     | '/api/studio/poll'
     | '/api/studio/result'
     | '/api/studio/snapshot'
@@ -370,6 +382,7 @@ export interface RootRouteChildren {
   CheckoutCustomRoute: typeof CheckoutCustomRoute
   ProjectProjectIdRoute: typeof ProjectProjectIdRoute
   ApiAssistantExecuteRoute: typeof ApiAssistantExecuteRoute
+  ApiPublicMcpRoute: typeof ApiPublicMcpRoute
   ApiStudioPollRoute: typeof ApiStudioPollRoute
   ApiStudioResultRoute: typeof ApiStudioResultRoute
   ApiStudioSnapshotRoute: typeof ApiStudioSnapshotRoute
@@ -523,6 +536,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStudioPollRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/mcp': {
+      id: '/api/public/mcp'
+      path: '/api/public/mcp'
+      fullPath: '/api/public/mcp'
+      preLoaderRoute: typeof ApiPublicMcpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/assistant/execute': {
       id: '/api/assistant/execute'
       path: '/api/assistant/execute'
@@ -594,6 +614,7 @@ const rootRouteChildren: RootRouteChildren = {
   CheckoutCustomRoute: CheckoutCustomRoute,
   ProjectProjectIdRoute: ProjectProjectIdRoute,
   ApiAssistantExecuteRoute: ApiAssistantExecuteRoute,
+  ApiPublicMcpRoute: ApiPublicMcpRoute,
   ApiStudioPollRoute: ApiStudioPollRoute,
   ApiStudioResultRoute: ApiStudioResultRoute,
   ApiStudioSnapshotRoute: ApiStudioSnapshotRoute,
