@@ -168,17 +168,9 @@ export const Route = createFileRoute("/api/public/mcp")({
   server: {
     handlers: {
       POST: async ({ request }) => authedHandler(request),
-      GET: async () => methodNotAllowed(),
+      GET: async () => publicDiscovery(),
       DELETE: async () => methodNotAllowed(),
-      OPTIONS: async () =>
-        new Response(null, {
-          status: 204,
-          headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
-          },
-        }),
+      OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
     },
   },
 });
