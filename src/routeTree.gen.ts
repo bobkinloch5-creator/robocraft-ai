@@ -15,6 +15,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PluginRouteImport } from './routes/plugin'
+import { Route as McpServersRouteImport } from './routes/mcp-servers'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FaqRouteImport } from './routes/faq'
@@ -27,7 +28,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjectProjectIdRouteImport } from './routes/project.$projectId'
 import { Route as CheckoutCustomRouteImport } from './routes/checkout.custom'
 import { Route as CheckoutPackRouteImport } from './routes/checkout.$pack'
-import { Route as AuthenticatedMcpServersRouteImport } from './routes/_authenticated/mcp-servers'
 import { Route as ApiStudioSnapshotRouteImport } from './routes/api/studio/snapshot'
 import { Route as ApiStudioResultRouteImport } from './routes/api/studio/result'
 import { Route as ApiStudioPollRouteImport } from './routes/api/studio/poll'
@@ -68,6 +68,11 @@ const PricingRoute = PricingRouteImport.update({
 const PluginRoute = PluginRouteImport.update({
   id: '/plugin',
   path: '/plugin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpServersRoute = McpServersRouteImport.update({
+  id: '/mcp-servers',
+  path: '/mcp-servers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -128,11 +133,6 @@ const CheckoutCustomRoute = CheckoutCustomRouteImport.update({
 const CheckoutPackRoute = CheckoutPackRouteImport.update({
   id: '/checkout/$pack',
   path: '/checkout/$pack',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedMcpServersRoute = AuthenticatedMcpServersRouteImport.update({
-  id: '/_authenticated/mcp-servers',
-  path: '/mcp-servers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiStudioSnapshotRoute = ApiStudioSnapshotRouteImport.update({
@@ -201,13 +201,13 @@ export interface FileRoutesByFullPath {
   '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/mcp-servers': typeof McpServersRoute
   '/plugin': typeof PluginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
-  '/mcp-servers': typeof AuthenticatedMcpServersRoute
   '/checkout/$pack': typeof CheckoutPackRoute
   '/checkout/custom': typeof CheckoutCustomRoute
   '/project/$projectId': typeof ProjectProjectIdRoute
@@ -233,13 +233,13 @@ export interface FileRoutesByTo {
   '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/mcp-servers': typeof McpServersRoute
   '/plugin': typeof PluginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
-  '/mcp-servers': typeof AuthenticatedMcpServersRoute
   '/checkout/$pack': typeof CheckoutPackRoute
   '/checkout/custom': typeof CheckoutCustomRoute
   '/project/$projectId': typeof ProjectProjectIdRoute
@@ -266,13 +266,13 @@ export interface FileRoutesById {
   '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/mcp-servers': typeof McpServersRoute
   '/plugin': typeof PluginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
-  '/_authenticated/mcp-servers': typeof AuthenticatedMcpServersRoute
   '/checkout/$pack': typeof CheckoutPackRoute
   '/checkout/custom': typeof CheckoutCustomRoute
   '/project/$projectId': typeof ProjectProjectIdRoute
@@ -300,13 +300,13 @@ export interface FileRouteTypes {
     | '/faq'
     | '/login'
     | '/mcp'
+    | '/mcp-servers'
     | '/plugin'
     | '/pricing'
     | '/privacy'
     | '/signup'
     | '/sitemap.xml'
     | '/terms'
-    | '/mcp-servers'
     | '/checkout/$pack'
     | '/checkout/custom'
     | '/project/$projectId'
@@ -332,13 +332,13 @@ export interface FileRouteTypes {
     | '/faq'
     | '/login'
     | '/mcp'
+    | '/mcp-servers'
     | '/plugin'
     | '/pricing'
     | '/privacy'
     | '/signup'
     | '/sitemap.xml'
     | '/terms'
-    | '/mcp-servers'
     | '/checkout/$pack'
     | '/checkout/custom'
     | '/project/$projectId'
@@ -364,13 +364,13 @@ export interface FileRouteTypes {
     | '/faq'
     | '/login'
     | '/mcp'
+    | '/mcp-servers'
     | '/plugin'
     | '/pricing'
     | '/privacy'
     | '/signup'
     | '/sitemap.xml'
     | '/terms'
-    | '/_authenticated/mcp-servers'
     | '/checkout/$pack'
     | '/checkout/custom'
     | '/project/$projectId'
@@ -397,13 +397,13 @@ export interface RootRouteChildren {
   FaqRoute: typeof FaqRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
+  McpServersRoute: typeof McpServersRoute
   PluginRoute: typeof PluginRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
-  AuthenticatedMcpServersRoute: typeof AuthenticatedMcpServersRoute
   CheckoutPackRoute: typeof CheckoutPackRoute
   CheckoutCustomRoute: typeof CheckoutCustomRoute
   ProjectProjectIdRoute: typeof ProjectProjectIdRoute
@@ -462,6 +462,13 @@ declare module '@tanstack/react-router' {
       path: '/plugin'
       fullPath: '/plugin'
       preLoaderRoute: typeof PluginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp-servers': {
+      id: '/mcp-servers'
+      path: '/mcp-servers'
+      fullPath: '/mcp-servers'
+      preLoaderRoute: typeof McpServersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -546,13 +553,6 @@ declare module '@tanstack/react-router' {
       path: '/checkout/$pack'
       fullPath: '/checkout/$pack'
       preLoaderRoute: typeof CheckoutPackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/mcp-servers': {
-      id: '/_authenticated/mcp-servers'
-      path: '/mcp-servers'
-      fullPath: '/mcp-servers'
-      preLoaderRoute: typeof AuthenticatedMcpServersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/studio/snapshot': {
@@ -645,13 +645,13 @@ const rootRouteChildren: RootRouteChildren = {
   FaqRoute: FaqRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
+  McpServersRoute: McpServersRoute,
   PluginRoute: PluginRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
-  AuthenticatedMcpServersRoute: AuthenticatedMcpServersRoute,
   CheckoutPackRoute: CheckoutPackRoute,
   CheckoutCustomRoute: CheckoutCustomRoute,
   ProjectProjectIdRoute: ProjectProjectIdRoute,
@@ -670,3 +670,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
