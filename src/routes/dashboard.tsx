@@ -61,7 +61,11 @@ function Dashboard() {
     setClaiming(true);
     const { data, error } = await supabase.rpc("claim_daily_credits");
     setClaiming(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      if (error.message.includes("email_not_confirmed")) return toast.error("Please confirm your email before claiming daily credits.");
+      if (error.message.includes("account_too_new")) return toast.error("Account is too new — try again in a few minutes.");
+      return toast.error(error.message);
+    }
     const res = data as { claimed: boolean; reason?: string; amount?: number; credits?: number };
     if (!res.claimed) return toast.info("Already claimed today — come back tomorrow!");
     toast.success(`+${res.amount} daily credits! Balance: ${res.credits}`);
