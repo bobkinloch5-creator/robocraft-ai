@@ -1659,6 +1659,18 @@ function ProjectEditor() {
                 </span>
               </button>
               <button
+                onClick={() => toggleChatMode(!chatMode)}
+                className={`rounded-lg border px-2 py-2 text-left transition ${chatMode ? "border-accent/50 bg-accent/10" : "border-border bg-background/35 hover:bg-surface-elevated"}`}
+                title="Chat mode — ask questions, get ideas, get code to copy. Nothing is executed in Studio."
+              >
+                <span className="flex items-center gap-1.5 font-semibold text-foreground">
+                  <MessagesSquare className="h-3 w-3 text-accent" /> Chat
+                </span>
+                <span className="mt-0.5 block truncate text-muted-foreground">
+                  {chatMode ? "on" : `${CHAT_COST} cr`}
+                </span>
+              </button>
+              <button
                 onClick={() => toggleAutoExecute(!autoExecute)}
                 className={`rounded-lg border px-2 py-2 text-left transition ${autoExecute ? "border-success/40 bg-success/10" : "border-border bg-background/35 hover:bg-surface-elevated"}`}
                 title="Auto-build safe operations in Studio"
