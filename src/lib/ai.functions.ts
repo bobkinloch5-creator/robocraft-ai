@@ -1003,8 +1003,9 @@ Build EVERYTHING. Ship the complete game.`;
           {
             model,
             system: AUTOPILOT_SYSTEM,
-            prompt: `${liveBlock}\n\n${projectBlockAP}\n\nGAME DESCRIPTION:\n"""\n${description}\n"""\n\nBuild ON TOP of any existing files listed above. Return the full JSON object with every phase, every file body complete, and every structural action. No markdown, no code fences — JSON only.`,
-            ...(useTools ? { tools: slimTools, stopWhen: stepCountIs(20) } : {}),
+            prompt: `${liveBlock}\n\n${projectBlockAP}\n\nGAME DESCRIPTION:\n"""\n${description}\n"""\n\nBuild ON TOP of any existing files listed above. Ship the COMPLETE game — every phase, every file body complete, every structural action. Include the default "everything" scope (spawn area, leaderstats, DataStore, shop, HUD, main menu, settings, music, day/night, anti-exploit, admin stub) plus everything the user described. No markdown, no code fences — JSON only.`,
+            maxOutputTokens: 16000,
+            ...(useTools ? { tools: slimTools, stopWhen: stepCountIs(30) } : {}),
           },
           useTools ? "autopilotBuild" : "autopilotBuild-notools",
         );
