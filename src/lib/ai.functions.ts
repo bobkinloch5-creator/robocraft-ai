@@ -103,13 +103,14 @@ export const generateWithAI = createServerFn({ method: "POST" })
     let result: { message: string; files: GenFile[]; actions: GenAction[] };
     try {
       const fullPrompt = `${liveBlock}\n\nProject files in DB:\n${filesBlock || "(empty)"}\n\nUser request:\n${prompt}\n\nThink step-by-step. If you need current info (Roblox API, Luau patterns, free models, decals, sounds, meshes), USE the tools — web_search, roblox_asset_search, roblox_asset_thumbnail, roblox_asset_info, fetch_url.\n\nNOTE: If the user request is just a casual message, greeting, or general question (not requesting code changes/additions), simply reply naturally in the 'message' field of the JSON with empty 'files' and 'actions'. Finally respond with the JSON object as specified.`;
-      const { text: rawText } = await generateText({
+      const { generateTextWithToolFallback } = await import("./ai-retry.server");
+      const { text: rawText } = await generateTextWithToolFallback(generateText, {
         model,
         system: SYSTEM_PROMPT,
         prompt: fullPrompt,
         tools: { ...buildBloxSmithTools({ userId }), ...(await (await import("./mcp-client.server")).buildUserMcpTools(userId)) } as any,
         stopWhen: stepCountIs(50),
-      });
+      }, "generateWithAI");
       // Parse JSON from the raw text response
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
