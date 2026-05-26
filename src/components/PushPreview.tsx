@@ -4,7 +4,7 @@ import { applyGeneration } from "@/lib/ai.functions";
 import { toast } from "sonner";
 import {
   FileCode, Radio, Box, Folder, Image as ImageIcon, Wand2, Send, X,
-  ChevronDown, ChevronRight, Loader2, CheckCircle2, Zap,
+  ChevronDown, ChevronRight, Loader2, CheckCircle2, Zap, Eye, Copy,
 } from "lucide-react";
 
 type AnyAction = { type: string; [k: string]: any };
