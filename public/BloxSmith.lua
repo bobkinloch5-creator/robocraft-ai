@@ -66,6 +66,12 @@ local function getPaused()   return plugin:GetSetting("bs_paused") == true end
 local function setPaused(v)  plugin:SetSetting("bs_paused", v) end
 local function getPreview()  return plugin:GetSetting("bs_preview") == true end
 local function setPreview(v) plugin:SetSetting("bs_preview", v) end
+-- Clear Mode: when ON, the plugin ONLY applies incoming actions. It will
+-- never scan/push your project files, never re-materialize file lists,
+-- and never auto-send workspace context. Useful when the sync is noisy
+-- or you only want the AI to push changes you've explicitly asked for.
+local function getClearMode()  return plugin:GetSetting("bs_clear_mode") == true end
+local function setClearMode(v) plugin:SetSetting("bs_clear_mode", v) end
 
 local function postJSON(path, body)
 	local apiBase = getApiBase()
