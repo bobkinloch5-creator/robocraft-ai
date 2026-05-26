@@ -53,7 +53,25 @@ function Dashboard() {
     setProjects((p) => p.filter((x) => x.id !== id));
   };
 
-  if (loading) return <div className="min-h-screen grid place-items-center text-muted-foreground">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 py-8 space-y-8 animate-pulse">
+          <div className="space-y-3">
+            <div className="h-8 w-64 rounded bg-surface-elevated" />
+            <div className="h-4 w-40 rounded bg-surface-elevated" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => <div key={i} className="h-20 rounded-2xl bg-surface-elevated" />)}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((i) => <div key={i} className="h-32 rounded-2xl bg-surface-elevated" />)}
+          </div>
+        </main>
+      </div>
+    );
+  }
   if (!user) return null;
 
   return (
