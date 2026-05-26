@@ -66,6 +66,12 @@ local function getPaused()   return plugin:GetSetting("bs_paused") == true end
 local function setPaused(v)  plugin:SetSetting("bs_paused", v) end
 local function getPreview()  return plugin:GetSetting("bs_preview") == true end
 local function setPreview(v) plugin:SetSetting("bs_preview", v) end
+-- Clear Mode: when ON, the plugin ONLY applies incoming actions. It will
+-- never scan/push your project files, never re-materialize file lists,
+-- and never auto-send workspace context. Useful when the sync is noisy
+-- or you only want the AI to push changes you've explicitly asked for.
+local function getClearMode()  return plugin:GetSetting("bs_clear_mode") == true end
+local function setClearMode(v) plugin:SetSetting("bs_clear_mode", v) end
 
 local function postJSON(path, body)
 	local apiBase = getApiBase()
@@ -507,6 +513,37 @@ local function refreshPreviewToggleLabel()
 	end
 end
 refreshPreviewToggleLabel()
+
+-- Clear Mode row: when ON, the plugin acts as an apply-only client.
+-- No project scans, no snapshot uploads, no auto-context — incoming
+-- build actions are still executed (or queued in Preview Mode).
+local clearRow = Instance.new("Frame", root)
+clearRow.LayoutOrder = 13
+clearRow.BackgroundTransparency = 1
+clearRow.Size = UDim2.new(1,0,0,28)
+local clearList = Instance.new("UIListLayout", clearRow)
+clearList.FillDirection = Enum.FillDirection.Horizontal
+clearList.Padding = UDim.new(0,6)
+clearList.SortOrder = Enum.SortOrder.LayoutOrder
+
+local clearModeBtn = utilityButton(clearRow, "", 1, 1)
+local function refreshClearModeLabel()
+	clearModeBtn.Text = getClearMode()
+		and "🧹  Clear Mode: ON  (apply-only, no file sync)"
+		or  "🧹  Clear Mode: OFF  (full sync)"
+	clearModeBtn.TextColor3 = getClearMode() and C.accent or C.textDim
+end
+refreshClearModeLabel()
+clearModeBtn.MouseButton1Click:Connect(function()
+	setClearMode(not getClearMode())
+	refreshClearModeLabel()
+	if getClearMode() then
+		appendLog("Clear Mode enabled — file sync disabled")
+		syncInfo.Text = "Clear Mode — apply-only"
+	else
+		appendLog("Clear Mode disabled — full sync resumed")
+	end
+end)
 
 local function setPill(state)
 	local dotColor, label, textColor
@@ -1439,6 +1476,10 @@ end
 
 function pushSnapshot()
 	if not activeProjectId then return end
+	if getClearMode() then
+		syncInfo.Text = "Clear Mode — snapshot skipped"
+		return
+	end
 	if scanInProgress then
 		syncInfo.Text = "Scan already running"
 		return
@@ -1853,6 +1894,10 @@ end
 
 local function pushContext(force)
 	if not activeProjectId then return end
+	if getClearMode() then
+		ctxInfo.Text = "Clear Mode — context skipped"
+		return
+	end
 	local now = os.time()
 	if not force and (now - lastContextSentAt) < CTX_SECONDS then return end
 	lastContextSentAt = now
