@@ -111,6 +111,27 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_credit_claims: {
+        Row: {
+          claim_date: string
+          claimed_at: string
+          credits: number
+          user_id: string
+        }
+        Insert: {
+          claim_date: string
+          claimed_at?: string
+          credits: number
+          user_id: string
+        }
+        Update: {
+          claim_date?: string
+          claimed_at?: string
+          credits?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       generations: {
         Row: {
           created_at: string
@@ -517,6 +538,74 @@ export type Database = {
         }
         Relationships: []
       }
+      promo_codes: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string | null
+          credits: number
+          expires_at: string | null
+          id: string
+          max_redemptions: number | null
+          redemption_count: number
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          created_by?: string | null
+          credits: number
+          expires_at?: string | null
+          id?: string
+          max_redemptions?: number | null
+          redemption_count?: number
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          credits?: number
+          expires_at?: string | null
+          id?: string
+          max_redemptions?: number | null
+          redemption_count?: number
+        }
+        Relationships: []
+      }
+      promo_redemptions: {
+        Row: {
+          credits: number
+          id: string
+          promo_id: string
+          redeemed_at: string
+          user_id: string
+        }
+        Insert: {
+          credits: number
+          id?: string
+          promo_id: string
+          redeemed_at?: string
+          user_id: string
+        }
+        Update: {
+          credits?: number
+          id?: string
+          promo_id?: string
+          redeemed_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_redemptions_promo_id_fkey"
+            columns: ["promo_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       studio_errors: {
         Row: {
           created_at: string
@@ -594,6 +683,7 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      claim_daily_credits: { Args: never; Returns: Json }
       grant_credits_service: {
         Args: { _amount: number; _reason: string; _user_id: string }
         Returns: number
@@ -610,6 +700,7 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      redeem_promo_code: { Args: { _code: string }; Returns: number }
       refund_credits: {
         Args: { _amount: number; _reason?: string }
         Returns: number

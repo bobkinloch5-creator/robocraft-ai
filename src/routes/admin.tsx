@@ -20,6 +20,7 @@ export const Route = createFileRoute("/admin")({
 
 type Row = { id: string; email: string; display_name: string | null; credits: number };
 type PR = { id: string; user_id: string; pack_id: string; credits: number; amount: number; paypal_transaction_id: string; paypal_note: string | null; status: string; created_at: string };
+type Promo = { id: string; code: string; credits: number; max_redemptions: number | null; redemption_count: number; expires_at: string | null; active: boolean; created_at: string };
 
 function Admin() {
   const { user, isAdmin, loading } = useAuth();
@@ -29,6 +30,16 @@ function Admin() {
   const [stats, setStats] = useState<{ users: number; projects: number; generations: number } | null>(null);
   const [requests, setRequests] = useState<PR[]>([]);
   const [emails, setEmails] = useState<Record<string, string>>({});
+  const [promos, setPromos] = useState<Promo[]>([]);
+  const [newCode, setNewCode] = useState("");
+  const [newCredits, setNewCredits] = useState(50);
+  const [newMax, setNewMax] = useState<string>("");
+  const [newExpires, setNewExpires] = useState<string>("");
+
+  const loadPromos = async () => {
+    const { data } = await supabase.from("promo_codes").select("*").order("created_at", { ascending: false });
+    setPromos((data ?? []) as Promo[]);
+  };
 
   const loadRequests = async () => {
     const { data } = await supabase.from("payment_requests").select("*").eq("status", "pending").order("created_at", { ascending: false });
@@ -58,7 +69,39 @@ function Admin() {
       supabase.from("generations").select("id", { count: "exact", head: true }),
     ]).then(([u, p, g]) => setStats({ users: u.count ?? 0, projects: p.count ?? 0, generations: g.count ?? 0 }));
     loadRequests();
+    loadPromos();
   }, [isAdmin]);
+
+  const createPromo = async () => {
+    const code = newCode.trim().toUpperCase();
+    if (!code) return toast.error("Code required");
+    if (!Number.isFinite(newCredits) || newCredits <= 0) return toast.error("Credits must be > 0");
+    const payload: { code: string; credits: number; max_redemptions: number | null; expires_at: string | null; created_by: string | undefined } = {
+      code,
+      credits: newCredits,
+      max_redemptions: newMax ? parseInt(newMax, 10) : null,
+      expires_at: newExpires ? new Date(newExpires).toISOString() : null,
+      created_by: user?.id,
+    };
+    const { error } = await supabase.from("promo_codes").insert(payload);
+    if (error) return toast.error(error.message);
+    toast.success(`Promo ${code} created`);
+    setNewCode(""); setNewCredits(50); setNewMax(""); setNewExpires("");
+    loadPromos();
+  };
+
+  const togglePromo = async (p: Promo) => {
+    const { error } = await supabase.from("promo_codes").update({ active: !p.active }).eq("id", p.id);
+    if (error) return toast.error(error.message);
+    loadPromos();
+  };
+
+  const deletePromo = async (p: Promo) => {
+    if (!confirm(`Delete promo ${p.code}?`)) return;
+    const { error } = await supabase.from("promo_codes").delete().eq("id", p.id);
+    if (error) return toast.error(error.message);
+    loadPromos();
+  };
 
   const reviewPayment = async (pr: PR, approve: boolean) => {
     if (!user) return;
@@ -162,6 +205,43 @@ function Admin() {
               </tbody>
             </table>
           </div>
+        </section>
+
+        <section className="glass rounded-2xl p-6">
+          <h2 className="font-semibold mb-3">Promo codes</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 mb-4">
+            <input value={newCode} onChange={(e) => setNewCode(e.target.value)} placeholder="CODE" className="rounded-lg bg-surface-elevated border border-border px-3 py-1.5 text-sm uppercase" />
+            <input type="number" value={newCredits} onChange={(e) => setNewCredits(parseInt(e.target.value || "0", 10))} placeholder="Credits" className="rounded-lg bg-surface-elevated border border-border px-3 py-1.5 text-sm" />
+            <input type="number" value={newMax} onChange={(e) => setNewMax(e.target.value)} placeholder="Max uses (blank=∞)" className="rounded-lg bg-surface-elevated border border-border px-3 py-1.5 text-sm" />
+            <input type="datetime-local" value={newExpires} onChange={(e) => setNewExpires(e.target.value)} className="rounded-lg bg-surface-elevated border border-border px-3 py-1.5 text-sm" />
+            <button onClick={createPromo} className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground">Create</button>
+          </div>
+          {promos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No promo codes yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-xs uppercase text-muted-foreground">
+                  <tr><th className="py-2">Code</th><th>Credits</th><th>Uses</th><th>Expires</th><th>Status</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {promos.map((p) => (
+                    <tr key={p.id} className="border-t border-border">
+                      <td className="py-2 font-mono">{p.code}</td>
+                      <td>{p.credits}</td>
+                      <td>{p.redemption_count}{p.max_redemptions ? ` / ${p.max_redemptions}` : ""}</td>
+                      <td>{p.expires_at ? new Date(p.expires_at).toLocaleDateString() : "—"}</td>
+                      <td>{p.active ? <span className="text-success">Active</span> : <span className="text-muted-foreground">Disabled</span>}</td>
+                      <td className="text-right whitespace-nowrap">
+                        <button onClick={() => togglePromo(p)} className="text-xs rounded-md border border-border px-2 py-1 mr-1">{p.active ? "Disable" : "Enable"}</button>
+                        <button onClick={() => deletePromo(p)} className="text-xs rounded-md border border-border px-2 py-1">Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       </main>
       <Footer />

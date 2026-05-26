@@ -1604,7 +1604,7 @@ function ProjectEditor() {
             <div className="border-t border-border p-3 space-y-2 bg-destructive/5">
               <p className="text-sm font-semibold text-destructive">You're out of credits</p>
               <p className="text-xs text-muted-foreground">
-                Each build costs {GENERATE_COST} credits. Your balance refills to 200 free credits
+                Each build costs {GENERATE_COST} credits. Your balance gets +10 free credits daily
                 every day at midnight UTC, or buy a pack now to keep building.
               </p>
               <Link

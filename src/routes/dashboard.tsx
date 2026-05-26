@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { createProject as createProjectFn } from "@/lib/projects.functions";
 import { GAME_TYPES, STARTER_TEMPLATES } from "@/lib/templates";
-import { Plus, Folder, Plug, BookOpen, CreditCard, ShieldCheck, X, Gamepad2, Sparkles } from "lucide-react";
+import { Plus, Folder, Plug, BookOpen, CreditCard, ShieldCheck, X, Gamepad2, Sparkles, Gift, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { Onboarding } from "@/components/Onboarding";
 
@@ -24,6 +24,48 @@ function Dashboard() {
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState(false);
   const [replayTour, setReplayTour] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+
+  const refreshCredits = async () => {
+    if (!user) return;
+    const { data } = await supabase.from("profiles").select("credits").eq("id", user.id).single();
+    if (data && profile) (profile as { credits: number }).credits = data.credits;
+  };
+
+  const redeemPromo = async () => {
+    const code = promoCode.trim();
+    if (!code) return;
+    setRedeeming(true);
+    const { data, error } = await supabase.rpc("redeem_promo_code", { _code: code });
+    setRedeeming(false);
+    if (error) {
+      const map: Record<string, string> = {
+        invalid_code: "Invalid promo code",
+        inactive_code: "This code is no longer active",
+        expired_code: "This code has expired",
+        limit_reached: "This code has reached its redemption limit",
+        already_redeemed: "You already redeemed this code",
+      };
+      return toast.error(map[error.message] ?? error.message);
+    }
+    toast.success(`Promo redeemed — balance: ${data} credits`);
+    setPromoCode("");
+    await refreshCredits();
+    window.location.reload();
+  };
+
+  const claimDaily = async () => {
+    setClaiming(true);
+    const { data, error } = await supabase.rpc("claim_daily_credits");
+    setClaiming(false);
+    if (error) return toast.error(error.message);
+    const res = data as { claimed: boolean; reason?: string; amount?: number; credits?: number };
+    if (!res.claimed) return toast.info("Already claimed today — come back tomorrow!");
+    toast.success(`+${res.amount} daily credits! Balance: ${res.credits}`);
+    window.location.reload();
+  };
   const [form, setForm] = useState({ name: "", game_type: "Custom" as string, template: "Blank" as string, description: "" });
   const runCreate = useServerFn(createProjectFn);
 
@@ -113,6 +155,42 @@ function Dashboard() {
             </button>
           </div>
         </div>
+
+        {!isOwner && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="glass rounded-2xl p-5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-primary/15 grid place-items-center"><Gift className="h-5 w-5 text-primary-glow" /></div>
+                <div>
+                  <div className="font-medium">Daily free credits</div>
+                  <div className="text-xs text-muted-foreground">Claim +10 credits, once per day.</div>
+                </div>
+              </div>
+              <button onClick={claimDaily} disabled={claiming} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+                {claiming ? "Claiming…" : "Claim +10"}
+              </button>
+            </div>
+            <div className="glass rounded-2xl p-5 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-primary/15 grid place-items-center shrink-0"><Ticket className="h-5 w-5 text-primary-glow" /></div>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium">Have a promo code?</div>
+                <div className="mt-1.5 flex gap-2">
+                  <input
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    placeholder="ENTER CODE"
+                    className="flex-1 min-w-0 rounded-lg bg-surface-elevated border border-border px-3 py-2 text-sm uppercase"
+                    onKeyDown={(e) => { if (e.key === "Enter") redeemPromo(); }}
+                  />
+                  <button onClick={redeemPromo} disabled={redeeming || !promoCode.trim()} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+                    {redeeming ? "…" : "Redeem"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
