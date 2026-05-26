@@ -108,6 +108,7 @@ function Admin() {
     ]).then(([u, p, g]) => setStats({ users: u.count ?? 0, projects: p.count ?? 0, generations: g.count ?? 0 }));
     loadRequests();
     loadPromos();
+    loadPromoSubs();
   }, [isAdmin]);
 
   const createPromo = async () => {
