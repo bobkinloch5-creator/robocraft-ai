@@ -133,18 +133,18 @@ end
 -- UI (polished)
 ----------------------------------------------------------------
 local C = {
-	bg        = Color3.fromRGB(13, 13, 24),
-	panel     = Color3.fromRGB(22, 22, 38),
-	stroke    = Color3.fromRGB(45, 45, 70),
-	primary   = Color3.fromRGB(99, 91, 255),
-	primaryHi = Color3.fromRGB(124, 116, 255),
-	disconnect= Color3.fromRGB(60, 60, 90),
-	text      = Color3.fromRGB(235, 235, 245),
-	textDim   = Color3.fromRGB(150, 150, 175),
-	textMute  = Color3.fromRGB(105, 105, 130),
-	accent    = Color3.fromRGB(160, 150, 255),
-	success   = Color3.fromRGB(80, 220, 160),
-	idle      = Color3.fromRGB(120, 120, 150),
+	bg        = Color3.fromRGB(10, 10, 14),
+	panel     = Color3.fromRGB(17, 17, 22),
+	stroke    = Color3.fromRGB(38, 38, 48),
+	primary   = Color3.fromRGB(120, 110, 240),
+	primaryHi = Color3.fromRGB(142, 132, 250),
+	disconnect= Color3.fromRGB(38, 38, 48),
+	text      = Color3.fromRGB(240, 240, 245),
+	textDim   = Color3.fromRGB(160, 160, 175),
+	textMute  = Color3.fromRGB(100, 100, 115),
+	accent    = Color3.fromRGB(170, 160, 250),
+	success   = Color3.fromRGB(90, 220, 160),
+	idle      = Color3.fromRGB(110, 110, 130),
 }
 
 local UI_Elements = {
