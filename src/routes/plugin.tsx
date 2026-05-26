@@ -71,6 +71,8 @@ function PluginWizard() {
   const [installed, setInstalled] = useState(false);
   const [httpEnabled, setHttpEnabled] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  const [showToken, setShowToken] = useState(false);
+
   const [genBusy, setGenBusy] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
