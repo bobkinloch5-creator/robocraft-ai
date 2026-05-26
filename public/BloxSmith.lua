@@ -460,8 +460,8 @@ utilityList.FillDirection = Enum.FillDirection.Horizontal
 utilityList.Padding = UDim.new(0,6)
 utilityList.SortOrder = Enum.SortOrder.LayoutOrder
 
-local function utilityButton(text, widthScale, order)
-	local b = Instance.new("TextButton", utilityRow)
+local function utilityButton(parent, text, widthScale, order)
+	local b = Instance.new("TextButton", parent)
 	b.LayoutOrder = order
 	b.Size = UDim2.new(widthScale, -4, 1, 0)
 	b.BackgroundColor3 = C.panel
@@ -478,10 +478,35 @@ local function utilityButton(text, widthScale, order)
 	return b
 end
 
-local syncNowBtn = utilityButton("Sync Now", 0.25, 1)
-local reconnectBtn = utilityButton("Reconnect", 0.25, 2)
-local cancelScanBtn = utilityButton("Cancel Scan", 0.25, 3)
-local cleanSyncedBtn = utilityButton("Clean Synced", 0.25, 4)
+local syncNowBtn      = utilityButton(utilityRow, "Sync Now",     0.25, 1)
+local reconnectBtn    = utilityButton(utilityRow, "Reconnect",    0.25, 2)
+local cancelScanBtn   = utilityButton(utilityRow, "Cancel Scan",  0.25, 3)
+local cleanSyncedBtn  = utilityButton(utilityRow, "Clean Synced", 0.25, 4)
+
+-- Preview mode row: when ON, incoming AI actions are stashed locally so you
+-- can review every script + change before it touches your place. Stays in
+-- Studio edit mode (never enters Play).
+local previewRow = Instance.new("Frame", root)
+previewRow.LayoutOrder = 12
+previewRow.BackgroundTransparency = 1
+previewRow.Size = UDim2.new(1,0,0,28)
+local previewList = Instance.new("UIListLayout", previewRow)
+previewList.FillDirection = Enum.FillDirection.Horizontal
+previewList.Padding = UDim.new(0,6)
+previewList.SortOrder = Enum.SortOrder.LayoutOrder
+
+local previewToggleBtn = utilityButton(previewRow, "", 0.5, 1)
+local reviewBtn        = utilityButton(previewRow, "Review Pending (0)", 0.5, 2)
+
+local function refreshPreviewToggleLabel()
+	previewToggleBtn.Text = getPreview() and "👁  Preview Mode: ON" or "👁  Preview Mode: OFF"
+	if getPreview() then
+		previewToggleBtn.TextColor3 = C.accent
+	else
+		previewToggleBtn.TextColor3 = C.textDim
+	end
+end
+refreshPreviewToggleLabel()
 
 local function setPill(state)
 	local dotColor, label, textColor
