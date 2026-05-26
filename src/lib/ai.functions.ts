@@ -862,13 +862,14 @@ Output JSON:
     let plan: { summary: string; assumptions: string[]; phases: Phase[] };
 
     try {
-      const { text: rawText } = await generateText({
+      const { generateTextWithToolFallback } = await import("./ai-retry.server");
+      const { text: rawText } = await generateTextWithToolFallback(generateText, {
         model,
         system: AUTOPILOT_SYSTEM,
         prompt: `${liveBlock}\n\n${projectBlockAP}\n\nGAME DESCRIPTION:\n"""\n${description}\n"""\n\nThink deeply step-by-step. Build ON TOP of any existing files above — extend or refactor them rather than duplicating. Research what you need:\n- Use web_search for Roblox API references, Luau patterns, mechanics you're unsure about.\n- Use roblox_asset_search to find free models, decals, sounds, meshes that fit the game (then queue insertAsset actions).\n- Use roblox_asset_thumbnail / roblox_asset_info to verify an asset before using it.\nThen plan and build the entire game. Return the full JSON object with every phase, every file body complete, and every structural action (including insertAsset actions for any free assets you chose).`,
         tools: { ...buildBloxSmithTools({ userId }), ...(await (await import("./mcp-client.server")).buildUserMcpTools(userId)) } as any,
         stopWhen: stepCountIs(60),
-      });
+      }, "autopilotBuild");
       // Parse JSON from raw text
       const autoJsonMatch = rawText.match(/\{[\s\S]*\}/);
       if (!autoJsonMatch) throw new Error("AI did not return valid JSON.");
