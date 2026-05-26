@@ -221,6 +221,14 @@ export const Route = createFileRoute("/changelog")({
           blogPost: [
             {
               "@type": "BlogPosting",
+              headline: "MCP Servers, Promote-to-Earn & Admin Moderation Suite",
+              description: "Connect MCP servers, earn credits by promoting BloxSmith, and use the new admin moderation commands.",
+              datePublished: "2026-05-26",
+              author: { "@type": "Organization", name: "BloxSmith" },
+              url: "https://bloxsmith.pro/changelog#v2-2-0",
+            },
+            {
+              "@type": "BlogPosting",
               headline: "Extended Project Scanner & Edit Mode Verification",
               description: "A major update to the Roblox Studio plugin and website communication layer to improve reliability, security, and project awareness.",
               datePublished: "2026-05-26",
