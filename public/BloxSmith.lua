@@ -378,11 +378,11 @@ card.Size = UDim2.new(1,0,0,118)
 card.BackgroundColor3 = C.panel
 register(card, "panel")
 card.BorderSizePixel = 0
-corner(card, 10)
+corner(card, 8)
 stroke(card, C.stroke, 1)
 sheen(card)
-padAll(card, 12)
-local cardList = Instance.new("UIListLayout", card); cardList.Padding = UDim.new(0,6)
+padAll(card, 10)
+local cardList = Instance.new("UIListLayout", card); cardList.Padding = UDim.new(0,5)
 
 local function infoRow(order, labelText)
 	local row = Instance.new("Frame", card)
