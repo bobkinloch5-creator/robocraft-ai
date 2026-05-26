@@ -38,6 +38,78 @@ function Admin() {
   const [newMax, setNewMax] = useState<string>("");
   const [newExpires, setNewExpires] = useState<string>("");
   const [promoSubs, setPromoSubs] = useState<PromoSub[]>([]);
+  const [activity, setActivity] = useState<Activity[]>([]);
+  const [showBanned, setShowBanned] = useState(false);
+
+  const loadUsers = async () => {
+    const { data: profs } = await supabase
+      .from("profiles")
+      .select("id,email,display_name,credits,banned,ban_reason")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    const list = (profs ?? []) as Array<{ id: string; email: string; display_name: string | null; credits: number; banned: boolean; ban_reason: string | null }>;
+    const ids = list.map((p) => p.id);
+    if (ids.length === 0) { setRows([]); return; }
+    const [{ data: roles }, { data: projs }, { data: gens }] = await Promise.all([
+      supabase.from("user_roles").select("user_id,role").in("user_id", ids),
+      supabase.from("projects").select("user_id").in("user_id", ids),
+      supabase.from("generations").select("user_id").in("user_id", ids),
+    ]);
+    const roleMap: Record<string, string[]> = {};
+    (roles ?? []).forEach((r: { user_id: string; role: string }) => { (roleMap[r.user_id] ||= []).push(r.role); });
+    const pCount: Record<string, number> = {};
+    (projs ?? []).forEach((p: { user_id: string }) => { pCount[p.user_id] = (pCount[p.user_id] ?? 0) + 1; });
+    const gCount: Record<string, number> = {};
+    (gens ?? []).forEach((g: { user_id: string }) => { gCount[g.user_id] = (gCount[g.user_id] ?? 0) + 1; });
+    setRows(list.map((p) => ({ ...p, roles: roleMap[p.id] ?? ["user"], projects: pCount[p.id] ?? 0, generations: gCount[p.id] ?? 0 })));
+  };
+
+  const loadActivity = async () => {
+    const { data } = await supabase
+      .from("credit_transactions")
+      .select("id,user_id,amount,balance,reason,created_at")
+      .order("created_at", { ascending: false })
+      .limit(25);
+    const list = (data ?? []) as Activity[];
+    setActivity(list);
+    const ids = Array.from(new Set(list.map((r) => r.user_id))).filter((id) => !emails[id]);
+    if (ids.length) {
+      const { data: profs } = await supabase.from("profiles").select("id,email").in("id", ids);
+      const map: Record<string, string> = { ...emails };
+      (profs ?? []).forEach((p: { id: string; email: string }) => { map[p.id] = p.email; });
+      setEmails(map);
+    }
+  };
+
+  const toggleBan = async (r: Row) => {
+    if (r.banned) {
+      if (!confirm(`Unban ${r.email}?`)) return;
+      const { error } = await supabase.rpc("admin_set_ban", { _user_id: r.id, _banned: false, _reason: null });
+      if (error) return toast.error(error.message);
+      toast.success("Unbanned");
+    } else {
+      const reason = window.prompt(`Ban ${r.email}? Enter reason:`, "Violated terms");
+      if (!reason) return;
+      const { error } = await supabase.rpc("admin_set_ban", { _user_id: r.id, _banned: true, _reason: reason });
+      if (error) return toast.error(error.message);
+      toast.success("User banned");
+    }
+    loadUsers();
+  };
+
+  const toggleAdmin = async (r: Row) => {
+    const isAdminRow = r.roles.includes("admin");
+    if (!confirm(`${isAdminRow ? "Remove admin from" : "Make admin"} ${r.email}?`)) return;
+    const { error } = await supabase.rpc("admin_set_role", { _user_id: r.id, _role: "admin", _grant: !isAdminRow });
+    if (error) return toast.error(error.message);
+    toast.success(isAdminRow ? "Admin removed" : "Admin granted");
+    loadUsers();
+  };
+
+  const resetCredits = async (r: Row) => {
+    if (!confirm(`Reset credits to 0 for ${r.email}? (current: ${r.credits})`)) return;
+    await adjustCredits(r.id, -r.credits, "admin reset to 0");
+  };
 
   const loadPromoSubs = async () => {
     const { data } = await supabase
