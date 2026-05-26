@@ -388,20 +388,20 @@ local function infoRow(order, labelText)
 	local row = Instance.new("Frame", card)
 	row.LayoutOrder = order
 	row.BackgroundTransparency = 1
-	row.Size = UDim2.new(1,0,0,16)
+	row.Size = UDim2.new(1,0,0,14)
 	local lbl = Instance.new("TextLabel", row)
 	lbl.BackgroundTransparency = 1
-	lbl.Size = UDim2.new(0,62,1,0)
-	lbl.Font = Enum.Font.GothamMedium; lbl.TextSize = 10
+	lbl.Size = UDim2.new(0,58,1,0)
+	lbl.Font = Enum.Font.GothamMedium; lbl.TextSize = 9
 	lbl.TextColor3 = C.textMute
 	register(lbl, "textMute")
 	lbl.Text = labelText
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
 	local val = Instance.new("TextLabel", row)
 	val.BackgroundTransparency = 1
-	val.Position = UDim2.new(0,66,0,0)
-	val.Size = UDim2.new(1,-66,1,0)
-	val.Font = Enum.Font.Gotham; val.TextSize = 11
+	val.Position = UDim2.new(0,62,0,0)
+	val.Size = UDim2.new(1,-62,1,0)
+	val.Font = Enum.Font.Gotham; val.TextSize = 10
 	val.TextColor3 = C.textDim
 	register(val, "textDim")
 	val.Text = "—"
