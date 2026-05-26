@@ -39,9 +39,13 @@ export function Header() {
           <Link to="/plugin" className="hover:text-foreground">
             Plugin
           </Link>
+          <Link to="/mcp" className="hover:text-foreground">
+            MCP
+          </Link>
           <Link to="/changelog" className="hover:text-foreground">
             Changelog
           </Link>
+
           {user && (
             <Link to="/dashboard" className="hover:text-foreground">
               Dashboard
