@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Sparkles, Plug, Rocket, ArrowRight, X, Check } from "lucide-react";
+import { Sparkles, Plug, Rocket, ArrowRight, X, Check, Gamepad2 } from "lucide-react";
 
 const KEY = "bloxsmith.onboarded.v1";
 
@@ -8,42 +8,50 @@ type Step = {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   body: string;
-  cta: { label: string; href?: string };
+  cta: { label: string; href?: string; external?: string };
 };
 
 const STEPS: Step[] = [
   {
     icon: Sparkles,
-    title: "Welcome to BloxSmith",
-    body: "Describe your game in plain English and BloxSmith generates scripts, UI, and systems straight into Roblox Studio.",
-    cta: { label: "Next" },
+    title: "Welcome to BloxSmith 👋",
+    body: "Describe your game in plain English and BloxSmith generates scripts, UI, and full systems straight into Roblox Studio. You start with 200 free credits, refilled daily.",
+    cta: { label: "Show me how" },
   },
   {
     icon: Plug,
-    title: "Link Roblox Studio",
-    body: "Install the BloxSmith plugin and connect your account so every generation streams into Studio in real time.",
-    cta: { label: "Open setup", href: "/plugin" },
+    title: "Step 1 — Install the plugin",
+    body: "Download the BloxSmith Studio plugin and paste your token. This is how generated code streams into Studio in real time.",
+    cta: { label: "Open plugin setup", href: "/plugin" },
+  },
+  {
+    icon: Gamepad2,
+    title: "Step 2 — Open Roblox Studio",
+    body: "Launch Roblox Studio so the plugin can connect. Keep it open in the background while you chat with BloxSmith on the web.",
+    cta: { label: "Open Roblox Studio", external: "roblox-studio:" },
   },
   {
     icon: Rocket,
-    title: "Build your first project",
-    body: "Pick a template or start blank, then chat with BloxSmith to build folders, RemoteEvents, scripts and GUI for you.",
-    cta: { label: "Let's go" },
+    title: "Step 3 — Build your first game",
+    body: "Pick a template or start blank, then chat with BloxSmith. It'll build folders, RemoteEvents, scripts and GUI for you automatically.",
+    cta: { label: "Let's build" },
   },
 ];
 
-export function Onboarding() {
+export function Onboarding({ force = false, onClose }: { force?: boolean; onClose?: () => void } = {}) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (force) { setOpen(true); setStep(0); return; }
     if (!localStorage.getItem(KEY)) setOpen(true);
-  }, []);
+  }, [force]);
 
   const dismiss = () => {
-    localStorage.setItem(KEY, "1");
+    if (typeof window !== "undefined") localStorage.setItem(KEY, "1");
     setOpen(false);
+    onClose?.();
   };
 
   const next = () => {
@@ -122,6 +130,15 @@ export function Onboarding() {
                   {S.cta.label}
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
+              ) : S.cta.external ? (
+                <a
+                  href={S.cta.external}
+                  onClick={() => setTimeout(next, 250)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-primary to-primary-glow px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity"
+                >
+                  {S.cta.label}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </a>
               ) : (
                 <button
                   onClick={next}

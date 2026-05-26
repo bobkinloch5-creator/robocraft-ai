@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { createProject as createProjectFn } from "@/lib/projects.functions";
 import { GAME_TYPES, STARTER_TEMPLATES } from "@/lib/templates";
-import { Plus, Folder, Zap, Plug, BookOpen, CreditCard, ShieldCheck, X } from "lucide-react";
+import { Plus, Folder, Plug, BookOpen, CreditCard, ShieldCheck, X, Gamepad2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Onboarding } from "@/components/Onboarding";
 
@@ -23,6 +23,7 @@ function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [replayTour, setReplayTour] = useState(false);
   const [form, setForm] = useState({ name: "", game_type: "Custom" as string, template: "Blank" as string, description: "" });
   const runCreate = useServerFn(createProjectFn);
 
@@ -76,7 +77,7 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Onboarding />
+      <Onboarding force={replayTour} onClose={() => setReplayTour(false)} />
       <Header />
 
       <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 py-8 space-y-8">
@@ -94,24 +95,46 @@ function Dashboard() {
               {isAdmin && !isOwner && <span className="text-muted-foreground">· Admin</span>}
             </div>
           </div>
-          <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
-            <Plus className="h-4 w-4" /> New Roblox Game
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setReplayTour(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition"
+            >
+              <Sparkles className="h-3.5 w-3.5" /> Take the tour
+            </button>
+            <a
+              href="roblox-studio:"
+              className="inline-flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-4 py-2.5 text-sm font-semibold text-primary-glow hover:bg-primary/20 transition"
+            >
+              <Gamepad2 className="h-4 w-4" /> Open Roblox Studio
+            </a>
+            <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+              <Plus className="h-4 w-4" /> New Roblox Game
+            </button>
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { icon: Zap, label: "Account & Token", to: "/account" as const },
+            { icon: Gamepad2, label: "Open Roblox Studio", external: "roblox-studio:" },
             { icon: Plug, label: "Plugin Setup", to: "/plugin" as const },
             { icon: BookOpen, label: "Documentation", to: "/docs" as const },
             { icon: CreditCard, label: "Buy Credits", to: "/pricing" as const },
-          ].map((a) => (
-            <Link key={a.label} to={a.to} className="glass rounded-2xl p-5 hover:bg-surface transition flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-primary/15 grid place-items-center"><a.icon className="h-5 w-5 text-primary-glow" /></div>
-              <span className="font-medium">{a.label}</span>
-            </Link>
-          ))}
+          ].map((a) => {
+            const inner = (
+              <>
+                <div className="h-10 w-10 rounded-xl bg-primary/15 grid place-items-center"><a.icon className="h-5 w-5 text-primary-glow" /></div>
+                <span className="font-medium">{a.label}</span>
+              </>
+            );
+            return "external" in a && a.external ? (
+              <a key={a.label} href={a.external} className="glass rounded-2xl p-5 hover:bg-surface transition flex items-center gap-3">{inner}</a>
+            ) : (
+              <Link key={a.label} to={a.to!} className="glass rounded-2xl p-5 hover:bg-surface transition flex items-center gap-3">{inner}</Link>
+            );
+          })}
         </div>
+
 
         <section>
           <h2 className="text-xl font-bold mb-4">Your projects</h2>
