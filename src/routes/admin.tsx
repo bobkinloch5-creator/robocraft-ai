@@ -18,10 +18,11 @@ export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — BloxSmith" }, { name: "robots", content: "noindex, nofollow" }] }),
 });
 
-type Row = { id: string; email: string; display_name: string | null; credits: number };
+type Row = { id: string; email: string; display_name: string | null; credits: number; banned: boolean; ban_reason: string | null; roles: string[]; projects: number; generations: number };
 type PR = { id: string; user_id: string; pack_id: string; credits: number; amount: number; paypal_transaction_id: string; paypal_note: string | null; status: string; created_at: string };
 type Promo = { id: string; code: string; credits: number; max_redemptions: number | null; redemption_count: number; expires_at: string | null; active: boolean; created_at: string };
 type PromoSub = { id: string; user_id: string; platform: string; url: string; note: string | null; status: string; created_at: string };
+type Activity = { id: string; user_id: string; amount: number; balance: number; reason: string | null; created_at: string };
 
 function Admin() {
   const { user, isAdmin, loading } = useAuth();
@@ -37,6 +38,78 @@ function Admin() {
   const [newMax, setNewMax] = useState<string>("");
   const [newExpires, setNewExpires] = useState<string>("");
   const [promoSubs, setPromoSubs] = useState<PromoSub[]>([]);
+  const [activity, setActivity] = useState<Activity[]>([]);
+  const [showBanned, setShowBanned] = useState(false);
+
+  const loadUsers = async () => {
+    const { data: profs } = await supabase
+      .from("profiles")
+      .select("id,email,display_name,credits,banned,ban_reason")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    const list = (profs ?? []) as Array<{ id: string; email: string; display_name: string | null; credits: number; banned: boolean; ban_reason: string | null }>;
+    const ids = list.map((p) => p.id);
+    if (ids.length === 0) { setRows([]); return; }
+    const [{ data: roles }, { data: projs }, { data: gens }] = await Promise.all([
+      supabase.from("user_roles").select("user_id,role").in("user_id", ids),
+      supabase.from("projects").select("user_id").in("user_id", ids),
+      supabase.from("generations").select("user_id").in("user_id", ids),
+    ]);
+    const roleMap: Record<string, string[]> = {};
+    (roles ?? []).forEach((r: { user_id: string; role: string }) => { (roleMap[r.user_id] ||= []).push(r.role); });
+    const pCount: Record<string, number> = {};
+    (projs ?? []).forEach((p: { user_id: string }) => { pCount[p.user_id] = (pCount[p.user_id] ?? 0) + 1; });
+    const gCount: Record<string, number> = {};
+    (gens ?? []).forEach((g: { user_id: string }) => { gCount[g.user_id] = (gCount[g.user_id] ?? 0) + 1; });
+    setRows(list.map((p) => ({ ...p, roles: roleMap[p.id] ?? ["user"], projects: pCount[p.id] ?? 0, generations: gCount[p.id] ?? 0 })));
+  };
+
+  const loadActivity = async () => {
+    const { data } = await supabase
+      .from("credit_transactions")
+      .select("id,user_id,amount,balance,reason,created_at")
+      .order("created_at", { ascending: false })
+      .limit(25);
+    const list = (data ?? []) as Activity[];
+    setActivity(list);
+    const ids = Array.from(new Set(list.map((r) => r.user_id))).filter((id) => !emails[id]);
+    if (ids.length) {
+      const { data: profs } = await supabase.from("profiles").select("id,email").in("id", ids);
+      const map: Record<string, string> = { ...emails };
+      (profs ?? []).forEach((p: { id: string; email: string }) => { map[p.id] = p.email; });
+      setEmails(map);
+    }
+  };
+
+  const toggleBan = async (r: Row) => {
+    if (r.banned) {
+      if (!confirm(`Unban ${r.email}?`)) return;
+      const { error } = await supabase.rpc("admin_set_ban", { _user_id: r.id, _banned: false, _reason: "" });
+      if (error) return toast.error(error.message);
+      toast.success("Unbanned");
+    } else {
+      const reason = window.prompt(`Ban ${r.email}? Enter reason:`, "Violated terms");
+      if (!reason) return;
+      const { error } = await supabase.rpc("admin_set_ban", { _user_id: r.id, _banned: true, _reason: reason });
+      if (error) return toast.error(error.message);
+      toast.success("User banned");
+    }
+    loadUsers();
+  };
+
+  const toggleAdmin = async (r: Row) => {
+    const isAdminRow = r.roles.includes("admin");
+    if (!confirm(`${isAdminRow ? "Remove admin from" : "Make admin"} ${r.email}?`)) return;
+    const { error } = await supabase.rpc("admin_set_role", { _user_id: r.id, _role: "admin", _grant: !isAdminRow });
+    if (error) return toast.error(error.message);
+    toast.success(isAdminRow ? "Admin removed" : "Admin granted");
+    loadUsers();
+  };
+
+  const resetCredits = async (r: Row) => {
+    if (!confirm(`Reset credits to 0 for ${r.email}? (current: ${r.credits})`)) return;
+    await adjustCredits(r.id, -r.credits, "admin reset to 0");
+  };
 
   const loadPromoSubs = async () => {
     const { data } = await supabase
@@ -100,7 +173,7 @@ function Admin() {
 
   useEffect(() => {
     if (!isAdmin) return;
-    supabase.from("profiles").select("id,email,display_name,credits").order("created_at", { ascending: false }).limit(100).then(({ data }) => setRows((data ?? []) as Row[]));
+    loadUsers();
     Promise.all([
       supabase.from("profiles").select("id", { count: "exact", head: true }),
       supabase.from("projects").select("id", { count: "exact", head: true }),
@@ -109,6 +182,7 @@ function Admin() {
     loadRequests();
     loadPromos();
     loadPromoSubs();
+    loadActivity();
   }, [isAdmin]);
 
   const createPromo = async () => {
@@ -150,7 +224,7 @@ function Admin() {
     if (error) return toast.error(error.message);
     toast.success(approve ? `Approved — +${pr.credits} credits` : "Rejected");
     setRequests((arr) => arr.filter((r) => r.id !== pr.id));
-    supabase.from("profiles").select("id,email,display_name,credits").order("created_at", { ascending: false }).limit(100).then(({ data }) => setRows((data ?? []) as Row[]));
+    loadUsers();
   };
 
   const adjustCredits = async (id: string, delta: number, reason = "admin adjust") => {
@@ -170,7 +244,12 @@ function Admin() {
     await adjustCredits(row.id, amt, reason);
   };
 
-  const filtered = rows.filter((r) => r.email.toLowerCase().includes(q.toLowerCase()) || (r.display_name ?? "").toLowerCase().includes(q.toLowerCase()));
+  const filtered = rows.filter((r) => {
+    if (!showBanned && r.banned) return false;
+    const term = q.toLowerCase();
+    return r.email.toLowerCase().includes(term) || (r.display_name ?? "").toLowerCase().includes(term);
+  });
+  const bannedCount = rows.filter((r) => r.banned).length;
 
   if (loading || !isAdmin) return null;
   return (
@@ -247,32 +326,95 @@ function Admin() {
 
 
         <section className="glass rounded-2xl p-6">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="font-semibold">Users</h2>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="rounded-lg bg-surface-elevated border border-border px-3 py-1.5 text-sm" />
+          <div className="flex justify-between items-center mb-3 gap-3 flex-wrap">
+            <div className="flex items-center gap-3">
+              <h2 className="font-semibold">Users ({rows.length})</h2>
+              {bannedCount > 0 && <span className="text-xs rounded-full bg-destructive/15 text-destructive px-2 py-0.5">{bannedCount} banned</span>}
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs flex items-center gap-1 text-muted-foreground">
+                <input type="checkbox" checked={showBanned} onChange={(e) => setShowBanned(e.target.checked)} /> Show banned
+              </label>
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="rounded-lg bg-surface-elevated border border-border px-3 py-1.5 text-sm" />
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase text-muted-foreground">
-                <tr><th className="py-2">Email</th><th>Name</th><th>Credits</th><th></th></tr>
+                <tr><th className="py-2">User</th><th>Role</th><th>Credits</th><th>Projects</th><th>Gens</th><th></th></tr>
               </thead>
               <tbody>
-                {filtered.map((r) => (
-                  <tr key={r.id} className="border-t border-border">
-                    <td className="py-2">{r.email}</td>
-                    <td>{r.display_name ?? "—"}</td>
-                    <td>{r.credits}</td>
-                    <td className="text-right whitespace-nowrap">
-                      <button onClick={() => giftCustom(r)} className="text-xs rounded-md bg-primary px-2 py-1 mr-1 font-semibold text-primary-foreground">🎁 Gift</button>
-                      <button onClick={() => adjustCredits(r.id, 100, "quick +100")} className="text-xs rounded-md bg-primary/20 px-2 py-1 mr-1">+100</button>
-                      <button onClick={() => adjustCredits(r.id, -100, "quick -100")} className="text-xs rounded-md border border-border px-2 py-1">−100</button>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((r) => {
+                  const isOwner = r.roles.includes("owner");
+                  const isAdminRow = r.roles.includes("admin");
+                  return (
+                    <tr key={r.id} className={`border-t border-border ${r.banned ? "opacity-60" : ""}`}>
+                      <td className="py-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div>
+                            <div className="font-medium">{r.email}</div>
+                            <div className="text-xs text-muted-foreground">{r.display_name ?? "—"}</div>
+                          </div>
+                          {r.banned && <span className="text-[10px] uppercase rounded bg-destructive/20 text-destructive px-1.5 py-0.5" title={r.ban_reason ?? ""}>Banned</span>}
+                        </div>
+                      </td>
+                      <td>
+                        {isOwner ? <span className="text-[10px] uppercase rounded bg-primary/20 text-primary px-1.5 py-0.5">Owner</span>
+                          : isAdminRow ? <span className="text-[10px] uppercase rounded bg-primary/15 text-primary px-1.5 py-0.5">Admin</span>
+                          : <span className="text-xs text-muted-foreground">user</span>}
+                      </td>
+                      <td>{r.credits}</td>
+                      <td className="text-muted-foreground">{r.projects}</td>
+                      <td className="text-muted-foreground">{r.generations}</td>
+                      <td className="text-right whitespace-nowrap">
+                        <button onClick={() => giftCustom(r)} className="text-xs rounded-md bg-primary px-2 py-1 mr-1 font-semibold text-primary-foreground">🎁 Gift</button>
+                        <button onClick={() => adjustCredits(r.id, 100, "quick +100")} className="text-xs rounded-md bg-primary/20 px-2 py-1 mr-1">+100</button>
+                        <button onClick={() => adjustCredits(r.id, -100, "quick -100")} className="text-xs rounded-md border border-border px-2 py-1 mr-1">−100</button>
+                        <button onClick={() => resetCredits(r)} className="text-xs rounded-md border border-border px-2 py-1 mr-1" disabled={isOwner}>Reset</button>
+                        {!isOwner && (
+                          <button onClick={() => toggleAdmin(r)} className="text-xs rounded-md border border-border px-2 py-1 mr-1">{isAdminRow ? "Demote" : "Make admin"}</button>
+                        )}
+                        {!isOwner && (
+                          <button onClick={() => toggleBan(r)} className={`text-xs rounded-md px-2 py-1 ${r.banned ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>{r.banned ? "Unban" : "Ban"}</button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </section>
+
+        <section className="glass rounded-2xl p-6">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="font-semibold">Recent credit activity</h2>
+            <button onClick={loadActivity} className="text-xs underline text-muted-foreground">Refresh</button>
+          </div>
+          {activity.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No activity yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-xs uppercase text-muted-foreground">
+                  <tr><th className="py-2">When</th><th>User</th><th>Δ</th><th>Balance</th><th>Reason</th></tr>
+                </thead>
+                <tbody>
+                  {activity.map((a) => (
+                    <tr key={a.id} className="border-t border-border">
+                      <td className="py-2 text-xs text-muted-foreground whitespace-nowrap">{new Date(a.created_at).toLocaleString()}</td>
+                      <td className="text-xs">{emails[a.user_id] ?? a.user_id.slice(0, 8)}</td>
+                      <td className={a.amount >= 0 ? "text-success" : "text-destructive"}>{a.amount >= 0 ? `+${a.amount}` : a.amount}</td>
+                      <td>{a.balance}</td>
+                      <td className="text-xs text-muted-foreground">{a.reason ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
 
         <section className="glass rounded-2xl p-6">
           <h2 className="font-semibold mb-3">Promo codes</h2>
