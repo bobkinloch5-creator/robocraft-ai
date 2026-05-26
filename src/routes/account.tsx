@@ -200,6 +200,8 @@ function Account() {
     try {
       const { token } = await runToken({});
       setToken(token);
+      setShowToken(false);
+
       toast.success("Token generated. Save it — it won't be shown again.");
     } catch (e: any) {
       toast.error(e.message);
