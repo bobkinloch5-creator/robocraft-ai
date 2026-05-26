@@ -612,7 +612,7 @@ end)
 local organizeRow = Instance.new("Frame", root)
 organizeRow.LayoutOrder = 14
 organizeRow.BackgroundTransparency = 1
-organizeRow.Size = UDim2.new(1,0,0,28)
+organizeRow.Size = UDim2.new(1,0,0,24)
 local organizeList = Instance.new("UIListLayout", organizeRow)
 organizeList.FillDirection = Enum.FillDirection.Horizontal
 organizeList.Padding = UDim.new(0,6)
