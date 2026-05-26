@@ -16,7 +16,7 @@ type Server = {
   enabled: boolean;
 };
 
-export const Route = createFileRoute("/_authenticated/mcp-servers")({
+export const Route = createFileRoute("/mcp-servers")({
   component: McpServersPage,
   head: () => ({
     meta: [
