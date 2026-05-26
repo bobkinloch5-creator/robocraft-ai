@@ -326,32 +326,95 @@ function Admin() {
 
 
         <section className="glass rounded-2xl p-6">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="font-semibold">Users</h2>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="rounded-lg bg-surface-elevated border border-border px-3 py-1.5 text-sm" />
+          <div className="flex justify-between items-center mb-3 gap-3 flex-wrap">
+            <div className="flex items-center gap-3">
+              <h2 className="font-semibold">Users ({rows.length})</h2>
+              {bannedCount > 0 && <span className="text-xs rounded-full bg-destructive/15 text-destructive px-2 py-0.5">{bannedCount} banned</span>}
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs flex items-center gap-1 text-muted-foreground">
+                <input type="checkbox" checked={showBanned} onChange={(e) => setShowBanned(e.target.checked)} /> Show banned
+              </label>
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="rounded-lg bg-surface-elevated border border-border px-3 py-1.5 text-sm" />
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase text-muted-foreground">
-                <tr><th className="py-2">Email</th><th>Name</th><th>Credits</th><th></th></tr>
+                <tr><th className="py-2">User</th><th>Role</th><th>Credits</th><th>Projects</th><th>Gens</th><th></th></tr>
               </thead>
               <tbody>
-                {filtered.map((r) => (
-                  <tr key={r.id} className="border-t border-border">
-                    <td className="py-2">{r.email}</td>
-                    <td>{r.display_name ?? "—"}</td>
-                    <td>{r.credits}</td>
-                    <td className="text-right whitespace-nowrap">
-                      <button onClick={() => giftCustom(r)} className="text-xs rounded-md bg-primary px-2 py-1 mr-1 font-semibold text-primary-foreground">🎁 Gift</button>
-                      <button onClick={() => adjustCredits(r.id, 100, "quick +100")} className="text-xs rounded-md bg-primary/20 px-2 py-1 mr-1">+100</button>
-                      <button onClick={() => adjustCredits(r.id, -100, "quick -100")} className="text-xs rounded-md border border-border px-2 py-1">−100</button>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((r) => {
+                  const isOwner = r.roles.includes("owner");
+                  const isAdminRow = r.roles.includes("admin");
+                  return (
+                    <tr key={r.id} className={`border-t border-border ${r.banned ? "opacity-60" : ""}`}>
+                      <td className="py-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div>
+                            <div className="font-medium">{r.email}</div>
+                            <div className="text-xs text-muted-foreground">{r.display_name ?? "—"}</div>
+                          </div>
+                          {r.banned && <span className="text-[10px] uppercase rounded bg-destructive/20 text-destructive px-1.5 py-0.5" title={r.ban_reason ?? ""}>Banned</span>}
+                        </div>
+                      </td>
+                      <td>
+                        {isOwner ? <span className="text-[10px] uppercase rounded bg-primary/20 text-primary px-1.5 py-0.5">Owner</span>
+                          : isAdminRow ? <span className="text-[10px] uppercase rounded bg-primary/15 text-primary px-1.5 py-0.5">Admin</span>
+                          : <span className="text-xs text-muted-foreground">user</span>}
+                      </td>
+                      <td>{r.credits}</td>
+                      <td className="text-muted-foreground">{r.projects}</td>
+                      <td className="text-muted-foreground">{r.generations}</td>
+                      <td className="text-right whitespace-nowrap">
+                        <button onClick={() => giftCustom(r)} className="text-xs rounded-md bg-primary px-2 py-1 mr-1 font-semibold text-primary-foreground">🎁 Gift</button>
+                        <button onClick={() => adjustCredits(r.id, 100, "quick +100")} className="text-xs rounded-md bg-primary/20 px-2 py-1 mr-1">+100</button>
+                        <button onClick={() => adjustCredits(r.id, -100, "quick -100")} className="text-xs rounded-md border border-border px-2 py-1 mr-1">−100</button>
+                        <button onClick={() => resetCredits(r)} className="text-xs rounded-md border border-border px-2 py-1 mr-1" disabled={isOwner}>Reset</button>
+                        {!isOwner && (
+                          <button onClick={() => toggleAdmin(r)} className="text-xs rounded-md border border-border px-2 py-1 mr-1">{isAdminRow ? "Demote" : "Make admin"}</button>
+                        )}
+                        {!isOwner && (
+                          <button onClick={() => toggleBan(r)} className={`text-xs rounded-md px-2 py-1 ${r.banned ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>{r.banned ? "Unban" : "Ban"}</button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </section>
+
+        <section className="glass rounded-2xl p-6">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="font-semibold">Recent credit activity</h2>
+            <button onClick={loadActivity} className="text-xs underline text-muted-foreground">Refresh</button>
+          </div>
+          {activity.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No activity yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-xs uppercase text-muted-foreground">
+                  <tr><th className="py-2">When</th><th>User</th><th>Δ</th><th>Balance</th><th>Reason</th></tr>
+                </thead>
+                <tbody>
+                  {activity.map((a) => (
+                    <tr key={a.id} className="border-t border-border">
+                      <td className="py-2 text-xs text-muted-foreground whitespace-nowrap">{new Date(a.created_at).toLocaleString()}</td>
+                      <td className="text-xs">{emails[a.user_id] ?? a.user_id.slice(0, 8)}</td>
+                      <td className={a.amount >= 0 ? "text-success" : "text-destructive"}>{a.amount >= 0 ? `+${a.amount}` : a.amount}</td>
+                      <td>{a.balance}</td>
+                      <td className="text-xs text-muted-foreground">{a.reason ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
 
         <section className="glass rounded-2xl p-6">
           <h2 className="font-semibold mb-3">Promo codes</h2>
