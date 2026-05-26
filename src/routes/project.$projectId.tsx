@@ -316,6 +316,28 @@ function ProjectEditor() {
   const CHAT_COST = 1;
   const runChat = useServerFn(chatWithAI);
   const [thinking, setThinking] = useState(false);
+  const [mcpServers, setMcpServers] = useState<Array<{ name: string; enabled: boolean; ok: boolean | null }>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const { data } = await supabase
+        .from("user_mcp_servers")
+        .select("name,enabled,last_test_ok")
+        .eq("enabled", true);
+      if (cancelled) return;
+      setMcpServers(((data ?? []) as Array<{ name: string; enabled: boolean; last_test_ok: boolean | null }>)
+        .map((s) => ({ name: s.name, enabled: s.enabled, ok: s.last_test_ok })));
+    };
+    load();
+    const ch = supabase
+      .channel("mcp-indicator")
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_mcp_servers" }, load)
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(ch);
+    };
+  }, []);
   const [plansByMsg, setPlansByMsg] = useState<Record<string, { prompt: string; plan: string }>>(
     {},
   );
@@ -1991,18 +2013,42 @@ function ProjectEditor() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated/60 border border-border/40 px-2.5 py-0.5 text-[10px]">
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${isStudioConnected ? "bg-success animate-pulse" : "bg-amber-400"}`}
-                  />
-                  <span className="text-muted-foreground">
-                    {chatMode
-                      ? "Chat mode · read-only · no tools"
-                      : `${isStudioConnected ? "Studio live" : "Studio waiting"} · Groq · tools enabled`}
-                  </span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated/60 border border-border/40 px-2.5 py-0.5 text-[10px]">
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${isStudioConnected ? "bg-success animate-pulse" : "bg-amber-400"}`}
+                    />
+                    <span className="text-muted-foreground">
+                      {(() => {
+                        const aiLabel = chatMode
+                          ? "Llama 3.1 8B"
+                          : planMode
+                            ? "GPT-OSS 120B"
+                            : thinking
+                              ? "Llama 3.1 8B · think"
+                              : "Llama 3.1 8B";
+                        return chatMode
+                          ? `Chat mode · ${aiLabel} · read-only`
+                          : `${isStudioConnected ? "Studio live" : "Studio waiting"} · Groq ${aiLabel} · tools`;
+                      })()}
+                    </span>
+                  </div>
+                  <div
+                    className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated/60 border border-border/40 px-2.5 py-0.5 text-[10px]"
+                    title={mcpServers.length > 0 ? mcpServers.map((s) => s.name).join(", ") : "No MCP servers connected"}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${mcpServers.length === 0 ? "bg-muted-foreground/50" : mcpServers.every((s) => s.ok !== false) ? "bg-success animate-pulse" : "bg-amber-400"}`}
+                    />
+                    <span className="text-muted-foreground">
+                      {mcpServers.length === 0
+                        ? "MCP: none"
+                        : `MCP: ${mcpServers.slice(0, 2).map((s) => s.name).join(", ")}${mcpServers.length > 2 ? ` +${mcpServers.length - 2}` : ""}`}
+                    </span>
+                  </div>
                 </div>
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                   {chatMode
                     ? `${CHAT_COST} cr / chat`
                     : planMode
