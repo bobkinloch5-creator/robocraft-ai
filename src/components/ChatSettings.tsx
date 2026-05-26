@@ -14,6 +14,7 @@ import {
   User as UserIcon,
   Server,
   ExternalLink,
+  Hand,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
