@@ -20,7 +20,6 @@ export type Database = {
           id: string
           project_id: string
           title: string | null
-          updated_at: string
           user_id: string
         }
         Insert: {
@@ -28,7 +27,6 @@ export type Database = {
           id?: string
           project_id: string
           title?: string | null
-          updated_at?: string
           user_id: string
         }
         Update: {
@@ -36,7 +34,6 @@ export type Database = {
           id?: string
           project_id?: string
           title?: string | null
-          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -87,6 +84,7 @@ export type Database = {
       credit_transactions: {
         Row: {
           amount: number
+          balance: number
           created_at: string
           id: string
           reason: string | null
@@ -94,6 +92,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          balance: number
           created_at?: string
           id?: string
           reason?: string | null
@@ -101,6 +100,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          balance?: number
           created_at?: string
           id?: string
           reason?: string | null
@@ -111,7 +111,7 @@ export type Database = {
       generations: {
         Row: {
           created_at: string
-          credits_used: number | null
+          credits_used: number
           id: string
           project_id: string | null
           prompt: string
@@ -121,7 +121,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          credits_used?: number | null
+          credits_used?: number
           id?: string
           project_id?: string | null
           prompt: string
@@ -131,7 +131,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          credits_used?: number | null
+          credits_used?: number
           id?: string
           project_id?: string | null
           prompt?: string
@@ -158,8 +158,10 @@ export type Database = {
           pack_id: string
           paypal_note: string | null
           paypal_transaction_id: string
+          reject_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: string
-          updated_at: string
           user_id: string
         }
         Insert: {
@@ -170,8 +172,10 @@ export type Database = {
           pack_id: string
           paypal_note?: string | null
           paypal_transaction_id: string
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string
-          updated_at?: string
           user_id: string
         }
         Update: {
@@ -182,8 +186,10 @@ export type Database = {
           pack_id?: string
           paypal_note?: string | null
           paypal_transaction_id?: string
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string
-          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -192,7 +198,7 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
-          credits_added: number | null
+          credits_added: number
           id: string
           provider: string
           provider_payment_id: string | null
@@ -203,18 +209,18 @@ export type Database = {
         Insert: {
           amount: number
           created_at?: string
-          credits_added?: number | null
+          credits_added?: number
           id?: string
           provider: string
           provider_payment_id?: string | null
           raw?: Json | null
-          status: string
+          status?: string
           user_id: string
         }
         Update: {
           amount?: number
           created_at?: string
-          credits_added?: number | null
+          credits_added?: number
           id?: string
           provider?: string
           provider_payment_id?: string | null
@@ -232,7 +238,7 @@ export type Database = {
           error_message: string | null
           executed_at: string | null
           id: string
-          payload: Json
+          payload: Json | null
           project_id: string
           status: string
           user_id: string
@@ -244,7 +250,7 @@ export type Database = {
           error_message?: string | null
           executed_at?: string | null
           id?: string
-          payload: Json
+          payload?: Json | null
           project_id: string
           status?: string
           user_id: string
@@ -256,7 +262,7 @@ export type Database = {
           error_message?: string | null
           executed_at?: string | null
           id?: string
-          payload?: Json
+          payload?: Json | null
           project_id?: string
           status?: string
           user_id?: string
@@ -278,7 +284,7 @@ export type Database = {
           last_connected_at: string | null
           status: string
           studio_metadata: Json | null
-          token_hash: string | null
+          token_hash: string
           user_id: string
         }
         Insert: {
@@ -287,7 +293,7 @@ export type Database = {
           last_connected_at?: string | null
           status?: string
           studio_metadata?: Json | null
-          token_hash?: string | null
+          token_hash: string
           user_id: string
         }
         Update: {
@@ -296,7 +302,7 @@ export type Database = {
           last_connected_at?: string | null
           status?: string
           studio_metadata?: Json | null
-          token_hash?: string | null
+          token_hash?: string
           user_id?: string
         }
         Relationships: []
@@ -304,24 +310,27 @@ export type Database = {
       plugin_context: {
         Row: {
           context: Json
+          created_at: string
           id: string
-          instance_count: number | null
+          instance_count: number
           project_id: string
           updated_at: string
           user_id: string
         }
         Insert: {
           context: Json
+          created_at?: string
           id?: string
-          instance_count?: number | null
+          instance_count?: number
           project_id: string
           updated_at?: string
           user_id: string
         }
         Update: {
           context?: Json
+          created_at?: string
           id?: string
-          instance_count?: number | null
+          instance_count?: number
           project_id?: string
           updated_at?: string
           user_id?: string
@@ -338,30 +347,39 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
+          bio: string | null
           created_at: string
           credits: number
           display_name: string | null
           email: string
           id: string
           plugin_token_hash: string | null
+          specialization: string | null
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           credits?: number
           display_name?: string | null
           email: string
           id: string
           plugin_token_hash?: string | null
+          specialization?: string | null
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           credits?: number
           display_name?: string | null
           email?: string
           id?: string
           plugin_token_hash?: string | null
+          specialization?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -400,33 +418,33 @@ export type Database = {
       }
       project_files: {
         Row: {
-          content: string | null
+          content: string
           created_at: string
           file_type: string
           id: string
           path: string
           project_id: string
-          service_location: string | null
+          service_location: string
           updated_at: string
         }
         Insert: {
-          content?: string | null
+          content?: string
           created_at?: string
           file_type: string
           id?: string
           path: string
           project_id: string
-          service_location?: string | null
+          service_location: string
           updated_at?: string
         }
         Update: {
-          content?: string | null
+          content?: string
           created_at?: string
           file_type?: string
           id?: string
           path?: string
           project_id?: string
-          service_location?: string | null
+          service_location?: string
           updated_at?: string
         }
         Relationships: [
@@ -443,7 +461,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
-          game_type: string | null
+          game_type: string
           id: string
           name: string
           status: string
@@ -453,7 +471,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
-          game_type?: string | null
+          game_type: string
           id?: string
           name: string
           status?: string
@@ -463,7 +481,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
-          game_type?: string | null
+          game_type?: string
           id?: string
           name?: string
           status?: string
@@ -517,7 +535,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
-          role: Database["public"]["Enums"]["app_role"]
+          role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
@@ -535,7 +553,7 @@ export type Database = {
     Functions: {
       admin_adjust_credits: {
         Args: { _amount: number; _reason: string; _user_id: string }
-        Returns: undefined
+        Returns: number
       }
       admin_approve_payment: {
         Args: { _request_id: string }
@@ -551,7 +569,7 @@ export type Database = {
       }
       grant_credits_service: {
         Args: { _amount: number; _reason: string; _user_id: string }
-        Returns: undefined
+        Returns: number
       }
       has_role: {
         Args: {
@@ -561,14 +579,18 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
-      refund_credits: {
-        Args: { _amount: number; _reason: string }
-        Returns: undefined
+      is_project_owner: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: boolean
       }
-      spend_credits_atomic: { Args: { _amount: number }; Returns: undefined }
+      refund_credits: {
+        Args: { _amount: number; _reason?: string }
+        Returns: number
+      }
+      spend_credits_atomic: { Args: { _amount: number }; Returns: number }
     }
     Enums: {
-      app_role: "owner" | "admin" | "editor" | "viewer" | "user"
+      app_role: "owner" | "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -696,7 +718,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "admin", "editor", "viewer", "user"],
+      app_role: ["owner", "admin", "user"],
     },
   },
 } as const
