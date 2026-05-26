@@ -67,10 +67,13 @@ function McpPage() {
             <code className="bg-muted px-1.5 py-0.5 rounded">
               Authorization: Bearer &lt;YOUR_MCP_TOKEN&gt;
             </code>
-            . Ask the BloxSmith team for your token, or use the one configured for your
-            workspace.
+            . Generate, rotate, or revoke your personal token below — if it ever leaks,
+            click <strong>Revoke</strong> to kill it instantly.
           </p>
         </section>
+
+        <McpTokenManager />
+
 
         <section className="space-y-3">
           <h2 className="text-2xl font-semibold">Pricing</h2>
