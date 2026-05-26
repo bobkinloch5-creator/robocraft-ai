@@ -971,14 +971,45 @@ Output JSON:
 
     try {
       const { generateTextWithToolFallback } = await import("./ai-retry.server");
-      const { text: rawText } = await generateTextWithToolFallback(generateText, {
-        model,
-        system: AUTOPILOT_SYSTEM,
-        prompt: `${liveBlock}\n\n${projectBlockAP}\n\nGAME DESCRIPTION:\n"""\n${description}\n"""\n\nThink deeply step-by-step. Build ON TOP of any existing files above — extend or refactor them rather than duplicating. Research what you need:\n- Use web_search for Roblox API references, Luau patterns, mechanics you're unsure about.\n- Use roblox_asset_search to find free models, decals, sounds, meshes that fit the game (then queue insertAsset actions).\n- Use roblox_asset_thumbnail / roblox_asset_info to verify an asset before using it.\nThen plan and build the entire game. Return the full JSON object with every phase, every file body complete, and every structural action (including insertAsset actions for any free assets you chose).`,
-        tools: { ...buildBloxSmithTools({ userId }), ...(await (await import("./mcp-client.server")).buildUserMcpTools(userId)) } as any,
-        stopWhen: stepCountIs(60),
-      }, "autopilotBuild");
-      // Parse JSON from raw text
+      const allTools = buildBloxSmithTools({ userId }) as Record<string, any>;
+      // Whitelist a small tool subset to keep tool-definition tokens low.
+      // MCP tools are NOT included — they bloat the request and aren't needed
+      // for an initial whole-game build.
+      const TOOL_WHITELIST = [
+        "web_search",
+        "roblox_asset_search",
+        "roblox_asset_info",
+      ];
+      const slimTools: Record<string, any> = {};
+      for (const k of TOOL_WHITELIST) if (allTools[k]) slimTools[k] = allTools[k];
+
+      const runOnce = (useTools: boolean) =>
+        generateTextWithToolFallback(
+          generateText,
+          {
+            model,
+            system: AUTOPILOT_SYSTEM,
+            prompt: `${liveBlock}\n\n${projectBlockAP}\n\nGAME DESCRIPTION:\n"""\n${description}\n"""\n\nBuild ON TOP of any existing files listed above. Return the full JSON object with every phase, every file body complete, and every structural action. No markdown, no code fences — JSON only.`,
+            ...(useTools ? { tools: slimTools, stopWhen: stepCountIs(20) } : {}),
+          },
+          useTools ? "autopilotBuild" : "autopilotBuild-notools",
+        );
+
+      let rawText = "";
+      try {
+        ({ text: rawText } = await runOnce(true));
+      } catch (e: any) {
+        const m = String(e?.message ?? e);
+        // If request is too big OR rate-limited on tools call, retry once
+        // with NO tools (saves ~1-3k tokens of tool definitions).
+        if (/too large|context|413|429|tokens per minute|rate limit/i.test(m)) {
+          console.warn("[autopilot] retrying without tools:", m.slice(0, 200));
+          ({ text: rawText } = await runOnce(false));
+        } else {
+          throw e;
+        }
+      }
+
       const autoJsonMatch = rawText.match(/\{[\s\S]*\}/);
       if (!autoJsonMatch) throw new Error("AI did not return valid JSON.");
       try {
@@ -990,8 +1021,11 @@ Output JSON:
       if (!isOwner)
         await supabase.rpc("refund_credits", { _amount: cost, _reason: "autopilot failed" });
       const msg = String(err?.message ?? err);
-      if (msg.includes("429")) throw new Error("AI rate limit. Try again in a moment.");
+      if (msg.includes("429") || /rate limit|tokens per minute/i.test(msg))
+        throw new Error("AI is rate-limited right now. Try again in ~30 seconds.");
       if (msg.includes("402")) throw new Error("AI credits exhausted.");
+      if (/too large|context length/i.test(msg))
+        throw new Error("Game description is too long — try a shorter version (under 2000 chars).");
       throw new Error("Autopilot failed: " + msg);
     }
 
