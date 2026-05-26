@@ -99,6 +99,7 @@ function Account() {
   };
 
   const claimDaily = async () => {
+    if (dailyCd.onCooldown) return;
     setClaiming(true);
     const { data, error } = await supabase.rpc("claim_daily_credits");
     setClaiming(false);
@@ -108,7 +109,11 @@ function Account() {
       return toast.error(error.message);
     }
     const res = data as { claimed: boolean; reason?: string; amount?: number; credits?: number };
-    if (!res.claimed) return toast.info("Already claimed today — come back tomorrow!");
+    if (!res.claimed) {
+      dailyCd.start();
+      return toast.info("Already claimed today — come back tomorrow!");
+    }
+    dailyCd.start();
     toast.success(`+${res.amount} daily credits! Balance: ${res.credits}`);
     await refresh();
   };
