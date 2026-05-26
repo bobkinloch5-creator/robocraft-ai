@@ -78,17 +78,14 @@ export const Route = createFileRoute("/api/public/plugin/sync")({
             .in("id", ids);
         }
 
-        // Legacy: also return current project files (for first connect / cold start)
-        const { data: files } = await supabaseAdmin
-          .from("project_files")
-          .select("path,file_type,service_location,content,updated_at")
-          .eq("project_id", projectId);
-
+        // NOTE: We intentionally do NOT return project_files here anymore.
+        // The plugin used to re-materialize every file on every poll, which
+        // caused duplicate / recursively-nested folders in Studio. Files now
+        // arrive only via explicit, idempotent actions queued by the AI.
         return new Response(
           JSON.stringify({
             project: { id: project.id, name: project.name },
             actions,
-            files: files ?? [],
           }),
           { headers: cors }
         );
