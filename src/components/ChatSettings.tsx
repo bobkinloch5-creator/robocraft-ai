@@ -1,5 +1,23 @@
 import { useEffect, useRef, useState } from "react";
-import { Settings, Brain, Zap, ClipboardList, Trash2, X, Cpu } from "lucide-react";
+import {
+  Settings,
+  Brain,
+  Zap,
+  ClipboardList,
+  Trash2,
+  X,
+  Cpu,
+  Plus,
+  Plug,
+  Key,
+  CreditCard,
+  User as UserIcon,
+  Server,
+  ExternalLink,
+} from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 type Props = {
   thinking: boolean;
@@ -12,6 +30,26 @@ type Props = {
   canClearChat: boolean;
   studioConnected: boolean;
 };
+
+type McpServer = {
+  id: string;
+  name: string;
+  url: string;
+  auth_header: string | null;
+  enabled: boolean;
+};
+
+function Toggle({ checked }: { checked: boolean }) {
+  return (
+    <div
+      className={`mt-0.5 h-4 w-7 rounded-full transition relative shrink-0 ${checked ? "bg-primary" : "bg-muted"}`}
+    >
+      <span
+        className={`absolute top-0.5 h-3 w-3 rounded-full bg-background transition-all ${checked ? "left-3.5" : "left-0.5"}`}
+      />
+    </div>
+  );
+}
 
 function Row({
   icon,
@@ -37,14 +75,197 @@ function Row({
         <div className="text-xs font-semibold text-foreground">{title}</div>
         <div className="text-[11px] text-muted-foreground">{desc}</div>
       </div>
-      <div
-        className={`mt-0.5 h-4 w-7 rounded-full transition relative ${checked ? "bg-primary" : "bg-muted"}`}
-      >
-        <span
-          className={`absolute top-0.5 h-3 w-3 rounded-full bg-background transition-all ${checked ? "left-3.5" : "left-0.5"}`}
-        />
-      </div>
+      <Toggle checked={checked} />
     </button>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground pt-2">
+      {children}
+    </div>
+  );
+}
+
+function McpServersSection() {
+  const [servers, setServers] = useState<McpServer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({ name: "", url: "", auth_header: "" });
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("user_mcp_servers")
+      .select("id,name,url,auth_header,enabled")
+      .order("created_at", { ascending: false });
+    if (error) toast.error(error.message);
+    setServers((data as McpServer[]) ?? []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.url.trim()) return;
+    setSaving(true);
+    const { data: u } = await supabase.auth.getUser();
+    if (!u?.user) {
+      toast.error("Please sign in.");
+      setSaving(false);
+      return;
+    }
+    const { error } = await supabase.from("user_mcp_servers").insert({
+      user_id: u.user.id,
+      name: form.name.trim(),
+      url: form.url.trim(),
+      auth_header: form.auth_header.trim() || null,
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("MCP server added");
+    setForm({ name: "", url: "", auth_header: "" });
+    setAdding(false);
+    load();
+  };
+
+  const toggle = async (s: McpServer) => {
+    const { error } = await supabase
+      .from("user_mcp_servers")
+      .update({ enabled: !s.enabled })
+      .eq("id", s.id);
+    if (error) return toast.error(error.message);
+    load();
+  };
+
+  const remove = async (s: McpServer) => {
+    if (!confirm(`Remove ${s.name}?`)) return;
+    const { error } = await supabase.from("user_mcp_servers").delete().eq("id", s.id);
+    if (error) return toast.error(error.message);
+    toast.success("Removed");
+    load();
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <SectionTitle>MCP servers</SectionTitle>
+        <button
+          onClick={() => setAdding((v) => !v)}
+          className="text-[10px] inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition"
+        >
+          <Plus className="h-3 w-3" /> {adding ? "Cancel" : "Add"}
+        </button>
+      </div>
+
+      {adding && (
+        <form
+          onSubmit={add}
+          className="space-y-1.5 rounded-lg border border-border bg-background/40 p-2"
+        >
+          <input
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="Name (e.g. notion)"
+            className="w-full rounded-md border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:border-primary/50"
+          />
+          <input
+            value={form.url}
+            onChange={(e) => setForm({ ...form, url: e.target.value })}
+            placeholder="https://mcp.example.com/mcp"
+            className="w-full rounded-md border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:border-primary/50"
+          />
+          <input
+            value={form.auth_header}
+            onChange={(e) => setForm({ ...form, auth_header: e.target.value })}
+            placeholder="Bearer token (optional)"
+            className="w-full rounded-md border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:border-primary/50"
+          />
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground hover:opacity-90 transition disabled:opacity-40"
+          >
+            {saving ? "Adding…" : "Add server"}
+          </button>
+        </form>
+      )}
+
+      {loading ? (
+        <p className="text-[11px] text-muted-foreground px-1">Loading…</p>
+      ) : servers.length === 0 ? (
+        <p className="text-[11px] text-muted-foreground px-1">
+          No MCP servers connected.
+        </p>
+      ) : (
+        <ul className="space-y-1.5">
+          {servers.map((s) => (
+            <li
+              key={s.id}
+              className="flex items-center gap-2 rounded-lg border border-border bg-background/40 px-2.5 py-2"
+            >
+              <Server className="h-3.5 w-3.5 text-primary shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold truncate">{s.name}</div>
+                <div className="text-[10px] text-muted-foreground truncate">{s.url}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggle(s)}
+                title={s.enabled ? "Disable" : "Enable"}
+              >
+                <Toggle checked={s.enabled} />
+              </button>
+              <button
+                onClick={() => remove(s)}
+                className="h-6 w-6 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-surface-elevated transition"
+                title="Remove"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Link
+        to="/mcp-servers"
+        className="block text-[10px] text-muted-foreground hover:text-foreground px-1"
+      >
+        Manage in full page →
+      </Link>
+    </div>
+  );
+}
+
+function LinkRow({
+  icon,
+  title,
+  desc,
+  to,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+  to: string;
+}) {
+  return (
+    <Link
+      to={to}
+      className="flex items-center gap-3 rounded-lg border border-border bg-background/40 px-3 py-2 hover:bg-surface-elevated transition"
+    >
+      <div className="text-primary">{icon}</div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-semibold">{title}</div>
+        <div className="text-[10px] text-muted-foreground truncate">{desc}</div>
+      </div>
+      <ExternalLink className="h-3 w-3 text-muted-foreground" />
+    </Link>
   );
 }
 
@@ -54,85 +275,135 @@ export function ChatSettings(props: Props) {
 
   useEffect(() => {
     if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", onClick);
     document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
     return () => {
-      document.removeEventListener("mousedown", onClick);
       document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
     };
   }, [open]);
 
   return (
-    <div className="relative" ref={ref}>
+    <>
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(true)}
         title="Chat settings"
-        className={`h-7 w-7 grid place-items-center rounded-md transition ${open ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-surface-elevated"}`}
+        className="h-7 w-7 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition"
       >
         <Settings className="h-3.5 w-3.5" />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-9 z-50 w-72 rounded-xl border border-border bg-surface shadow-2xl p-3 space-y-2">
-          <div className="flex items-center justify-between pb-1">
-            <div className="text-xs font-semibold text-foreground">Chat settings</div>
-            <button
-              onClick={() => setOpen(false)}
-              className="h-6 w-6 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-elevated"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
+        <div
+          className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm"
+          onClick={() => setOpen(false)}
+        >
+          <aside
+            ref={ref}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute right-0 top-0 bottom-0 w-full max-w-sm border-l border-border bg-surface shadow-2xl flex flex-col"
+          >
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Settings className="h-4 w-4 text-primary" />
+                <h2 className="text-sm font-semibold">Settings</h2>
+              </div>
+              <button
+                onClick={() => setOpen(false)}
+                className="h-7 w-7 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-elevated"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
 
-          <Row
-            icon={<Brain className="h-3.5 w-3.5" />}
-            title="Thinking mode"
-            desc="Spend more compute for deeper reasoning."
-            checked={props.thinking}
-            onChange={props.onToggleThinking}
-          />
-          <Row
-            icon={<ClipboardList className="h-3.5 w-3.5" />}
-            title="Plan first"
-            desc="Draft a plan before writing files."
-            checked={props.planMode}
-            onChange={props.onTogglePlanMode}
-          />
-          <Row
-            icon={<Zap className="h-3.5 w-3.5" />}
-            title="Auto-build safe ops"
-            desc="Execute non-destructive actions in Studio automatically."
-            checked={props.autoExecute}
-            onChange={props.onToggleAutoExecute}
-          />
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+              <div className="space-y-2">
+                <SectionTitle>Chat behavior</SectionTitle>
+                <Row
+                  icon={<Brain className="h-3.5 w-3.5" />}
+                  title="Thinking mode"
+                  desc="Spend more compute for deeper reasoning."
+                  checked={props.thinking}
+                  onChange={props.onToggleThinking}
+                />
+                <Row
+                  icon={<ClipboardList className="h-3.5 w-3.5" />}
+                  title="Plan first"
+                  desc="Draft a plan before writing files."
+                  checked={props.planMode}
+                  onChange={props.onTogglePlanMode}
+                />
+                <Row
+                  icon={<Zap className="h-3.5 w-3.5" />}
+                  title="Auto-build safe ops"
+                  desc="Execute non-destructive actions in Studio automatically."
+                  checked={props.autoExecute}
+                  onChange={props.onToggleAutoExecute}
+                />
+              </div>
 
-          <div className="rounded-lg border border-border bg-background/40 px-3 py-2 flex items-center gap-2">
-            <Cpu className="h-3.5 w-3.5 text-primary" />
-            <div className="flex-1 min-w-0">
-              <div className="text-[11px] font-semibold">Model</div>
-              <div className="text-[10px] text-muted-foreground">
-                Groq · tools enabled · {props.studioConnected ? "Studio live" : "Studio waiting"}
+              <div className="space-y-2">
+                <SectionTitle>Model</SectionTitle>
+                <div className="rounded-lg border border-border bg-background/40 px-3 py-2 flex items-center gap-2">
+                  <Cpu className="h-3.5 w-3.5 text-primary" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-semibold">Groq · tools enabled</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {props.studioConnected ? "Studio live" : "Studio waiting"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <McpServersSection />
+
+              <div className="space-y-2">
+                <SectionTitle>Account & integrations</SectionTitle>
+                <LinkRow
+                  icon={<Plug className="h-3.5 w-3.5" />}
+                  title="Studio plugin"
+                  desc="Install & connect the BloxSmith plugin"
+                  to="/plugin"
+                />
+                <LinkRow
+                  icon={<Key className="h-3.5 w-3.5" />}
+                  title="MCP API token"
+                  desc="Generate or revoke your MCP key"
+                  to="/mcp"
+                />
+                <LinkRow
+                  icon={<UserIcon className="h-3.5 w-3.5" />}
+                  title="Account"
+                  desc="Profile, credits, referrals, Discord"
+                  to="/account"
+                />
+                <LinkRow
+                  icon={<CreditCard className="h-3.5 w-3.5" />}
+                  title="Pricing"
+                  desc="Buy more credits"
+                  to="/pricing"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <SectionTitle>Danger zone</SectionTitle>
+                <button
+                  onClick={() => {
+                    props.onClearChat();
+                    setOpen(false);
+                  }}
+                  disabled={!props.canClearChat}
+                  className="w-full flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs font-semibold text-destructive hover:bg-destructive/10 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Clear chat history
+                </button>
               </div>
             </div>
-          </div>
-
-          <button
-            onClick={() => {
-              props.onClearChat();
-              setOpen(false);
-            }}
-            disabled={!props.canClearChat}
-            className="w-full flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs font-semibold text-destructive hover:bg-destructive/10 transition disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Clear chat history
-          </button>
+          </aside>
         </div>
       )}
-    </div>
+    </>
   );
 }
