@@ -51,7 +51,7 @@ const authedHandler = withMcpAuth(
     // Admin override: shared workspace MCP_SECRET still works
     const adminSecret = process.env.MCP_SECRET;
     if (adminSecret && token === adminSecret) {
-      return { token, scope: "admin" as const, userId: null };
+      return { token, claims: { scope: "admin", userId: null } };
     }
 
     // Per-user revocable token
@@ -69,7 +69,7 @@ const authedHandler = withMcpAuth(
         .update({ last_used_at: new Date().toISOString() })
         .eq("user_id", data.user_id)
         .then(() => {}, () => {});
-      return { token, scope: "user" as const, userId: data.user_id };
+      return { token, claims: { scope: "user", userId: data.user_id } };
     }
 
     return null;

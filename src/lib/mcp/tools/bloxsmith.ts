@@ -2,9 +2,35 @@ import { defineTool } from "mcp-tanstack-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
+// Extract authenticated userId from MCP tool execution context. Admin scope
+// (workspace MCP_SECRET) is allowed to act with no userId constraint.
+function getAuth(context: any): { userId: string | null; isAdmin: boolean } {
+  const claims = (context?.auth?.claims ?? {}) as { userId?: string | null; scope?: string };
+  return { userId: claims.userId ?? null, isAdmin: claims.scope === "admin" };
+}
+
+async function assertProjectAccess(projectId: string, userId: string | null, isAdmin: boolean) {
+  if (isAdmin) return;
+  if (!userId) throw new Error("Unauthorized.");
+  const { data: proj } = await supabaseAdmin
+    .from("projects")
+    .select("user_id")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (!proj) throw new Error(`Project ${projectId} not found.`);
+  if (proj.user_id === userId) return;
+  const { data: collab } = await supabaseAdmin
+    .from("project_collaborators")
+    .select("id")
+    .eq("project_id", projectId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!collab) throw new Error("Forbidden: you do not have access to that project.");
+}
+
 // Internal helper: run the same generation pipeline used by the website,
 // but persist files + queue plugin actions immediately (no preview gate).
-async function runBuild(projectId: string, prompt: string) {
+async function runBuild(projectId: string, prompt: string, callerUserId: string) {
   // Verify project exists, capture owner for plugin_actions FK.
   const { data: project, error: projErr } = await supabaseAdmin
     .from("projects")
@@ -13,22 +39,29 @@ async function runBuild(projectId: string, prompt: string) {
     .maybeSingle();
   if (projErr || !project) throw new Error(`Project ${projectId} not found.`);
 
-  // Check & deduct 1 credit from the project owner before running.
+  // Atomically spend 1 credit from the CALLER (not project owner) to prevent
+  // draining a victim's credits via MCP tokens.
   const { data: prof, error: profErr } = await supabaseAdmin
     .from("profiles")
     .select("credits")
-    .eq("id", project.user_id)
+    .eq("id", callerUserId)
     .maybeSingle();
-  if (profErr || !prof) throw new Error("Owner profile not found.");
+  if (profErr || !prof) throw new Error("Caller profile not found.");
   if ((prof.credits ?? 0) < 1) {
     throw new Error(
       "Out of BloxSmith credits. Top up at https://bloxsmith.pro/settings before running more MCP builds.",
     );
   }
-  await supabaseAdmin
+  // Conditional update guards against concurrent races: only succeeds if
+  // credits are still >= 1 at write time.
+  const { data: spent } = await supabaseAdmin
     .from("profiles")
     .update({ credits: (prof.credits ?? 0) - 1 })
-    .eq("id", project.user_id);
+    .eq("id", callerUserId)
+    .gte("credits", 1)
+    .select("credits")
+    .maybeSingle();
+  if (!spent) throw new Error("Could not spend credit (concurrent update).");
 
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error("GROQ_API_KEY missing on server.");
@@ -140,11 +173,11 @@ async function runBuild(projectId: string, prompt: string) {
   const { data: genRow } = await supabaseAdmin
     .from("generations")
     .insert({
-      user_id: project.user_id,
+      user_id: callerUserId,
       project_id: projectId,
       prompt,
       status: "success",
-      credits_used: 0,
+      credits_used: 1,
       result: { ...result, _queued: queued, _source: "mcp" } as any,
     })
     .select("id")
@@ -179,8 +212,18 @@ export const buildRobloxTool = defineTool({
     projectId: z.string().uuid().describe("BloxSmith project UUID to build into."),
     prompt: z.string().min(1).max(8000).describe("What to build, in natural language."),
   }),
-  execute: async ({ projectId, prompt }) => {
-    const r = await runBuild(projectId, prompt);
+  execute: async ({ projectId, prompt }, context) => {
+    const { userId, isAdmin } = getAuth(context);
+    await assertProjectAccess(projectId, userId, isAdmin);
+    // For admin scope, fall back to the project owner so we don't crash.
+    let billUserId = userId;
+    if (!billUserId) {
+      const { data: p } = await supabaseAdmin
+        .from("projects").select("user_id").eq("id", projectId).maybeSingle();
+      billUserId = p?.user_id ?? null;
+    }
+    if (!billUserId) throw new Error("No user to bill credits to.");
+    const r = await runBuild(projectId, prompt, billUserId);
     return JSON.stringify(r, null, 2);
   },
 });
@@ -189,7 +232,9 @@ export const listProjectFilesTool = defineTool({
   name: "list_project_files",
   description: "List every script/file stored in a BloxSmith project.",
   parameters: z.object({ projectId: z.string().uuid() }),
-  execute: async ({ projectId }) => {
+  execute: async ({ projectId }, context) => {
+    const { userId, isAdmin } = getAuth(context);
+    await assertProjectAccess(projectId, userId, isAdmin);
     const { data, error } = await supabaseAdmin
       .from("project_files")
       .select("path,file_type,service_location,updated_at")
@@ -207,7 +252,9 @@ export const readProjectFileTool = defineTool({
     projectId: z.string().uuid(),
     path: z.string().min(1).max(500),
   }),
-  execute: async ({ projectId, path }) => {
+  execute: async ({ projectId, path }, context) => {
+    const { userId, isAdmin } = getAuth(context);
+    await assertProjectAccess(projectId, userId, isAdmin);
     const { data, error } = await supabaseAdmin
       .from("project_files")
       .select("path,file_type,service_location,content,updated_at")
@@ -226,12 +273,40 @@ export const listProjectsTool = defineTool({
   parameters: z.object({
     limit: z.number().int().min(1).max(50).default(20),
   }),
-  execute: async ({ limit }) => {
-    const { data, error } = await supabaseAdmin
+  execute: async ({ limit }, context) => {
+    const { userId, isAdmin } = getAuth(context);
+    if (!userId && !isAdmin) throw new Error("Unauthorized.");
+
+    // Owned projects
+    let ownedIds = new Set<string>();
+    if (userId) {
+      const { data: owned } = await supabaseAdmin
+        .from("projects")
+        .select("id")
+        .eq("user_id", userId);
+      (owned ?? []).forEach((p) => ownedIds.add(p.id));
+
+      // Collaborator projects
+      const { data: collabs } = await supabaseAdmin
+        .from("project_collaborators")
+        .select("project_id")
+        .eq("user_id", userId);
+      (collabs ?? []).forEach((c) => ownedIds.add(c.project_id));
+    }
+
+    let query = supabaseAdmin
       .from("projects")
       .select("id,name,updated_at")
       .order("updated_at", { ascending: false })
       .limit(limit);
+
+    if (!isAdmin) {
+      const ids = Array.from(ownedIds);
+      if (ids.length === 0) return JSON.stringify([], null, 2);
+      query = query.in("id", ids);
+    }
+
+    const { data, error } = await query;
     if (error) throw new Error(error.message);
     return JSON.stringify(data ?? [], null, 2);
   },
