@@ -1086,6 +1086,30 @@ ${badJson}`;
   if (!jsonMatch) throw new Error("Repair failed: no JSON found");
   return tryParseJSON(jsonMatch[0]);
 }
+// Retry wrapper for transient Groq failures (rate limit / 5xx).
+// Exponential backoff: 500ms, 1s, 2s. Skips retry for fatal errors (401/402/413/context-too-large).
+async function withRateLimitRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  const delays = [500, 1000, 2000];
+  let lastErr: any = null;
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastErr = err;
+      const msg = String(err?.message ?? err);
+      const status = err?.status ?? err?.statusCode;
+      const is429 = status === 429 || /\b429\b|rate.?limit|too many requests|tpm/i.test(msg);
+      const is5xx = (status >= 500 && status < 600) || /\b50\d\b|service unavailable|bad gateway|timeout/i.test(msg);
+      const isFatal = status === 401 || status === 402 || status === 413 || /too large|context length/i.test(msg);
+      if (isFatal || (!is429 && !is5xx) || attempt === delays.length) throw err;
+      const delay = delays[attempt] + Math.floor(Math.random() * 250);
+      console.warn(`[${label}] transient error (attempt ${attempt + 1}), retrying in ${delay}ms: ${msg.slice(0, 200)}`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw lastErr;
+}
+
 
 export const Route = createFileRoute("/api/assistant/execute")({
   server: {
