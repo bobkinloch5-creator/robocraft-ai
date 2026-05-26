@@ -14,8 +14,10 @@ export const Route = createFileRoute("/privacy")({
   ),
   head: () => ({
     meta: [
-      { title: "Privacy — BloxSmith" },
-      { name: "description", content: "BloxSmith privacy policy." },
+      { title: "Privacy Policy — BloxSmith" },
+      { name: "description", content: "How BloxSmith collects, uses, and protects your account, project, and Roblox Studio data — and the choices you have over it." },
+      { property: "og:title", content: "Privacy Policy — BloxSmith" },
+      { property: "og:description", content: "How BloxSmith handles your account, project, and Roblox Studio data, and the choices you have." },
       { property: "og:url", content: "https://bloxsmith.pro/privacy" },
     ],
     links: [{ rel: "canonical", href: "https://bloxsmith.pro/privacy" }],
