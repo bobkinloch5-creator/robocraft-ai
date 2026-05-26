@@ -219,6 +219,34 @@ function Admin() {
         </section>
 
         <section className="glass rounded-2xl p-6">
+          <h2 className="font-semibold mb-3">Pending promotion submissions ({promoSubs.length})</h2>
+          {promoSubs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No pending promotion submissions.</p>
+          ) : (
+            <div className="space-y-3">
+              {promoSubs.map((s) => (
+                <div key={s.id} className="rounded-xl border border-border p-4 flex flex-wrap gap-3 justify-between items-center">
+                  <div className="text-sm space-y-1 min-w-0">
+                    <div><span className="text-muted-foreground">User:</span> <span className="font-medium">{emails[s.user_id] ?? s.user_id}</span></div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs uppercase rounded bg-surface-elevated px-1.5 py-0.5">{s.platform}</span>
+                      <a href={s.url} target="_blank" rel="noreferrer" className="underline text-primary truncate max-w-[480px]">{s.url}</a>
+                    </div>
+                    {s.note && <div className="text-xs text-muted-foreground">Note: {s.note}</div>}
+                    <div className="text-xs text-muted-foreground">{new Date(s.created_at).toLocaleString()}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => reviewPromo(s, true)} className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground">Approve & credit</button>
+                    <button onClick={() => reviewPromo(s, false)} className="rounded-lg border border-border px-3 py-1.5 text-sm">Reject</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+
+        <section className="glass rounded-2xl p-6">
           <div className="flex justify-between items-center mb-3">
             <h2 className="font-semibold">Users</h2>
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="rounded-lg bg-surface-elevated border border-border px-3 py-1.5 text-sm" />
