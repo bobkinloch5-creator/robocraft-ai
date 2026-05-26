@@ -1471,7 +1471,7 @@ function ProjectEditor() {
 
         {/* AI chat */}
         <aside
-          className={`${mobileTab === "chat" ? "flex" : "hidden"} lg:flex relative border-l border-border bg-surface/20 flex-col max-h-[calc(100vh-8rem)] min-h-[60vh]`}
+          className={`${mobileTab === "chat" ? "flex" : "hidden"} ${showChat ? "lg:flex" : "lg:hidden"} relative border-l border-border bg-surface/20 flex-col max-h-[calc(100vh-8rem)] min-h-[60vh]`}
         >
           {/* Drag handle to stretch chat panel wider/narrower */}
           <div
