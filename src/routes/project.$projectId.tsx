@@ -53,7 +53,6 @@ import {
   Square,
   Mic,
   MicOff,
-  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { downloadRbxmx } from "@/lib/rbxmx-export";
