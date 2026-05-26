@@ -16,6 +16,11 @@ type Server = {
   url: string;
   auth_header: string | null;
   enabled: boolean;
+  last_tested_at: string | null;
+  last_test_ok: boolean | null;
+  last_test_error: string | null;
+  tool_count: number | null;
+  tools_cache: Array<{ name: string; description: string }> | null;
 };
 
 export const Route = createFileRoute("/mcp-servers")({
@@ -46,10 +51,24 @@ function McpServersPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("user_mcp_servers")
-      .select("id,name,url,auth_header,enabled")
+      .select("id,name,url,auth_header,enabled,last_tested_at,last_test_ok,last_test_error,tool_count,tools_cache")
       .order("created_at", { ascending: false });
     if (error) toast.error(error.message);
-    setServers((data as Server[]) ?? []);
+    const rows = (data as Server[]) ?? [];
+    setServers(rows);
+    // Hydrate test state from cached DB values so users see what's saved instantly.
+    setTests((prev) => {
+      const next = { ...prev };
+      for (const s of rows) {
+        if (next[s.id]) continue;
+        if (s.last_test_ok === true) {
+          next[s.id] = { status: "ok", toolCount: s.tool_count ?? 0, tools: s.tools_cache ?? [] };
+        } else if (s.last_test_ok === false) {
+          next[s.id] = { status: "fail", error: s.last_test_error ?? "Test failed" };
+        }
+      }
+      return next;
+    });
     setLoading(false);
   };
 
@@ -75,8 +94,13 @@ function McpServersPage() {
   }, []);
 
   useEffect(() => {
+    // Only re-test servers whose cache is stale (older than 1 hour) or never tested.
+    const STALE_MS = 60 * 60 * 1000;
+    const now = Date.now();
     servers.forEach((s) => {
-      if (s.enabled && !tests[s.id]) testServer(s, true);
+      if (!s.enabled) return;
+      const cachedAt = s.last_tested_at ? new Date(s.last_tested_at).getTime() : 0;
+      if (now - cachedAt > STALE_MS) testServer(s, true);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servers]);
