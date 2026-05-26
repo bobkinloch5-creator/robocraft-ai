@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { McpTokenManager } from "@/components/McpTokenManager";
 
 export const Route = createFileRoute("/mcp")({
   component: McpPage,
