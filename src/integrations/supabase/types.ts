@@ -387,6 +387,27 @@ export type Database = {
           },
         ]
       }
+      plugin_tokens: {
+        Row: {
+          created_at: string
+          token_hash: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          token_hash: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          token_hash?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -396,7 +417,6 @@ export type Database = {
           display_name: string | null
           email: string
           id: string
-          plugin_token_hash: string | null
           specialization: string | null
           updated_at: string
         }
@@ -408,7 +428,6 @@ export type Database = {
           display_name?: string | null
           email: string
           id: string
-          plugin_token_hash?: string | null
           specialization?: string | null
           updated_at?: string
         }
@@ -420,7 +439,6 @@ export type Database = {
           display_name?: string | null
           email?: string
           id?: string
-          plugin_token_hash?: string | null
           specialization?: string | null
           updated_at?: string
         }
