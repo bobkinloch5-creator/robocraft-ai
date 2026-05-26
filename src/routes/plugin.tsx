@@ -22,6 +22,7 @@ import {
   Wifi,
 } from "lucide-react";
 import pluginSource from "../../plugin-src/BloxSmith.server.lua?raw";
+import { AutoPluginInstaller } from "@/components/AutoPluginInstaller";
 
 const PLUGIN_DOWNLOAD_URL = "/BloxSmith.lua";
 const PLUGIN_VERSION = "latest";
