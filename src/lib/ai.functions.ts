@@ -465,6 +465,49 @@ Keep it under ~400 words. Be specific to the user's request and existing project
   });
 
 // -----------------------------------------------------------------------------
+// Magic-wand prompt improver — rewrites the user's short prompt into a richer,
+// more specific BloxSmith build prompt. Free (0 credits). Fast model.
+// -----------------------------------------------------------------------------
+const ImprovePromptSchema = z.object({
+  prompt: z.string().min(1).max(4000),
+});
+
+export const improvePrompt = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => ImprovePromptSchema.parse(input))
+  .handler(async ({ data }) => {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) throw new Error("AI gateway not configured — GROQ_API_KEY missing.");
+
+    const { generateText } = await import("ai");
+    const { createGroqProvider, BLOXSMITH_FAST_MODEL } = await import("./ai-gateway.server");
+    const gateway = createGroqProvider(apiKey);
+    const model = gateway(BLOXSMITH_FAST_MODEL);
+
+    const system = `You rewrite short Roblox Studio build prompts into clearer, more specific build prompts for BloxSmith (an AI Roblox game builder).
+
+Rules:
+- Keep the user's intent exactly. Do not invent a different game.
+- Add concrete details that help the builder: services (ServerScriptService, ReplicatedStorage, StarterPlayerScripts), RemoteEvents, data persistence, leaderstats, basic UI, win/lose loop, sounds — only when relevant.
+- Keep it under 120 words.
+- Output PLAIN TEXT only — no markdown headings, no bullets, no code blocks, no preamble like "Here is the improved prompt:". Just the improved prompt text itself.`;
+
+    try {
+      const { text } = await generateText({
+        model,
+        system,
+        prompt: `Original prompt:\n${data.prompt}\n\nRewrite it.`,
+      });
+      const cleaned = text.trim().replace(/^["']|["']$/g, "");
+      return { prompt: cleaned || data.prompt };
+    } catch (err: any) {
+      const msg = String(err?.message ?? err);
+      if (msg.includes("429")) throw new Error("AI rate limit. Try again in a moment.");
+      throw new Error("Improve failed: " + msg);
+    }
+  });
+
+// -----------------------------------------------------------------------------
 // Error-fix loop: user pastes raw Roblox Studio output logs, AI identifies the
 // failing files, generates patches, and queues script actions so the plugin
 // hot-patches them in Studio within ~3s.
