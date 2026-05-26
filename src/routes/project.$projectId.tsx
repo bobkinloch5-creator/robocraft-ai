@@ -1997,11 +1997,17 @@ function ProjectEditor() {
                     className={`h-1.5 w-1.5 rounded-full ${isStudioConnected ? "bg-success animate-pulse" : "bg-amber-400"}`}
                   />
                   <span className="text-muted-foreground">
-                    {isStudioConnected ? "Studio live" : "Studio waiting"} · Groq · tools enabled
+                    {chatMode
+                      ? "Chat mode · read-only · no tools"
+                      : `${isStudioConnected ? "Studio live" : "Studio waiting"} · Groq · tools enabled`}
                   </span>
                 </div>
                 <span className="text-[10px] text-muted-foreground">
-                  {planMode ? `${PLAN_COST} cr / plan` : `${GENERATE_COST} cr / build`}
+                  {chatMode
+                    ? `${CHAT_COST} cr / chat`
+                    : planMode
+                      ? `${PLAN_COST} cr / plan`
+                      : `${GENERATE_COST} cr / build`}
                   {thinking ? " · deeper" : ""}
                 </span>
               </div>
