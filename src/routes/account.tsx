@@ -160,6 +160,7 @@ function Account() {
         setProjects(data ?? []);
         setProjectCount(data?.length ?? 0);
       });
+    loadRedemptions();
   }, [user]);
 
   const saveProfile = async () => {
