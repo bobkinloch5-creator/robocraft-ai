@@ -10,6 +10,9 @@ type Profile = {
   display_name: string | null;
   avatar_url: string | null;
   credits: number;
+  discord_claimed?: boolean;
+  referral_code?: string | null;
+  referred_by?: string | null;
 };
 
 type Role = "owner" | "admin" | "user";
