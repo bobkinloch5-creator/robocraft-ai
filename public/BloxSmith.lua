@@ -1962,12 +1962,22 @@ local function openPreviewOverlay()
 		syncInfo.Text = ("Discarded %d pending action(s)"):format(#batch)
 	end)
 	apply.MouseButton1Click:Connect(function()
-		local batch = pendingPreview
+		-- Split pending into "apply now" vs "skipped" based on per-row toggles.
+		local toApply, toDiscard = {}, {}
+		for i, act in ipairs(pendingPreview) do
+			if skipFlags[i] then table.insert(toDiscard, act) else table.insert(toApply, act) end
+		end
 		pendingPreview = {}
 		previewSeenIds = {}
 		refreshReviewBtnLabel()
 		closePreviewOverlay()
-		applyActions(batch, "preview apply")
+		if #toDiscard > 0 then reportDiscarded(toDiscard) end
+		if #toApply > 0 then
+			applyActions(toApply, "preview apply")
+			syncInfo.Text = ("Applied %d, skipped %d"):format(#toApply, #toDiscard)
+		else
+			syncInfo.Text = ("Nothing applied — skipped %d"):format(#toDiscard)
+		end
 	end)
 end
 
