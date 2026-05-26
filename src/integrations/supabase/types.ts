@@ -438,6 +438,9 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          ban_reason: string | null
+          banned: boolean
+          banned_at: string | null
           bio: string | null
           created_at: string
           credits: number
@@ -453,6 +456,9 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          ban_reason?: string | null
+          banned?: boolean
+          banned_at?: string | null
           bio?: string | null
           created_at?: string
           credits?: number
@@ -468,6 +474,9 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          ban_reason?: string | null
+          banned?: boolean
+          banned_at?: string | null
           bio?: string | null
           created_at?: string
           credits?: number
@@ -853,6 +862,18 @@ export type Database = {
       }
       admin_reject_promotion: {
         Args: { _reason: string; _submission_id: string }
+        Returns: undefined
+      }
+      admin_set_ban: {
+        Args: { _banned: boolean; _reason: string; _user_id: string }
+        Returns: undefined
+      }
+      admin_set_role: {
+        Args: {
+          _grant: boolean
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
         Returns: undefined
       }
       apply_referral: { Args: { _code: string }; Returns: Json }
