@@ -206,6 +206,43 @@ function Admin() {
             </table>
           </div>
         </section>
+
+        <section className="glass rounded-2xl p-6">
+          <h2 className="font-semibold mb-3">Promo codes</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 mb-4">
+            <input value={newCode} onChange={(e) => setNewCode(e.target.value)} placeholder="CODE" className="rounded-lg bg-surface-elevated border border-border px-3 py-1.5 text-sm uppercase" />
+            <input type="number" value={newCredits} onChange={(e) => setNewCredits(parseInt(e.target.value || "0", 10))} placeholder="Credits" className="rounded-lg bg-surface-elevated border border-border px-3 py-1.5 text-sm" />
+            <input type="number" value={newMax} onChange={(e) => setNewMax(e.target.value)} placeholder="Max uses (blank=∞)" className="rounded-lg bg-surface-elevated border border-border px-3 py-1.5 text-sm" />
+            <input type="datetime-local" value={newExpires} onChange={(e) => setNewExpires(e.target.value)} className="rounded-lg bg-surface-elevated border border-border px-3 py-1.5 text-sm" />
+            <button onClick={createPromo} className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground">Create</button>
+          </div>
+          {promos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No promo codes yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-xs uppercase text-muted-foreground">
+                  <tr><th className="py-2">Code</th><th>Credits</th><th>Uses</th><th>Expires</th><th>Status</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {promos.map((p) => (
+                    <tr key={p.id} className="border-t border-border">
+                      <td className="py-2 font-mono">{p.code}</td>
+                      <td>{p.credits}</td>
+                      <td>{p.redemption_count}{p.max_redemptions ? ` / ${p.max_redemptions}` : ""}</td>
+                      <td>{p.expires_at ? new Date(p.expires_at).toLocaleDateString() : "—"}</td>
+                      <td>{p.active ? <span className="text-success">Active</span> : <span className="text-muted-foreground">Disabled</span>}</td>
+                      <td className="text-right whitespace-nowrap">
+                        <button onClick={() => togglePromo(p)} className="text-xs rounded-md border border-border px-2 py-1 mr-1">{p.active ? "Disable" : "Enable"}</button>
+                        <button onClick={() => deletePromo(p)} className="text-xs rounded-md border border-border px-2 py-1">Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       </main>
       <Footer />
     </div>
