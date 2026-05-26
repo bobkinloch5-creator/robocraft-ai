@@ -6,6 +6,7 @@ import type { Database } from "@/integrations/supabase/types";
 import {
   createGroqProvider,
   SYSTEM_PROMPT,
+  SLIM_SYSTEM_PROMPT,
   BLOXSMITH_MODEL,
   BLOXSMITH_THINK_MODEL,
   BLOXSMITH_LARGE_MODEL,
