@@ -215,9 +215,17 @@ Action shapes:
           );
         }
 
+        const actionTouchesIgnored = (a: any) => {
+          if (isIgnored(a?.path) || isIgnored(a?.newParent) || isIgnored(a?.parent)) return true;
+          const items = a?.items ?? a?.objects ?? a?.paths;
+          if (Array.isArray(items) && items.some((p: unknown) => isIgnored(p))) return true;
+          return false;
+        };
+
         const rawActions: any[] = Array.isArray(aiJson?.actions) ? aiJson.actions : [];
         const filtered = rawActions
           .filter((a) => a && typeof a === "object" && ALLOWED_TYPES.has(a.type))
+          .filter((a) => !actionTouchesIgnored(a))
           .slice(0, 40);
 
         if (filtered.length === 0) {
