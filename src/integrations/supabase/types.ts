@@ -191,6 +191,33 @@ export type Database = {
           },
         ]
       }
+      mcp_tokens: {
+        Row: {
+          created_at: string
+          label: string | null
+          last_used_at: string | null
+          token_hash: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          label?: string | null
+          last_used_at?: string | null
+          token_hash: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          label?: string | null
+          last_used_at?: string | null
+          token_hash?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       payment_requests: {
         Row: {
           amount: number
