@@ -975,6 +975,7 @@ function ProjectEditor() {
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <PluginStatus />
+            <TeamChat projectId={projectId} />
 
             <button
               onClick={() => setShowInvite((s) => !s)}
