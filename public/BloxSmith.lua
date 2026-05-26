@@ -2018,8 +2018,11 @@ local function pull(manual)
 		end
 		refreshReviewBtnLabel()
 		if added > 0 then
-			syncInfo.Text = ("Preview mode: %d new action(s) queued · click Review Pending"):format(added)
+			syncInfo.Text = ("Preview: %d new action(s) queued · opening review…"):format(added)
 			setPill("idle")
+			-- Auto-open the preview overlay so the user immediately sees
+			-- what's about to run before they approve it.
+			task.defer(openPreviewOverlay)
 		end
 		return
 	end
