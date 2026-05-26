@@ -69,6 +69,18 @@ function SignupPage() {
         </Link>
         <h1 className="text-2xl font-bold text-center">Create your account</h1>
         <p className="text-sm text-muted-foreground text-center mt-1">Get 10 free credits to start, plus 10 free daily.</p>
+        {refCode && (
+          <p className="text-xs text-center mt-2 text-primary-glow">
+            🎁 Referral applied: <span className="font-mono">{refCode}</span> — +10 bonus credits after signup.
+          </p>
+        )}
+        <a
+          href="https://discord.gg/ypjzApsz3S"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 block text-center text-xs rounded-lg bg-[#5865F2]/10 border border-[#5865F2]/30 text-[#a3b1ff] hover:bg-[#5865F2]/20 py-2 font-semibold transition"
+        >
+          + Join our Discord for an extra 5 credits
         <button onClick={handleGoogle} className="mt-6 w-full rounded-lg border border-border bg-surface py-2.5 text-sm font-medium hover:bg-surface-elevated">Continue with Google</button>
         <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground"><div className="flex-1 h-px bg-border" />or<div className="flex-1 h-px bg-border" /></div>
         <form onSubmit={handle} className="space-y-3">
