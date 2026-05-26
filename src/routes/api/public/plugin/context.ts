@@ -18,7 +18,7 @@ async function userFromToken(token: string | null) {
   if (!token) return null;
   const hash = await sha256(token);
   const { data } = await supabaseAdmin.from("plugin_tokens").select("user_id").eq("token_hash", hash).maybeSingle();
-  return data?.id ?? null;
+  return data?.user_id ?? null;
 }
 
 // Receives a live snapshot of the user's Studio workspace from the plugin.
