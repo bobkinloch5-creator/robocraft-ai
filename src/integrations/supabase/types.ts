@@ -445,6 +445,7 @@ export type Database = {
           display_name: string | null
           email: string
           id: string
+          manual_sync_only: boolean
           referral_code: string | null
           referred_by: string | null
           specialization: string | null
@@ -459,6 +460,7 @@ export type Database = {
           display_name?: string | null
           email: string
           id: string
+          manual_sync_only?: boolean
           referral_code?: string | null
           referred_by?: string | null
           specialization?: string | null
@@ -473,6 +475,7 @@ export type Database = {
           display_name?: string | null
           email?: string
           id?: string
+          manual_sync_only?: boolean
           referral_code?: string | null
           referred_by?: string | null
           specialization?: string | null
