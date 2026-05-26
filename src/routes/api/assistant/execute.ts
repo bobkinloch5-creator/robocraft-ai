@@ -1257,7 +1257,6 @@ export const Route = createFileRoute("/api/assistant/execute")({
             } else {
               try {
                 const gateway = createGroqProvider(apiKey);
-                const model = gateway(thinking ? BLOXSMITH_THINK_MODEL : BLOXSMITH_MODEL);
 
                 const { data: liveContext } = await supabaseUser
                   .from("plugin_context")
@@ -1269,21 +1268,9 @@ export const Route = createFileRoute("/api/assistant/execute")({
                   .from("project_files")
                   .select("path,file_type,service_location,content")
                   .eq("project_id", projectId)
-                  .limit(40);
+                  .limit(60);
 
-                const filesBlock = (existingFiles ?? [])
-                  .map(
-                    (f) =>
-                      `--- ${f.path} (${f.file_type} in ${f.service_location}) ---\n${(f.content ?? "").slice(0, 1500)}`,
-                  )
-                  .join("\n\n");
-
-                const liveBlock = liveContext?.context
-                  ? `LIVE STUDIO WORKSPACE (snapshot at ${liveContext.updated_at}, ${liveContext.instance_count} instances):\n${JSON.stringify(liveContext.context, null, 0).slice(0, 18000)}`
-                  : "LIVE STUDIO WORKSPACE: (not yet reported by plugin — assume empty baseplate)";
-
-                // Pull recent chat history for this project so the AI has
-                // memory of prior turns (collaborators share one conversation).
+                // Pull recent chat history.
                 const { data: convoRow } = await supabaseUser
                   .from("agent_conversations")
                   .select("id")
@@ -1298,50 +1285,122 @@ export const Route = createFileRoute("/api/assistant/execute")({
                     .select("role,content,created_at")
                     .eq("conversation_id", convoRow.id)
                     .order("created_at", { ascending: false })
-                    .limit(20);
+                    .limit(10);
                   history = (msgs ?? [])
                     .reverse()
                     .filter((m: any) => m.role === "user" || m.role === "assistant")
                     .map((m: any) => ({
                       role: m.role as "user" | "assistant",
-                      content: String(m.content ?? "").slice(0, 4000),
+                      content: String(m.content ?? ""),
                     }));
                 }
 
-                const contextBlock = `${liveBlock}\n\nStudio plugin status: ${studioConnected ? "connected or recently synced" : "not connected / no recent sync"}. Still emit the full files/actions so they are ready to apply once Studio is connected.\n\nProject files in DB:\n${filesBlock || "(empty)"}\n\nUser request:\n${prompt}\n\nExecute the request as fully as possible. For any Roblox build/edit request, return files and/or actions that the website can queue for the Studio plugin. If you need current Roblox API details, free asset IDs, thumbnails, or docs, call the available tools before answering. If the user request is just casual chat or a general question, reply naturally in the message field with empty files and actions.\n\nReturn ONLY the strict JSON object from the output contract.`;
+                const keywords = extractKeywords(prompt);
+                const ctxInputs: ContextInputs = {
+                  prompt,
+                  studioConnected: !!studioConnected,
+                  liveContext: liveContext?.context ?? null,
+                  liveUpdatedAt: liveContext?.updated_at,
+                  liveInstanceCount: liveContext?.instance_count,
+                  files: (existingFiles ?? []) as DbFile[],
+                  history,
+                  keywords,
+                };
 
-                const messages = [
-                  ...history,
-                  { role: "user" as const, content: contextBlock },
+                // Try increasingly compressed prompts. If still too big for the
+                // default model, switch to the large-context fallback. Each
+                // attempt logs an estimate so token issues are easy to diagnose.
+                const attempts: Array<{
+                  level: 0 | 1 | 2;
+                  modelId: string;
+                  budget: number;
+                }> = [
+                  { level: 0, modelId: thinking ? BLOXSMITH_THINK_MODEL : BLOXSMITH_MODEL, budget: BLOXSMITH_MODEL_TOKEN_BUDGET },
+                  { level: 1, modelId: thinking ? BLOXSMITH_THINK_MODEL : BLOXSMITH_MODEL, budget: BLOXSMITH_MODEL_TOKEN_BUDGET },
+                  { level: 2, modelId: BLOXSMITH_LARGE_MODEL, budget: BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET },
                 ];
 
+                const systemTokens = estimateTokens(SYSTEM_PROMPT);
+                let lastErr: any = null;
                 let rawText = "";
-                try {
-                  const textRes = await generateText({
-                    model,
-                    system: SYSTEM_PROMPT,
-                    messages,
-                    tools: buildBloxSmithTools({ projectId }) as any,
-                    stopWhen: stepCountIs(thinking ? 60 : 45),
-                  });
-                  rawText = textRes.text;
-                  result = normalizeResult(tryParseJSON(rawText));
-                } catch (err: any) {
-                  console.error("AI generation or parsing failed, trying repair:", err);
-                  if (rawText) {
-                    try {
-                      result = normalizeResult(await repairJsonWithGroq(rawText, gateway, model));
-                    } catch (repairErr) {
-                      throw new Error("AI returned malformed JSON and repair failed.");
+
+                for (let i = 0; i < attempts.length; i++) {
+                  const att = attempts[i];
+                  const built = buildContextBlock(att.level, ctxInputs);
+                  const promptTokens =
+                    systemTokens +
+                    estimateTokens(built.contextBlock) +
+                    built.trimmedHistory.reduce((sum, m) => sum + estimateTokens(m.content), 0);
+
+                  console.log(
+                    `[ai-execute] attempt=${i} level=${att.level} model=${att.modelId} ` +
+                      `est_tokens=${promptTokens} budget=${att.budget} files_included=${built.filesIncluded}`,
+                  );
+
+                  // Skip attempt if it's still too large for this model's budget.
+                  if (promptTokens > att.budget && i < attempts.length - 1) {
+                    console.log(`[ai-execute] skipping attempt ${i}: over budget, compressing further`);
+                    continue;
+                  }
+
+                  const model = gateway(att.modelId);
+                  const messages = [
+                    ...built.trimmedHistory,
+                    { role: "user" as const, content: built.contextBlock },
+                  ];
+
+                  rawText = "";
+                  try {
+                    const textRes = await generateText({
+                      model,
+                      system: SYSTEM_PROMPT,
+                      messages,
+                      tools: buildBloxSmithTools({ projectId }) as any,
+                      stopWhen: stepCountIs(thinking ? 60 : 45),
+                    });
+                    rawText = textRes.text;
+                    result = normalizeResult(tryParseJSON(rawText));
+                    lastErr = null;
+                    break;
+                  } catch (err: any) {
+                    lastErr = err;
+                    const msg = String(err?.message ?? err);
+                    const isTooLarge = /too large|context length|token|tpm|413/i.test(msg);
+                    console.error(
+                      `[ai-execute] attempt ${i} failed (tooLarge=${isTooLarge}): ${msg.slice(0, 300)}`,
+                    );
+                    // For non-size errors, try repair before giving up.
+                    if (!isTooLarge && rawText) {
+                      try {
+                        result = normalizeResult(
+                          await repairJsonWithGroq(rawText, gateway, gateway(att.modelId)),
+                        );
+                        lastErr = null;
+                        break;
+                      } catch {
+                        // fall through to next attempt
+                      }
                     }
-                  } else {
-                    throw err;
+                    // Only keep retrying for size-related errors. Other errors
+                    // (auth, network, etc.) won't be fixed by shrinking.
+                    if (!isTooLarge && i < attempts.length - 1) {
+                      // try once more with smaller context anyway
+                      continue;
+                    }
+                    if (i === attempts.length - 1) break;
                   }
                 }
+
+                if (!result && lastErr) throw lastErr;
               } catch (outerErr: any) {
                 console.error("AI client initialisation/generation failed:", outerErr);
                 await refundOnFailure("ai generation failed");
                 const msg = String(outerErr?.message ?? outerErr);
+                if (/too large|context length|tpm/i.test(msg)) {
+                  throw new Error(
+                    "Your request was too large for the AI model even after compressing the project context. Try a more specific prompt or focus on one system at a time.",
+                  );
+                }
                 if (msg.includes("429")) throw new Error("AI rate limit. Try again in a moment.");
                 if (msg.includes("402"))
                   throw new Error("AI credits exhausted. Add credits in workspace settings.");
@@ -1349,6 +1408,7 @@ export const Route = createFileRoute("/api/assistant/execute")({
               }
             }
           }
+
 
           if (!result) {
             await refundOnFailure("ai generation returned no result");
