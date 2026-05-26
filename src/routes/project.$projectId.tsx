@@ -900,13 +900,39 @@ function ProjectEditor() {
     }
   };
 
+  const runChatRequest = async (userPrompt: string) => {
+    if (aiBusy) return;
+    if (credits !== null && credits < CHAT_COST) {
+      toast.error("Not enough credits for chat.");
+      return;
+    }
+    setAiBusy(true);
+    await pushMsg("user", userPrompt);
+    try {
+      const history = messages.slice(-10).map((m) => ({ role: m.role, content: m.content }));
+      const out: any = await runChat({
+        data: { projectId, prompt: userPrompt, history, thinking },
+      });
+      await pushMsg("assistant", out.reply, { kind: "chat" });
+    } catch (e: any) {
+      const msg = String(e?.message ?? "Failed");
+      toast.error(msg);
+      await pushMsg("assistant", "Chat error: " + msg);
+    } finally {
+      setAiBusy(false);
+      refreshCredits();
+    }
+  };
+
   const send = async () => {
     if (!prompt.trim() || aiBusy) return;
     const p = prompt;
     setPrompt("");
-    if (planMode) await runPlanRequest(p);
+    if (chatMode) await runChatRequest(p);
+    else if (planMode) await runPlanRequest(p);
     else await runGenerate(p);
   };
+
 
   const buildFromPlan = async (msgId: string) => {
     const entry = plansByMsg[msgId];
