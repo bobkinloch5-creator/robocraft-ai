@@ -1776,6 +1776,7 @@ local function applyActions(actions, sourceLabel)
 
 	local ok, fail = 0, 0
 	local reports = {}
+	local failedDetails = {}
 	for _, a in ipairs(actions) do
 		local success, e = pcall(dispatch, a)
 		local executed = success and e ~= false
@@ -1785,6 +1786,7 @@ local function applyActions(actions, sourceLabel)
 		else
 			fail = fail + 1
 			local errMsg = tostring(e)
+			table.insert(failedDetails, { action = a, error = errMsg })
 			if a.id then table.insert(reports, { id = a.id, status = "failed", error = errMsg }) end
 			pcall(function()
 				postJSON("/errors", { errors = {{
@@ -1810,6 +1812,11 @@ local function applyActions(actions, sourceLabel)
 	if fail > 0 then setPill("error") else setPill("complete") end
 	appendLog(("Command executed: %d ok, %d failed"):format(ok, fail))
 
+	-- Bump session counters for the STATS row.
+	statsApplied = statsApplied + ok
+	statsErrors  = statsErrors  + fail
+	pcall(refreshStatsInfo)
+
 	task.defer(pushSnapshot)
 	task.delay(3, function()
 		if connected then setPill("connected") end
@@ -1817,6 +1824,8 @@ local function applyActions(actions, sourceLabel)
 
 	syncInfo.Text = ("Built %d action(s)%s · %s · undoable"):format(
 		ok, (fail > 0 and (" · " .. fail .. " failed") or ""), os.date("%H:%M:%S"))
+
+	return ok, fail, failedDetails
 end
 
 -- Tells the website "these actions were rejected" so the build status doesn't
