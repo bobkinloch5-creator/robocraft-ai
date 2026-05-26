@@ -24,6 +24,48 @@ function Dashboard() {
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState(false);
   const [replayTour, setReplayTour] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+
+  const refreshCredits = async () => {
+    if (!user) return;
+    const { data } = await supabase.from("profiles").select("credits").eq("id", user.id).single();
+    if (data && profile) (profile as { credits: number }).credits = data.credits;
+  };
+
+  const redeemPromo = async () => {
+    const code = promoCode.trim();
+    if (!code) return;
+    setRedeeming(true);
+    const { data, error } = await supabase.rpc("redeem_promo_code", { _code: code });
+    setRedeeming(false);
+    if (error) {
+      const map: Record<string, string> = {
+        invalid_code: "Invalid promo code",
+        inactive_code: "This code is no longer active",
+        expired_code: "This code has expired",
+        limit_reached: "This code has reached its redemption limit",
+        already_redeemed: "You already redeemed this code",
+      };
+      return toast.error(map[error.message] ?? error.message);
+    }
+    toast.success(`Promo redeemed — balance: ${data} credits`);
+    setPromoCode("");
+    await refreshCredits();
+    window.location.reload();
+  };
+
+  const claimDaily = async () => {
+    setClaiming(true);
+    const { data, error } = await supabase.rpc("claim_daily_credits");
+    setClaiming(false);
+    if (error) return toast.error(error.message);
+    const res = data as { claimed: boolean; reason?: string; amount?: number; credits?: number };
+    if (!res.claimed) return toast.info("Already claimed today — come back tomorrow!");
+    toast.success(`+${res.amount} daily credits! Balance: ${res.credits}`);
+    window.location.reload();
+  };
   const [form, setForm] = useState({ name: "", game_type: "Custom" as string, template: "Blank" as string, description: "" });
   const runCreate = useServerFn(createProjectFn);
 
