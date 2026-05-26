@@ -2465,6 +2465,54 @@ cleanSyncedBtn.MouseButton1Click:Connect(function()
 	appendLog("Clean Synced: removed " .. tostring(removed) .. " object(s)")
 	task.defer(pushSnapshot)
 end)
+
+-- Test Connection: pings the server with the current token + API URL and
+-- reports whether the token is valid and the server is reachable. Works
+-- whether or not a project is currently connected.
+testConnBtn.MouseButton1Click:Connect(function()
+	if getToken() == "" then
+		syncInfo.Text = "❌ Test failed — no plugin token set"
+		appendLog("Test Connection: no token")
+		return
+	end
+	local originalText = testConnBtn.Text
+	testConnBtn.Text = "Testing…"
+	task.spawn(function()
+		local apiBase = getApiBase()
+		local probeId = activeProjectId or "00000000-0000-0000-0000-000000000000"
+		local ok, res = pcall(function()
+			return HttpService:RequestAsync({
+				Url = apiBase .. "/sync",
+				Method = "POST",
+				Headers = {
+					["Content-Type"] = "application/json",
+					["x-plugin-token"] = getToken(),
+				},
+				Body = HttpService:JSONEncode({ projectId = probeId, manual = true }),
+			})
+		end)
+		testConnBtn.Text = originalText
+		if not ok then
+			syncInfo.Text = "❌ Cannot reach " .. apiBase
+			appendLog("Test Connection failed: " .. tostring(res))
+			return
+		end
+		local code = res.StatusCode
+		if code == 401 or code == 403 then
+			syncInfo.Text = "❌ Token rejected by server (HTTP " .. code .. ")"
+			appendLog("Test Connection: token rejected (" .. code .. ")")
+		elseif code >= 200 and code < 500 then
+			-- 2xx = full success; 404/409/400 = server reachable + token
+			-- valid, just no/invalid project — still a healthy probe.
+			syncInfo.Text = ("✅ Server reachable · token OK (HTTP %d)"):format(code)
+			appendLog("Test Connection: OK (" .. code .. ")")
+		else
+			syncInfo.Text = ("⚠️ Server error HTTP %d"):format(code)
+			appendLog("Test Connection: server error " .. code)
+		end
+	end)
+end)
+
 button.Click:Connect(function() widget.Enabled = not widget.Enabled end)
 
 -- Background loop: pull actions + push context + auto-reconnect retries
