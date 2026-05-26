@@ -1351,20 +1351,27 @@ export const Route = createFileRoute("/api/assistant/execute")({
                 ];
 
                 const systemTokens = estimateTokens(SYSTEM_PROMPT);
+                const slimSystemTokens = estimateTokens(SLIM_SYSTEM_PROMPT);
                 let lastErr: any = null;
                 let rawText = "";
 
                 for (let i = 0; i < attempts.length; i++) {
                   const att = attempts[i];
                   const built = buildContextBlock(att.level, ctxInputs);
+                  // Use the slim system prompt for the level-2 fallback so we
+                  // always fit under the model's TPM ceiling even when the
+                  // full encyclopedic system prompt would push us over.
+                  const useSlim = att.level === 2;
+                  const baseSystem = useSlim ? SLIM_SYSTEM_PROMPT : SYSTEM_PROMPT;
+                  const baseSystemTokens = useSlim ? slimSystemTokens : systemTokens;
                   const promptTokens =
-                    systemTokens +
+                    baseSystemTokens +
                     estimateTokens(built.contextBlock) +
                     built.trimmedHistory.reduce((sum, m) => sum + estimateTokens(m.content), 0);
 
                   console.log(
                     `[ai-execute] attempt=${i} level=${att.level} model=${att.modelId} ` +
-                      `est_tokens=${promptTokens} budget=${att.budget} files_included=${built.filesIncluded}`,
+                      `est_tokens=${promptTokens} budget=${att.budget} files_included=${built.filesIncluded} slim=${useSlim}`,
                   );
 
                   // Skip attempt if it's still too large for this model's budget.
@@ -1382,8 +1389,8 @@ export const Route = createFileRoute("/api/assistant/execute")({
                   rawText = "";
                   try {
                     const systemWithRules = projectRules
-                      ? `${SYSTEM_PROMPT}\n\n=== PROJECT-SPECIFIC RULES (override defaults) ===\n${projectRules}`
-                      : SYSTEM_PROMPT;
+                      ? `${baseSystem}\n\n=== PROJECT-SPECIFIC RULES (override defaults) ===\n${projectRules}`
+                      : baseSystem;
                     const { generateTextWithToolFallback } = await import("@/lib/ai-retry.server");
                     const textRes = await withRateLimitRetry("ai-execute", () =>
                       generateTextWithToolFallback(generateText, {
@@ -1392,7 +1399,7 @@ export const Route = createFileRoute("/api/assistant/execute")({
                         messages,
                         tools: buildBloxSmithTools({ projectId }) as any,
                         stopWhen: stepCountIs(thinking ? 60 : 45),
-                      }, `ai-execute attempt#${i} model=${att.modelId}`),
+                      }, `ai-execute attempt#${i} model=${att.modelId} slim=${useSlim}`),
                     );
                     rawText = textRes.text;
                     result = normalizeResult(tryParseJSON(rawText));
