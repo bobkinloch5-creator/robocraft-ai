@@ -89,6 +89,7 @@ export function PushPreview({
   const apply = useServerFn(applyGeneration);
   const [status, setStatus] = useState<"idle" | "applying" | "done" | "skipped">("idle");
   const [openSection, setOpenSection] = useState<string | null>("scripts");
+  const [openScript, setOpenScript] = useState<string | null>(null);
   const autoFiredRef = useRef(false);
 
   const grouped = useMemo(
@@ -97,11 +98,10 @@ export function PushPreview({
   );
 
   const totalOps =
-    grouped.scripts.length + grouped.remotes.length + grouped.builds.length +
+    preview.files.length + grouped.remotes.length + grouped.builds.length +
     grouped.ui.length + grouped.assets.length + grouped.structure.length + grouped.other.length;
 
-  const sections: { id: string; title: string; icon: any; items: { icon: any; label: string; sub: string }[] }[] = [
-    { id: "scripts",   title: "Scripts",          icon: FileCode,  items: grouped.scripts },
+  const nonScriptSections: { id: string; title: string; icon: any; items: { icon: any; label: string; sub: string }[] }[] = [
     { id: "remotes",   title: "Remotes & Events", icon: Radio,     items: grouped.remotes },
     { id: "ui",        title: "UI elements",      icon: Wand2,     items: grouped.ui },
     { id: "builds",    title: "Parts & models",   icon: Box,       items: grouped.builds },
