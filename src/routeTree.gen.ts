@@ -29,7 +29,6 @@ import { Route as ProjectProjectIdRouteImport } from './routes/project.$projectI
 import { Route as CheckoutCustomRouteImport } from './routes/checkout.custom'
 import { Route as CheckoutPackRouteImport } from './routes/checkout.$pack'
 import { Route as ApiStudioSnapshotRouteImport } from './routes/api/studio/snapshot'
-import { Route as ApiStudioResultRouteImport } from './routes/api/studio/result'
 import { Route as ApiStudioPollRouteImport } from './routes/api/studio/poll'
 import { Route as ApiPublicMcpRouteImport } from './routes/api/public/mcp'
 import { Route as ApiAssistantExecuteRouteImport } from './routes/api/assistant/execute'
@@ -140,11 +139,6 @@ const ApiStudioSnapshotRoute = ApiStudioSnapshotRouteImport.update({
   path: '/api/studio/snapshot',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiStudioResultRoute = ApiStudioResultRouteImport.update({
-  id: '/api/studio/result',
-  path: '/api/studio/result',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiStudioPollRoute = ApiStudioPollRouteImport.update({
   id: '/api/studio/poll',
   path: '/api/studio/poll',
@@ -214,7 +208,6 @@ export interface FileRoutesByFullPath {
   '/api/assistant/execute': typeof ApiAssistantExecuteRoute
   '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/studio/poll': typeof ApiStudioPollRoute
-  '/api/studio/result': typeof ApiStudioResultRoute
   '/api/studio/snapshot': typeof ApiStudioSnapshotRoute
   '/api/public/paypal/webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/public/plugin/auth': typeof ApiPublicPluginAuthRoute
@@ -246,7 +239,6 @@ export interface FileRoutesByTo {
   '/api/assistant/execute': typeof ApiAssistantExecuteRoute
   '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/studio/poll': typeof ApiStudioPollRoute
-  '/api/studio/result': typeof ApiStudioResultRoute
   '/api/studio/snapshot': typeof ApiStudioSnapshotRoute
   '/api/public/paypal/webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/public/plugin/auth': typeof ApiPublicPluginAuthRoute
@@ -279,7 +271,6 @@ export interface FileRoutesById {
   '/api/assistant/execute': typeof ApiAssistantExecuteRoute
   '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/studio/poll': typeof ApiStudioPollRoute
-  '/api/studio/result': typeof ApiStudioResultRoute
   '/api/studio/snapshot': typeof ApiStudioSnapshotRoute
   '/api/public/paypal/webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/public/plugin/auth': typeof ApiPublicPluginAuthRoute
@@ -313,7 +304,6 @@ export interface FileRouteTypes {
     | '/api/assistant/execute'
     | '/api/public/mcp'
     | '/api/studio/poll'
-    | '/api/studio/result'
     | '/api/studio/snapshot'
     | '/api/public/paypal/webhook'
     | '/api/public/plugin/auth'
@@ -345,7 +335,6 @@ export interface FileRouteTypes {
     | '/api/assistant/execute'
     | '/api/public/mcp'
     | '/api/studio/poll'
-    | '/api/studio/result'
     | '/api/studio/snapshot'
     | '/api/public/paypal/webhook'
     | '/api/public/plugin/auth'
@@ -377,7 +366,6 @@ export interface FileRouteTypes {
     | '/api/assistant/execute'
     | '/api/public/mcp'
     | '/api/studio/poll'
-    | '/api/studio/result'
     | '/api/studio/snapshot'
     | '/api/public/paypal/webhook'
     | '/api/public/plugin/auth'
@@ -410,7 +398,6 @@ export interface RootRouteChildren {
   ApiAssistantExecuteRoute: typeof ApiAssistantExecuteRoute
   ApiPublicMcpRoute: typeof ApiPublicMcpRoute
   ApiStudioPollRoute: typeof ApiStudioPollRoute
-  ApiStudioResultRoute: typeof ApiStudioResultRoute
   ApiStudioSnapshotRoute: typeof ApiStudioSnapshotRoute
   ApiPublicPaypalWebhookRoute: typeof ApiPublicPaypalWebhookRoute
   ApiPublicPluginAuthRoute: typeof ApiPublicPluginAuthRoute
@@ -562,13 +549,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStudioSnapshotRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/studio/result': {
-      id: '/api/studio/result'
-      path: '/api/studio/result'
-      fullPath: '/api/studio/result'
-      preLoaderRoute: typeof ApiStudioResultRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/studio/poll': {
       id: '/api/studio/poll'
       path: '/api/studio/poll'
@@ -658,7 +638,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAssistantExecuteRoute: ApiAssistantExecuteRoute,
   ApiPublicMcpRoute: ApiPublicMcpRoute,
   ApiStudioPollRoute: ApiStudioPollRoute,
-  ApiStudioResultRoute: ApiStudioResultRoute,
   ApiStudioSnapshotRoute: ApiStudioSnapshotRoute,
   ApiPublicPaypalWebhookRoute: ApiPublicPaypalWebhookRoute,
   ApiPublicPluginAuthRoute: ApiPublicPluginAuthRoute,
@@ -670,3 +649,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
