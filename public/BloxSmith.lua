@@ -297,8 +297,8 @@ pillText.TextXAlignment = Enum.TextXAlignment.Left
 local subtitle = Instance.new("TextLabel", root)
 subtitle.LayoutOrder = 2
 subtitle.BackgroundTransparency = 1
-subtitle.Size = UDim2.new(1,0,0,14)
-subtitle.Font = Enum.Font.Gotham; subtitle.TextSize = 11
+subtitle.Size = UDim2.new(1,0,0,12)
+subtitle.Font = Enum.Font.Gotham; subtitle.TextSize = 10
 subtitle.TextColor3 = C.textMute
 register(subtitle, "textMute")
 subtitle.Text = "Build Roblox games with AI"
