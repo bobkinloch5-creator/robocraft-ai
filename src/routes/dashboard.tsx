@@ -9,6 +9,7 @@ import { GAME_TYPES, STARTER_TEMPLATES } from "@/lib/templates";
 import { Plus, Folder, Plug, BookOpen, CreditCard, ShieldCheck, X, Gamepad2, Sparkles, Gift, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { Onboarding } from "@/components/Onboarding";
+import { UsageRemaining } from "@/components/UsageRemaining";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -190,6 +191,10 @@ function Dashboard() {
             </div>
           </div>
         )}
+
+        {!isOwner && <UsageRemaining />}
+
+
 
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

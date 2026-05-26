@@ -1030,6 +1030,28 @@ export const Route = createFileRoute("/api/assistant/execute")({
           const isOwner = (roles ?? []).some((r) => r.role === "owner" || r.role === "admin");
 
           if (!isOwner) {
+            // Rolling-window rate limits (5h + weekly). Owners exempt.
+            const { error: rlErr } = await supabaseUser.rpc("check_and_record_ai_usage" as never);
+            if (rlErr) {
+              const msg = rlErr.message || "";
+              if (msg.includes("rate_limited_5h")) {
+                return new Response(
+                  JSON.stringify({ error: "You've hit your 5-hour message limit. It resets soon — check the usage panel for the exact time." }),
+                  { status: 429, headers: corsHeaders },
+                );
+              }
+              if (msg.includes("rate_limited_7d")) {
+                return new Response(
+                  JSON.stringify({ error: "You've hit your weekly message limit. It resets in the next few days — check the usage panel." }),
+                  { status: 429, headers: corsHeaders },
+                );
+              }
+              return new Response(JSON.stringify({ error: "Usage check failed. Try again." }), {
+                status: 500,
+                headers: corsHeaders,
+              });
+            }
+
             const { error: spendErr } = await supabaseUser.rpc("spend_credits_atomic", {
               _amount: cost,
             });
