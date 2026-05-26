@@ -383,6 +383,18 @@ function ProjectEditor() {
     chatEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Best-effort: try to queue a Studio action without blocking the UI.
+  // Studio plugin will no-op if it's offline; if the action isn't allowed yet, we just toast.
+  const tryQueueStudio = async (actionType: string, payload: any) => {
+    try {
+      await runQueuePluginAction({ data: { projectId, actionType, payload } });
+      return true;
+    } catch (err) {
+      console.warn("[studio-sync] queue failed", actionType, err);
+      return false;
+    }
+  };
+
   const saveFile = async () => {
     if (!active) return;
     const { error } = await supabase
@@ -390,32 +402,52 @@ function ProjectEditor() {
       .update({ content: draft, updated_at: new Date().toISOString() })
       .eq("id", active.id);
     if (error) return toast.error(error.message);
-    toast.success("Saved");
+    // Mirror change into Studio so the workspace file edit reflects live.
+    void tryQueueStudio("update_script", { path: active.path, source: draft });
+    toast.success("Saved — syncing to Studio");
   };
 
   const deleteFile = async (id: string) => {
-    if (!confirm("Delete this file?")) return;
+    if (!confirm("Delete this file? It will also be removed from Roblox Studio.")) return;
+    const target = files.find((f) => f.id === id);
     await supabase.from("project_files").delete().eq("id", id);
     if (activeId === id) setActiveId(null);
+    if (target) {
+      void tryQueueStudio("delete_script", { path: target.path });
+      toast.success("Deleted — syncing to Studio");
+    }
   };
 
   const newFile = async () => {
     const path =
       prompt?.trim() || window.prompt("New file path (e.g. ServerScriptService/MyScript)") || "";
     if (!path) return;
+    const service = path.split("/")[0] || "ServerScriptService";
+    const name = path.split("/").slice(-1)[0] || "Script";
+    const parentPath = path.split("/").slice(0, -1).join("/") || service;
+    const content = "-- new file\n";
     const { data, error } = await supabase
       .from("project_files")
       .insert({
         project_id: projectId,
         path,
         file_type: "Script",
-        service_location: path.split("/")[0] || "ServerScriptService",
-        content: "-- new file\n",
+        service_location: service,
+        content,
       })
       .select()
       .single();
     if (error) return toast.error(error.message);
-    if (data) setActiveId(data.id);
+    if (data) {
+      setActiveId(data.id);
+      // Create the script in Studio too so the workspace stays in sync.
+      void tryQueueStudio("script", {
+        parent: parentPath,
+        name,
+        className: "Script",
+        source: content,
+      });
+    }
   };
 
   const pushToStudio = async () => {
