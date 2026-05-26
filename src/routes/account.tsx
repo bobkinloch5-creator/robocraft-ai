@@ -22,7 +22,10 @@ import {
   BookOpen,
   Ticket,
   Gift,
+  Eye,
+  EyeOff,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { useDailyClaimCooldown } from "@/hooks/useDailyClaimCooldown";
 import { DiscordRewards } from "@/components/DiscordRewards";
