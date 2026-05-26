@@ -1865,7 +1865,7 @@ function ProjectEditor() {
                   />
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {planMode ? "Planning…" : "Generating…"}
+                  {chatMode ? "Thinking…" : planMode ? "Planning…" : "Generating…"}
                 </span>
               </div>
             )}
