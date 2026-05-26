@@ -2037,15 +2037,34 @@ function ProjectEditor() {
               </div>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <div
-                    className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated/60 border border-border/40 px-2.5 py-0.5 text-[10px]"
+                  <button
+                    type="button"
+                    onClick={() => setShowAiSourceModal(true)}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated/60 border border-border/40 px-2.5 py-0.5 text-[10px] hover:border-primary/60 transition"
                     title={
-                      mcpClient?.lastUsedAt
-                        ? `Last connected via ${mcpClient.client ?? "MCP client"} at ${new Date(mcpClient.lastUsedAt).toLocaleString()}`
-                        : "Waiting for an MCP client to connect"
+                      aiSettings.mode === "api_key"
+                        ? `Using your own ${aiSettings.provider ?? ""} API key — click to change`
+                        : mcpClient?.lastUsedAt
+                          ? `Last connected via ${mcpClient.client ?? "MCP client"} at ${new Date(mcpClient.lastUsedAt).toLocaleString()} — click to change source`
+                          : "Click to switch between MCP and your own API key"
                     }
                   >
                     {(() => {
+                      const providerNames: Record<string, string> = {
+                        openai: "OpenAI",
+                        anthropic: "Anthropic",
+                        google: "Google",
+                        groq: "Groq",
+                      };
+                      if (aiSettings.mode === "api_key" && aiSettings.provider) {
+                        const label = `${providerNames[aiSettings.provider] ?? aiSettings.provider}${aiSettings.model ? ` · ${aiSettings.model}` : ""} · your key`;
+                        return (
+                          <>
+                            <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse" />
+                            <span className="text-muted-foreground">{label}</span>
+                          </>
+                        );
+                      }
                       const recent = mcpClient?.lastUsedAt
                         ? Date.now() - new Date(mcpClient.lastUsedAt).getTime() < 10 * 60 * 1000
                         : false;
@@ -2078,7 +2097,8 @@ function ProjectEditor() {
                         </>
                       );
                     })()}
-                  </div>
+                  </button>
+
                   <div
                     className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated/60 border border-border/40 px-2.5 py-0.5 text-[10px]"
                     title={isStudioConnected ? "Roblox Studio plugin connected" : "Roblox Studio plugin not connected"}
