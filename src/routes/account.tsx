@@ -24,6 +24,7 @@ import {
   Gift,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useDailyClaimCooldown } from "@/hooks/useDailyClaimCooldown";
 
 export const Route = createFileRoute("/account")({
   component: Account,
@@ -59,6 +60,7 @@ function Account() {
   const [promoCode, setPromoCode] = useState("");
   const [redeeming, setRedeeming] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const dailyCd = useDailyClaimCooldown(user?.id);
   const [redemptions, setRedemptions] = useState<{ id: string; credits: number; redeemed_at: string; promo_codes: { code: string } | null }[]>([]);
 
   const loadRedemptions = async () => {
@@ -97,6 +99,7 @@ function Account() {
   };
 
   const claimDaily = async () => {
+    if (dailyCd.onCooldown) return;
     setClaiming(true);
     const { data, error } = await supabase.rpc("claim_daily_credits");
     setClaiming(false);
@@ -106,7 +109,11 @@ function Account() {
       return toast.error(error.message);
     }
     const res = data as { claimed: boolean; reason?: string; amount?: number; credits?: number };
-    if (!res.claimed) return toast.info("Already claimed today — come back tomorrow!");
+    if (!res.claimed) {
+      dailyCd.start();
+      return toast.info("Already claimed today — come back tomorrow!");
+    }
+    dailyCd.start();
     toast.success(`+${res.amount} daily credits! Balance: ${res.credits}`);
     await refresh();
   };
@@ -459,10 +466,11 @@ function Account() {
                 </div>
                 <button
                   onClick={claimDaily}
-                  disabled={claiming}
+                  disabled={claiming || dailyCd.onCooldown}
+                  title={dailyCd.onCooldown ? `Next claim in ${dailyCd.label}` : undefined}
                   className="rounded-lg bg-primary/10 border border-primary/20 text-primary-glow hover:bg-primary/15 px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50"
                 >
-                  {claiming ? "…" : "Claim +10"}
+                  {claiming ? "…" : dailyCd.onCooldown ? `Next in ${dailyCd.label}` : "Claim +10"}
                 </button>
               </div>
 

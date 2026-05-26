@@ -10,6 +10,7 @@ import { Plus, Folder, Plug, BookOpen, CreditCard, ShieldCheck, X, Gamepad2, Spa
 import { toast } from "sonner";
 import { Onboarding } from "@/components/Onboarding";
 import { UsageRemaining } from "@/components/UsageRemaining";
+import { useDailyClaimCooldown } from "@/hooks/useDailyClaimCooldown";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -28,6 +29,7 @@ function Dashboard() {
   const [promoCode, setPromoCode] = useState("");
   const [redeeming, setRedeeming] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const dailyCd = useDailyClaimCooldown(user?.id);
 
   const refreshCredits = async () => {
     if (!user) return;
@@ -58,6 +60,7 @@ function Dashboard() {
   };
 
   const claimDaily = async () => {
+    if (dailyCd.onCooldown) return;
     setClaiming(true);
     const { data, error } = await supabase.rpc("claim_daily_credits");
     setClaiming(false);
@@ -67,7 +70,11 @@ function Dashboard() {
       return toast.error(error.message);
     }
     const res = data as { claimed: boolean; reason?: string; amount?: number; credits?: number };
-    if (!res.claimed) return toast.info("Already claimed today — come back tomorrow!");
+    if (!res.claimed) {
+      dailyCd.start();
+      return toast.info("Already claimed today — come back tomorrow!");
+    }
+    dailyCd.start();
     toast.success(`+${res.amount} daily credits! Balance: ${res.credits}`);
     window.location.reload();
   };
@@ -171,8 +178,8 @@ function Dashboard() {
                   <div className="text-xs text-muted-foreground">Claim +10 credits, once per day.</div>
                 </div>
               </div>
-              <button onClick={claimDaily} disabled={claiming} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
-                {claiming ? "Claiming…" : "Claim +10"}
+              <button onClick={claimDaily} disabled={claiming || dailyCd.onCooldown} title={dailyCd.onCooldown ? `Next claim in ${dailyCd.label}` : undefined} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+                {claiming ? "Claiming…" : dailyCd.onCooldown ? `Next in ${dailyCd.label}` : "Claim +10"}
               </button>
             </div>
             <div className="glass rounded-2xl p-5 flex items-center gap-3">
