@@ -520,7 +520,7 @@ end)
 local utilityRow = Instance.new("Frame", root)
 utilityRow.LayoutOrder = 11
 utilityRow.BackgroundTransparency = 1
-utilityRow.Size = UDim2.new(1,0,0,28)
+utilityRow.Size = UDim2.new(1,0,0,24)
 local utilityList = Instance.new("UIListLayout", utilityRow)
 utilityList.FillDirection = Enum.FillDirection.Horizontal
 utilityList.Padding = UDim.new(0,6)
