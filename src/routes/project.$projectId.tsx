@@ -1259,6 +1259,13 @@ function ProjectEditor() {
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </button>
+                <button
+                  onClick={() => toggleFiles(false)}
+                  className="hidden lg:inline-flex text-muted-foreground hover:text-foreground p-1 rounded hover:bg-surface transition cursor-pointer"
+                  title="Hide file panel"
+                >
+                  <PanelLeft className="h-3.5 w-3.5" />
+                </button>
               </div>
             </div>
             <div className={`rounded-lg border px-2.5 py-2 ${scannerState.tone}`}>
