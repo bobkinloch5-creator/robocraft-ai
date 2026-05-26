@@ -1647,7 +1647,7 @@ function ProjectEditor() {
                 </span>
               </button>
               <button
-                onClick={() => setPlanMode((v) => !v)}
+                onClick={() => { setPlanMode((v) => !v); if (chatMode) toggleChatMode(false); }}
                 className={`rounded-lg border px-2 py-2 text-left transition ${planMode ? "border-primary/50 bg-primary/10" : "border-border bg-background/35 hover:bg-surface-elevated"}`}
                 title="Draft a plan before building"
               >
