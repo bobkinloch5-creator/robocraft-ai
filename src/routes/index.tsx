@@ -224,7 +224,7 @@ function Landing() {
                 <span>Powered by AI · Built for Roblox Studio</span>
               </div>
 
-              <h1 className="max-w-5xl text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-normal leading-[1.05] text-balance [overflow-wrap:anywhere]">
+              <h1 className="max-w-5xl text-[2rem] xs:text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight leading-[1.05] [overflow-wrap:anywhere] break-words">
                 Ship Roblox games <br className="hidden sm:block" />
                 <span className="gradient-text-premium">at the speed of thought.</span>
               </h1>
