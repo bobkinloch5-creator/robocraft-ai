@@ -49,7 +49,7 @@ function LoginPage() {
     <div className="min-h-screen grid place-items-center px-4">
       <div className="w-full max-w-md glass-strong rounded-2xl p-8">
         <Link to="/" className="flex items-center gap-2 justify-center mb-6">
-          <img src={logo} alt="" width={36} height={36} className="h-9 w-9" />
+          <img src={logo} alt="BloxSmith logo" width={36} height={36} className="h-9 w-9" />
           <span className="text-xl font-bold">Blox<span className="gradient-text">Smith</span></span>
         </Link>
         <h1 className="text-2xl font-bold text-center">Welcome back</h1>
@@ -66,8 +66,10 @@ function LoginPage() {
         </div>
         <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground"><div className="flex-1 h-px bg-border" />or<div className="flex-1 h-px bg-border" /></div>
         <form onSubmit={handleEmail} className="space-y-3">
-          <input type="email" required placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg bg-input border border-border px-3 py-2.5 text-sm" />
-          <input type="password" required placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-lg bg-input border border-border px-3 py-2.5 text-sm" />
+          <label htmlFor="login-email" className="sr-only">Email</label>
+          <input id="login-email" type="email" required placeholder="Email" aria-label="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg bg-input border border-border px-3 py-2.5 text-sm" />
+          <label htmlFor="login-password" className="sr-only">Password</label>
+          <input id="login-password" type="password" required placeholder="Password" aria-label="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-lg bg-input border border-border px-3 py-2.5 text-sm" />
           <button disabled={loading} className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60">{loading ? "Signing in..." : "Sign in"}</button>
         </form>
         <p className="mt-6 text-center text-sm text-muted-foreground">No account? <Link to="/signup" className="text-primary-glow">Sign up</Link></p>

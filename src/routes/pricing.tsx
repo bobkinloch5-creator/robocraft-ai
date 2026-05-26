@@ -23,6 +23,7 @@ function Pricing() {
       <main className="flex-1 mx-auto max-w-7xl px-4 sm:px-6 py-16">
         <h1 className="text-4xl sm:text-5xl font-bold text-center">Simple, fair pricing</h1>
         <p className="mt-3 text-center text-muted-foreground">Free to start. Buy credits as you grow.</p>
+        <h2 className="sr-only">Credit packs</h2>
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="glass rounded-2xl p-6">
             <h3 className="font-semibold">Free</h3>
@@ -43,6 +44,7 @@ function Pricing() {
           ))}
         </div>
 
+        <h2 className="sr-only">Custom credit amount</h2>
         <div className="mt-10 glass rounded-2xl p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div>
             <h3 className="text-xl font-semibold">Need a custom amount?</h3>

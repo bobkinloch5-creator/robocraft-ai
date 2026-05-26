@@ -57,8 +57,10 @@ function CustomCheckout() {
         <p className="text-sm text-muted-foreground">Pick exactly how many credits you need. Rate: <span className="text-foreground font-semibold">${CUSTOM_RATE.toFixed(2)}</span> per credit.</p>
 
         <div className="glass rounded-2xl p-6 space-y-4">
-          <label className="block text-sm font-medium">Credits ({MIN_CREDITS}–{MAX_CREDITS})</label>
+          <label htmlFor="custom-credits-input" className="block text-sm font-medium">Credits ({MIN_CREDITS}–{MAX_CREDITS})</label>
           <input
+            id="custom-credits-input"
+            aria-label={`Number of credits to buy (between ${MIN_CREDITS} and ${MAX_CREDITS})`}
             type="number"
             min={MIN_CREDITS}
             max={MAX_CREDITS}
@@ -67,7 +69,10 @@ function CustomCheckout() {
             onChange={(e) => setCredits(Number(e.target.value))}
             className="w-full rounded-lg bg-surface-elevated border border-border px-3 py-2 text-base"
           />
+          <label htmlFor="custom-credits-slider" className="sr-only">Adjust credits with slider</label>
           <input
+            id="custom-credits-slider"
+            aria-label="Adjust credits with slider"
             type="range"
             min={MIN_CREDITS}
             max={2000}
@@ -106,8 +111,10 @@ function CustomCheckout() {
             </div>
           ) : (
             <>
-              <input value={txId} onChange={(e) => setTxId(e.target.value)} placeholder="PayPal Transaction ID (e.g. 7AB12345CD678901E)" className="w-full rounded-lg bg-surface-elevated border border-border px-3 py-2 text-sm" />
-              <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note (e.g. PayPal email used)" className="w-full rounded-lg bg-surface-elevated border border-border px-3 py-2 text-sm min-h-[80px]" />
+              <label htmlFor="custom-tx-id" className="sr-only">PayPal Transaction ID</label>
+              <input id="custom-tx-id" aria-label="PayPal Transaction ID" value={txId} onChange={(e) => setTxId(e.target.value)} placeholder="PayPal Transaction ID (e.g. 7AB12345CD678901E)" className="w-full rounded-lg bg-surface-elevated border border-border px-3 py-2 text-sm" />
+              <label htmlFor="custom-note" className="sr-only">Optional note</label>
+              <textarea id="custom-note" aria-label="Optional note about the payment" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note (e.g. PayPal email used)" className="w-full rounded-lg bg-surface-elevated border border-border px-3 py-2 text-sm min-h-[80px]" />
               <button onClick={submit} disabled={submitting} className="w-full rounded-xl bg-primary py-3 font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
                 {submitting ? "Submitting…" : "Submit for verification"}
               </button>

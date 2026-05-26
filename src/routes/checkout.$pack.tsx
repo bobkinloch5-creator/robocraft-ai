@@ -82,8 +82,10 @@ function Checkout() {
             </div>
           ) : (
             <>
-              <input value={txId} onChange={(e) => setTxId(e.target.value)} placeholder="PayPal Transaction ID (e.g. 7AB12345CD678901E)" className="w-full rounded-lg bg-surface-elevated border border-border px-3 py-2 text-sm" />
-              <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note (e.g. PayPal email used)" className="w-full rounded-lg bg-surface-elevated border border-border px-3 py-2 text-sm min-h-[80px]" />
+              <label htmlFor="pack-tx-id" className="sr-only">PayPal Transaction ID</label>
+              <input id="pack-tx-id" aria-label="PayPal Transaction ID" value={txId} onChange={(e) => setTxId(e.target.value)} placeholder="PayPal Transaction ID (e.g. 7AB12345CD678901E)" className="w-full rounded-lg bg-surface-elevated border border-border px-3 py-2 text-sm" />
+              <label htmlFor="pack-note" className="sr-only">Optional note</label>
+              <textarea id="pack-note" aria-label="Optional note about the payment" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note (e.g. PayPal email used)" className="w-full rounded-lg bg-surface-elevated border border-border px-3 py-2 text-sm min-h-[80px]" />
               <button onClick={submit} disabled={submitting} className="w-full rounded-xl bg-primary py-3 font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
                 {submitting ? "Submitting…" : "Submit for verification"}
               </button>

@@ -1,3 +1,8 @@
 User-agent: *
 Allow: /
-Sitemap: /sitemap.xml
+Disallow: /account
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /checkout/
+Disallow: /project/
+Sitemap: https://bloxsmith.pro/sitemap.xml

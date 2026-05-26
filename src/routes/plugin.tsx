@@ -212,6 +212,8 @@ function PluginWizard() {
                     type="button"
                     onClick={() => unlocked && setStep(i)}
                     disabled={!unlocked}
+                    aria-label={`Step ${i + 1}: ${s.title}${completed[s.id] ? " (completed)" : active ? " (current)" : ""}`}
+                    aria-current={active ? "step" : undefined}
                     className="flex items-center gap-2 group disabled:cursor-not-allowed"
                   >
                     <span

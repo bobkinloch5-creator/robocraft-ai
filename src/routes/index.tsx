@@ -248,7 +248,7 @@ function Landing() {
               <div className="inline-flex items-center gap-2 rounded-full glass-strong pl-1.5 pr-3 py-1 text-xs text-muted-foreground mb-6">
                 <img
                   src={logo}
-                  alt="BloxSmith"
+                  alt="BloxSmith logo"
                   width={20}
                   height={20}
                   className="h-5 w-5 drop-shadow-[0_0_8px_oklch(0.78_0.18_200/0.6)]"
