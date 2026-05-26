@@ -582,6 +582,7 @@ export type Database = {
       }
       projects: {
         Row: {
+          ai_rules: string | null
           created_at: string
           description: string | null
           game_type: string
@@ -592,6 +593,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_rules?: string | null
           created_at?: string
           description?: string | null
           game_type: string
@@ -602,6 +604,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_rules?: string | null
           created_at?: string
           description?: string | null
           game_type?: string
