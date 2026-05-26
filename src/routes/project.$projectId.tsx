@@ -48,6 +48,7 @@ import { toast } from "sonner";
 import { downloadRbxmx } from "@/lib/rbxmx-export";
 import { PluginStatus } from "@/components/PluginStatus";
 import { PushPreview, type PreviewPayload } from "@/components/PushPreview";
+import { ChatSettings } from "@/components/ChatSettings";
 import { SyncValidationDrawer } from "@/components/SyncValidationDrawer";
 import { TeamChat } from "@/components/TeamChat";
 
@@ -1366,15 +1367,18 @@ function ProjectEditor() {
                     </button>
                   );
                 })()}
-                {messages.length > 0 && (
-                  <button
-                    onClick={clearChat}
-                    title="Clear chat"
-                    className="h-7 w-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-surface-elevated transition"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
+                <ChatSettings
+                  thinking={thinking}
+                  onToggleThinking={setThinking}
+                  autoExecute={autoExecute}
+                  onToggleAutoExecute={toggleAutoExecute}
+                  planMode={planMode}
+                  onTogglePlanMode={setPlanMode}
+                  onClearChat={clearChat}
+                  canClearChat={messages.length > 0}
+                  studioConnected={isStudioConnected}
+                />
+
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2 text-[11px]">
