@@ -457,8 +457,8 @@ end)
 local footer = Instance.new("TextLabel", root)
 footer.LayoutOrder = 7
 footer.BackgroundTransparency = 1
-footer.Size = UDim2.new(1,0,0,28)
-footer.Font = Enum.Font.Gotham; footer.TextSize = 10
+footer.Size = UDim2.new(1,0,0,26)
+footer.Font = Enum.Font.Gotham; footer.TextSize = 9
 footer.TextColor3 = C.textMute
 register(footer, "textMute")
 footer.Text = "bloxsmith.pro · sends script source + workspace snapshot to BloxSmith's AI. You can pause or disconnect at any time. All changes are undoable (Ctrl+Z)."
