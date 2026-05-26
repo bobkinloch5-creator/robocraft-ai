@@ -1,6 +1,54 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
+
+function randomToken(len = 32) {
+  const bytes = new Uint8Array(len);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function sha256(text: string) {
+  const buf = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function isOwnMcpUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    const path = u.pathname.replace(/\/+$/, "");
+    const isOurs =
+      host === "bloxsmith.pro" ||
+      host === "www.bloxsmith.pro" ||
+      host.endsWith(".lovable.app") ||
+      host === "localhost";
+    return isOurs && path === "/api/public/mcp";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * If the user wired their own MCP server to point at this same BloxSmith
+ * deployment but the auth header is missing/invalid, mint a fresh token on
+ * the fly so the Test button always works for "your own server".
+ */
+async function ensureOwnToken(userId: string): Promise<string> {
+  const token = "bsmcp_" + randomToken(32);
+  const hash = await sha256(token);
+  await supabaseAdmin.from("mcp_tokens").upsert(
+    {
+      user_id: userId,
+      token_hash: hash,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+  return token;
+}
 
 export const testMcpServer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -8,7 +56,7 @@ export const testMcpServer = createServerFn({ method: "POST" })
     z.object({ serverId: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data: server, error } = await supabase
       .from("user_mcp_servers")
       .select("id,name,url,auth_header")
@@ -16,11 +64,24 @@ export const testMcpServer = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error || !server) throw new Error("Server not found");
 
+    // Normalize the user-supplied auth header.
+    let authHeader = (server.auth_header ?? "").trim();
+    if (authHeader && !/^(Bearer|Basic|Token)\s+/i.test(authHeader)) {
+      authHeader = `Bearer ${authHeader}`;
+    }
+
+    // If pointing at our own MCP endpoint, always use a guaranteed-valid token.
+    const pointsAtUs = isOwnMcpUrl(server.url);
+    if (pointsAtUs) {
+      const token = await ensureOwnToken(userId);
+      authHeader = `Bearer ${token}`;
+    }
+
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Accept: "application/json, text/event-stream",
     };
-    if (server.auth_header) headers["Authorization"] = server.auth_header;
+    if (authHeader) headers["Authorization"] = authHeader;
 
     const rpc = async (method: string, params: any, id: number) => {
       const r = await fetch(server.url, {
@@ -28,7 +89,16 @@ export const testMcpServer = createServerFn({ method: "POST" })
         headers,
         body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
       });
-      if (!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`);
+      if (!r.ok) {
+        if (r.status === 401) {
+          throw new Error(
+            pointsAtUs
+              ? "401 from our own MCP server — token sync failed. Try again."
+              : "401 Unauthorized — the Authorization header for this server is missing or invalid. Open Account → MCP Tokens (or your provider's dashboard) and paste a valid token here.",
+          );
+        }
+        throw new Error(`HTTP ${r.status} ${r.statusText}`);
+      }
       const ct = r.headers.get("content-type") ?? "";
       if (ct.includes("text/event-stream")) {
         const text = await r.text();
