@@ -536,7 +536,7 @@ local function utilityButton(parent, text, widthScale, order)
 	register(b, "textDim")
 	b.Text = text
 	b.Font = Enum.Font.GothamMedium
-	b.TextSize = 10
+	b.TextSize = 9
 	b.BorderSizePixel = 0
 	b.AutoButtonColor = false
 	corner(b, 6)
