@@ -1582,11 +1582,13 @@ local function scanProject(timeoutSeconds)
 
 	for _, svcName in ipairs(scanServices) do
 		if shouldStop() then break end
-		local svc = getService(svcName)
-		if svc then
-			for _, child in ipairs(svc:GetChildren()) do
-				traverse(child, svcName)
-				if timedOut or cancelled then break end
+		if not pathIsIgnored(svcName) then
+			local svc = getService(svcName)
+			if svc then
+				for _, child in ipairs(svc:GetChildren()) do
+					traverse(child, svcName)
+					if timedOut or cancelled then break end
+				end
 			end
 		end
 	end
