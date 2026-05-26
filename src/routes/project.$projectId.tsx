@@ -2126,10 +2126,14 @@ function ProjectEditor() {
               </div>
             </div>
           )}
-        </aside>
       </main>
 
+      {showAiSourceModal && (
+        <AiSourceSettings projectId={projectId} onClose={() => setShowAiSourceModal(false)} />
+      )}
+
       {showFix && (
+
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-background/80 backdrop-blur-sm p-4"
           onClick={() => !fixBusy && setShowFix(false)}
