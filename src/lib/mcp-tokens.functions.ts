@@ -13,14 +13,16 @@ async function sha256(text: string) {
   return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** Returns { hasToken, createdAt, lastUsedAt } — never returns the plaintext token. */
+/** Returns connection status without ever returning the plaintext token. */
 export const getMcpTokenStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     const { data } = await supabase
       .from("mcp_tokens")
-      .select("created_at,updated_at,last_used_at")
+      .select(
+        "created_at,updated_at,last_used_at,last_attempt_at,last_attempt_ok,last_attempt_error",
+      )
       .eq("user_id", userId)
       .maybeSingle();
     return {
@@ -28,6 +30,9 @@ export const getMcpTokenStatus = createServerFn({ method: "POST" })
       createdAt: data?.created_at ?? null,
       updatedAt: data?.updated_at ?? null,
       lastUsedAt: data?.last_used_at ?? null,
+      lastAttemptAt: data?.last_attempt_at ?? null,
+      lastAttemptOk: data?.last_attempt_ok ?? null,
+      lastAttemptError: data?.last_attempt_error ?? null,
     };
   });
 

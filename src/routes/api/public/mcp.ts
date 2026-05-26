@@ -42,11 +42,29 @@ async function sha256(text: string) {
   return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+function recordTokenAttempt(userId: string, ok: boolean, error?: string) {
+  const now = new Date().toISOString();
+  supabaseAdmin
+    .from("mcp_tokens")
+    .update({
+      last_attempt_at: now,
+      last_attempt_ok: ok,
+      last_attempt_error: ok ? null : (error ?? "auth failed"),
+      ...(ok ? { last_used_at: now } : {}),
+    })
+    .eq("user_id", userId)
+    .then(() => {}, () => {});
+}
+
 const authedHandler = withMcpAuth(
   async (request, auth) => mcp.handleRequest(request, { auth }),
   async (request) => {
     const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
-    if (!token) return null;
+    if (!token) {
+      // No header at all — Codex/Claude trying OAuth discovery or misconfigured.
+      // We can't attribute this to a user, so just bail.
+      return null;
+    }
 
     // Admin override: shared workspace MCP_SECRET still works
     const adminSecret = process.env.MCP_SECRET;
@@ -62,19 +80,23 @@ const authedHandler = withMcpAuth(
         .select("user_id")
         .eq("token_hash", hash)
         .maybeSingle();
-      if (!data) return null;
-      // Best-effort update of last_used_at (don't block on it)
-      supabaseAdmin
-        .from("mcp_tokens")
-        .update({ last_used_at: new Date().toISOString() })
-        .eq("user_id", data.user_id)
-        .then(() => {}, () => {});
+
+      if (!data) {
+        // Token is the right shape but does not match — likely a stale key after
+        // a regenerate. Try to find ANY token with the same prefix bucket so we
+        // can at least record the failed attempt. We can't, so record globally
+        // via mcp_anon_attempts keyed by a synthetic id is not useful — skip.
+        return null;
+      }
+
+      recordTokenAttempt(data.user_id, true);
       return { token, claims: { scope: "user", userId: data.user_id } };
     }
 
     return null;
   },
 );
+
 
 
 export const Route = createFileRoute("/api/public/mcp")({

@@ -191,26 +191,56 @@ export type Database = {
           },
         ]
       }
+      mcp_anon_attempts: {
+        Row: {
+          last_attempt_at: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          last_attempt_at?: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          last_attempt_at?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       mcp_tokens: {
         Row: {
+          attempt_count_24h: number
           created_at: string
           label: string | null
+          last_attempt_at: string | null
+          last_attempt_error: string | null
+          last_attempt_ok: boolean | null
           last_used_at: string | null
           token_hash: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          attempt_count_24h?: number
           created_at?: string
           label?: string | null
+          last_attempt_at?: string | null
+          last_attempt_error?: string | null
+          last_attempt_ok?: boolean | null
           last_used_at?: string | null
           token_hash: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          attempt_count_24h?: number
           created_at?: string
           label?: string | null
+          last_attempt_at?: string | null
+          last_attempt_error?: string | null
+          last_attempt_ok?: boolean | null
           last_used_at?: string | null
           token_hash?: string
           updated_at?: string

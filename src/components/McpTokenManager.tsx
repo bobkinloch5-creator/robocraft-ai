@@ -7,7 +7,7 @@ import {
   getMcpTokenStatus,
 } from "@/lib/mcp-tokens.functions";
 import { toast } from "sonner";
-import { Copy, KeyRound, RefreshCw, Trash2, AlertTriangle, Eye, EyeOff } from "lucide-react";
+import { Copy, KeyRound, RefreshCw, Trash2, AlertTriangle, Eye, EyeOff, CheckCircle2, XCircle, Activity } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 type Status = {
@@ -15,6 +15,9 @@ type Status = {
   createdAt: string | null;
   updatedAt: string | null;
   lastUsedAt: string | null;
+  lastAttemptAt: string | null;
+  lastAttemptOk: boolean | null;
+  lastAttemptError: string | null;
 };
 
 export function McpTokenManager() {
@@ -41,6 +44,10 @@ export function McpTokenManager() {
 
   useEffect(() => {
     refresh();
+    // Poll every 15s so the "Last used / Last attempt" badges update without
+    // a manual reload — useful when the user is configuring Codex/Claude.
+    const t = window.setInterval(refresh, 15000);
+    return () => window.clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -138,6 +145,80 @@ export function McpTokenManager() {
       <div className="rounded-lg border border-border/50 bg-surface-elevated/40 p-4">
         {status?.hasToken ? (
           <div className="space-y-3">
+            {(() => {
+              const usedAt = status.lastUsedAt ? new Date(status.lastUsedAt) : null;
+              const attemptAt = status.lastAttemptAt ? new Date(status.lastAttemptAt) : null;
+              const now = Date.now();
+              const recentMs = 10 * 60 * 1000; // 10 min
+              const connectedRecently = usedAt && now - usedAt.getTime() < recentMs;
+              const failedRecently =
+                attemptAt &&
+                status.lastAttemptOk === false &&
+                now - attemptAt.getTime() < recentMs;
+              if (connectedRecently) {
+                return (
+                  <div className="flex items-start gap-2 rounded-lg border border-success/40 bg-success/10 p-3">
+                    <CheckCircle2 className="h-4 w-4 text-success mt-0.5 shrink-0" />
+                    <div className="text-xs">
+                      <div className="font-semibold text-success">MCP client connected</div>
+                      <div className="text-muted-foreground">
+                        An MCP client (Codex, Claude, etc.) successfully called your server{" "}
+                        {usedAt?.toLocaleTimeString()}. Status updates every 15 seconds.
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              if (failedRecently) {
+                return (
+                  <div className="flex items-start gap-2 rounded-lg border border-rose-500/40 bg-rose-500/10 p-3">
+                    <XCircle className="h-4 w-4 text-rose-300 mt-0.5 shrink-0" />
+                    <div className="text-xs">
+                      <div className="font-semibold text-rose-300">
+                        Connection attempt failed at {attemptAt?.toLocaleTimeString()}
+                      </div>
+                      <div className="text-muted-foreground">
+                        {status.lastAttemptError ?? "Invalid token"} — your client sent the
+                        wrong (or no) Bearer token. Regenerate the key below and paste the
+                        new value into your client's MCP config as{" "}
+                        <code className="font-mono">Authorization: Bearer &lt;token&gt;</code>.
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              if (usedAt) {
+                return (
+                  <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-background/40 p-3">
+                    <Activity className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div className="text-xs">
+                      <div className="font-semibold">Idle</div>
+                      <div className="text-muted-foreground">
+                        Last successful client call was {usedAt.toLocaleString()}. No recent
+                        activity.
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+                  <AlertTriangle className="h-4 w-4 text-amber-300 mt-0.5 shrink-0" />
+                  <div className="text-xs">
+                    <div className="font-semibold text-amber-200">
+                      Token created — waiting for a client to connect
+                    </div>
+                    <div className="text-muted-foreground">
+                      Paste the token into Codex / Claude / Antigravity as the{" "}
+                      <code className="font-mono">Authorization: Bearer</code> header for{" "}
+                      <code className="font-mono">https://bloxsmith.pro/api/public/mcp</code>.
+                      Once a client makes its first call, this banner will turn green.
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div>
                 <div className="text-muted-foreground">Status</div>
@@ -156,12 +237,15 @@ export function McpTokenManager() {
                 </div>
               </div>
               <div>
-                <div className="text-muted-foreground">Last rotated</div>
+                <div className="text-muted-foreground">Last attempt</div>
                 <div className="font-semibold">
-                  {status.updatedAt ? new Date(status.updatedAt).toLocaleDateString() : "—"}
+                  {status.lastAttemptAt
+                    ? `${new Date(status.lastAttemptAt).toLocaleString()} · ${status.lastAttemptOk ? "ok" : "failed"}`
+                    : "—"}
                 </div>
               </div>
             </div>
+
 
             <div className="flex flex-wrap gap-2 pt-2 border-t border-border/40">
               <button
