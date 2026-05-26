@@ -1209,13 +1209,11 @@ function ProjectEditor() {
       </div>
 
       <main
-        className="flex-1 grid gap-0 relative"
+        className="flex-1 grid gap-0 relative lg:[grid-template-columns:var(--files-w)_minmax(0,1fr)_var(--chat-col-w)]"
         style={{
           ["--chat-w" as any]: `${chatWidth}px`,
-          gridTemplateColumns:
-            typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches
-              ? `${showFiles ? "240px" : "0px"} minmax(0,1fr) ${showChat ? "var(--chat-w)" : "0px"}`
-              : undefined,
+          ["--files-w" as any]: showFiles ? "240px" : "0px",
+          ["--chat-col-w" as any]: showChat ? `${chatWidth}px` : "0px",
         }}
       >
         {/* Floating toggles for collapsed side panels (desktop only) */}
