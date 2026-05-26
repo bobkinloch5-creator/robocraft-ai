@@ -317,27 +317,34 @@ function ProjectEditor() {
   const runChat = useServerFn(chatWithAI);
   const [thinking, setThinking] = useState(false);
   const [mcpServers, setMcpServers] = useState<Array<{ name: string; enabled: boolean; ok: boolean | null }>>([]);
+  const [mcpClient, setMcpClient] = useState<{ client: string | null; lastUsedAt: string | null } | null>(null);
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const { data } = await supabase
-        .from("user_mcp_servers")
-        .select("name,enabled,last_test_ok")
-        .eq("enabled", true);
+      const [serversRes, tokenRes] = await Promise.all([
+        supabase.from("user_mcp_servers").select("name,enabled,last_test_ok").eq("enabled", true),
+        supabase.from("mcp_tokens").select("last_client,last_used_at").maybeSingle(),
+      ]);
       if (cancelled) return;
-      setMcpServers(((data ?? []) as Array<{ name: string; enabled: boolean; last_test_ok: boolean | null }>)
+      setMcpServers(((serversRes.data ?? []) as Array<{ name: string; enabled: boolean; last_test_ok: boolean | null }>)
         .map((s) => ({ name: s.name, enabled: s.enabled, ok: s.last_test_ok })));
+      const t = tokenRes.data as { last_client: string | null; last_used_at: string | null } | null;
+      setMcpClient(t ? { client: t.last_client, lastUsedAt: t.last_used_at } : null);
     };
     load();
     const ch = supabase
       .channel("mcp-indicator")
       .on("postgres_changes", { event: "*", schema: "public", table: "user_mcp_servers" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "mcp_tokens" }, load)
       .subscribe();
+    const poll = setInterval(load, 15000);
     return () => {
       cancelled = true;
+      clearInterval(poll);
       supabase.removeChannel(ch);
     };
   }, []);
+
   const [plansByMsg, setPlansByMsg] = useState<Record<string, { prompt: string; plan: string }>>(
     {},
   );
@@ -2017,33 +2024,59 @@ function ProjectEditor() {
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <div
                     className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated/60 border border-border/40 px-2.5 py-0.5 text-[10px]"
-                    title={mcpServers.length > 0 ? `MCP: ${mcpServers.map((s) => s.name).join(", ")}` : "No MCP servers connected"}
+                    title={
+                      mcpClient?.lastUsedAt
+                        ? `Last connected via ${mcpClient.client ?? "MCP client"} at ${new Date(mcpClient.lastUsedAt).toLocaleString()}`
+                        : "Waiting for an MCP client to connect"
+                    }
+                  >
+                    {(() => {
+                      const recent = mcpClient?.lastUsedAt
+                        ? Date.now() - new Date(mcpClient.lastUsedAt).getTime() < 10 * 60 * 1000
+                        : false;
+                      const client = mcpClient?.client;
+                      let modelLabel = "";
+                      if (client) {
+                        const c = client.toLowerCase();
+                        if (c.includes("codex")) modelLabel = "GPT-5 Codex";
+                        else if (c.includes("chatgpt")) modelLabel = "ChatGPT";
+                        else if (c.includes("claude code")) modelLabel = "Claude Sonnet";
+                        else if (c.includes("claude")) modelLabel = "Claude";
+                        else if (c.includes("cursor")) modelLabel = "Cursor AI";
+                        else if (c.includes("windsurf")) modelLabel = "Windsurf";
+                        else if (c.includes("cline")) modelLabel = "Cline";
+                        else if (c.includes("zed")) modelLabel = "Zed AI";
+                      }
+                      const mcpPart =
+                        mcpServers.length === 0
+                          ? "MCP: off"
+                          : `MCP: ${mcpServers.slice(0, 2).map((s) => s.name).join(", ")}${mcpServers.length > 2 ? ` +${mcpServers.length - 2}` : ""}`;
+                      const label = client
+                        ? `${client}${modelLabel ? ` · ${modelLabel}` : ""} · ${mcpPart}`
+                        : `Waiting for AI client · ${mcpPart}`;
+                      return (
+                        <>
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${recent ? "bg-success animate-pulse" : client ? "bg-emerald-500/60" : "bg-amber-400"}`}
+                          />
+                          <span className="text-muted-foreground">{label}</span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                  <div
+                    className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated/60 border border-border/40 px-2.5 py-0.5 text-[10px]"
+                    title={isStudioConnected ? "Roblox Studio plugin connected" : "Roblox Studio plugin not connected"}
                   >
                     <span
                       className={`h-1.5 w-1.5 rounded-full ${isStudioConnected ? "bg-success animate-pulse" : "bg-amber-400"}`}
                     />
                     <span className="text-muted-foreground">
-                      {(() => {
-                        const aiLabel = chatMode
-                          ? "Llama 3.1 8B"
-                          : planMode
-                            ? "GPT-OSS 120B"
-                            : thinking
-                              ? "Llama 3.1 8B · think"
-                              : "Llama 3.1 8B";
-                        const platform = "Roblox Studio";
-                        const base = chatMode
-                          ? `${platform} · Chat · Groq ${aiLabel}`
-                          : `${platform} · ${isStudioConnected ? "live" : "waiting"} · Groq ${aiLabel}`;
-                        const mcpPart =
-                          mcpServers.length === 0
-                            ? "MCP: off"
-                            : `MCP: ${mcpServers.slice(0, 2).map((s) => s.name).join(", ")}${mcpServers.length > 2 ? ` +${mcpServers.length - 2}` : ""}`;
-                        return `${base} · ${mcpPart}`;
-                      })()}
+                      Studio: {isStudioConnected ? "live" : "waiting"}
                     </span>
                   </div>
                 </div>
+
 
                 <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                   {chatMode
