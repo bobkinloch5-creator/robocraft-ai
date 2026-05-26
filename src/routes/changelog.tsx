@@ -93,6 +93,7 @@ export const Route = createFileRoute("/changelog")({
             </p>
           </div>
 
+          <h2 className="sr-only">Release timeline</h2>
           <div className="space-y-16 relative before:absolute before:inset-0 before:left-4 sm:before:left-1/2 before:w-px before:-translate-x-1/2 before:bg-border/60 before:h-full">
             {changelogItems.map((item, idx) => (
               <div key={item.version} className="relative flex flex-col sm:flex-row items-start sm:gap-12 group">

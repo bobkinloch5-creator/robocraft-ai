@@ -49,7 +49,7 @@ function SignupPage() {
     <div className="min-h-screen grid place-items-center px-4">
       <div className="w-full max-w-md glass-strong rounded-2xl p-8">
         <Link to="/" className="flex items-center gap-2 justify-center mb-6">
-          <img src={logo} alt="" width={36} height={36} className="h-9 w-9" />
+          <img src={logo} alt="BloxSmith logo" width={36} height={36} className="h-9 w-9" />
           <span className="text-xl font-bold">Blox<span className="gradient-text">Smith</span></span>
         </Link>
         <h1 className="text-2xl font-bold text-center">Create your account</h1>
@@ -57,9 +57,12 @@ function SignupPage() {
         <button onClick={handleGoogle} className="mt-6 w-full rounded-lg border border-border bg-surface py-2.5 text-sm font-medium hover:bg-surface-elevated">Continue with Google</button>
         <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground"><div className="flex-1 h-px bg-border" />or<div className="flex-1 h-px bg-border" /></div>
         <form onSubmit={handle} className="space-y-3">
-          <input placeholder="Display name" value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg bg-input border border-border px-3 py-2.5 text-sm" />
-          <input type="email" required placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg bg-input border border-border px-3 py-2.5 text-sm" />
-          <input type="password" required minLength={6} placeholder="Password (min 6 chars)" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-lg bg-input border border-border px-3 py-2.5 text-sm" />
+          <label htmlFor="signup-name" className="sr-only">Display name</label>
+          <input id="signup-name" placeholder="Display name" aria-label="Display name" value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg bg-input border border-border px-3 py-2.5 text-sm" />
+          <label htmlFor="signup-email" className="sr-only">Email</label>
+          <input id="signup-email" type="email" required placeholder="Email" aria-label="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg bg-input border border-border px-3 py-2.5 text-sm" />
+          <label htmlFor="signup-password" className="sr-only">Password</label>
+          <input id="signup-password" type="password" required minLength={6} placeholder="Password (min 6 chars)" aria-label="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-lg bg-input border border-border px-3 py-2.5 text-sm" />
           <button disabled={loading} className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60">{loading ? "Creating..." : "Create account"}</button>
         </form>
         <p className="mt-6 text-center text-sm text-muted-foreground">Already have one? <Link to="/login" className="text-primary-glow">Log in</Link></p>

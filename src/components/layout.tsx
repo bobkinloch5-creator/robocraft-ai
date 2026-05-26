@@ -20,7 +20,7 @@ export function Header() {
     <header className="sticky top-0 z-50 glass border-b border-border">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         <Link to="/" className="flex items-center gap-2 shrink-0 notranslate" translate="no">
-          <img src={logo} alt="BloxSmith" width={32} height={32} className="h-8 w-8" />
+          <img src={logo} alt="BloxSmith logo" width={32} height={32} className="h-8 w-8" />
           <span className="text-lg font-bold whitespace-nowrap">
             Blox<span className="gradient-text">Smith</span>
           </span>
@@ -209,7 +209,7 @@ export function Footer() {
         <div className="flex items-center gap-2">
           <img
             src={logo}
-            alt=""
+            alt="BloxSmith logo"
             width={24}
             height={24}
             className="h-6 w-6 drop-shadow-[0_0_10px_oklch(0.78_0.18_200/0.6)]"
