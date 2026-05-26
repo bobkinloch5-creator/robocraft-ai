@@ -23,6 +23,7 @@ function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [replayTour, setReplayTour] = useState(false);
   const [form, setForm] = useState({ name: "", game_type: "Custom" as string, template: "Blank" as string, description: "" });
   const runCreate = useServerFn(createProjectFn);
 
