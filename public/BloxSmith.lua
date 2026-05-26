@@ -1503,35 +1503,33 @@ local function dispatch(action)
 	return fn(action)
 end
 
-local function pull(manual)
-	if not activeProjectId then return end
-	if getPaused() then syncInfo.Text = "Paused — incoming actions are ignored"; return end
-	local data, err = postJSON("/sync", { projectId = activeProjectId, manual = manual == true })
-	if not data then syncInfo.Text = "Sync error: " .. tostring(err); return end
+-- ============================================================
+-- Preview mode queue + apply pipeline
+-- ============================================================
+local pendingPreview = {}        -- queued actions awaiting user approval
+local previewSeenIds = {}        -- de-dup so the same action isn't re-queued
 
-	-- Backwards-compat: server may send {files = ...} OR {actions = ...}
-	local actions = data.actions or {}
-	-- Legacy `data.files` fallback removed — it caused duplicate / nested
-	-- folder spam in Studio because every poll re-materialized the same files.
+local function refreshReviewBtnLabel()
+	reviewBtn.Text = ("Review Pending (%d)"):format(#pendingPreview)
+end
+refreshReviewBtnLabel()
 
+-- Runs the actual Studio mutations + reports status back to the website.
+-- Used by both immediate sync and "Apply" inside the preview overlay.
+local function applyActions(actions, sourceLabel)
 	if #actions == 0 then return end
-	appendLog("Command received: " .. tostring(#actions) .. " action(s)")
 
-	-- Check if we are in Edit mode
 	local RunService = game:GetService("RunService")
 	if not RunService:IsEdit() then
 		syncInfo.Text = "Stop Play mode first to apply changes!"
 		setPill("error")
 		warn("[BloxSmith] Stop Play mode first so I can apply this permanently in Studio edit mode.")
-		
-		-- Report all actions as failed
 		local reports = {}
 		for _, a in ipairs(actions) do
 			if a.id then
 				table.insert(reports, {
-					id = a.id,
-					status = "failed",
-					error = "Stop Play mode first so I can apply this permanently in Studio edit mode."
+					id = a.id, status = "failed",
+					error = "Stop Play mode first so I can apply this permanently in Studio edit mode.",
 				})
 			end
 		end
@@ -1541,17 +1539,13 @@ local function pull(manual)
 		return
 	end
 
-	local fp = fingerprintActions(actions)
-	if fp == lastFingerprint then return end
-	lastFingerprint = fp
-
 	setPill("executing")
-
-	-- Use modern TryBeginRecording so every batch is a single, named, undoable
-	-- entry in the user's Edit > Undo history (Roblox plugin guideline).
 	local recordingId = nil
 	if ChangeHistoryService.TryBeginRecording then
-		recordingId = ChangeHistoryService:TryBeginRecording("BloxSmith build", "BloxSmith AI generation")
+		recordingId = ChangeHistoryService:TryBeginRecording(
+			"BloxSmith " .. (sourceLabel or "build"),
+			"BloxSmith AI generation"
+		)
 	else
 		ChangeHistoryService:SetWaypoint("BloxSmith pre-build")
 	end
@@ -1579,7 +1573,6 @@ local function pull(manual)
 		end
 	end
 
-	-- Report execution status back so the website shows real progress.
 	if #reports > 0 then
 		pcall(function() postJSON("/report", { reports = reports }) end)
 	end
@@ -1589,12 +1582,8 @@ local function pull(manual)
 	else
 		ChangeHistoryService:SetWaypoint(("BloxSmith built %d (%d failed)"):format(ok, fail))
 	end
-	
-	if fail > 0 then
-		setPill("error")
-	else
-		setPill("complete")
-	end
+
+	if fail > 0 then setPill("error") else setPill("complete") end
 	appendLog(("Command executed: %d ok, %d failed"):format(ok, fail))
 
 	task.defer(pushSnapshot)
@@ -1604,6 +1593,261 @@ local function pull(manual)
 
 	syncInfo.Text = ("Built %d action(s)%s · %s · undoable"):format(
 		ok, (fail > 0 and (" · " .. fail .. " failed") or ""), os.date("%H:%M:%S"))
+end
+
+-- Tells the website "these actions were rejected" so the build status doesn't
+-- hang forever in the dashboard.
+local function reportDiscarded(actions)
+	local reports = {}
+	for _, a in ipairs(actions) do
+		if a.id then
+			table.insert(reports, { id = a.id, status = "failed", error = "Discarded in Preview Mode" })
+		end
+	end
+	if #reports > 0 then
+		pcall(function() postJSON("/report", { reports = reports }) end)
+	end
+end
+
+-- ============================================================
+-- Preview overlay — lists each queued action and lets the user
+-- Apply All / Discard All without ever entering Play mode.
+-- ============================================================
+local previewOverlay = nil
+local function closePreviewOverlay()
+	if previewOverlay then
+		previewOverlay:Destroy()
+		previewOverlay = nil
+	end
+end
+
+local function openPreviewOverlay()
+	closePreviewOverlay()
+	if #pendingPreview == 0 then
+		syncInfo.Text = "Nothing pending. Ask the AI to build something first."
+		return
+	end
+
+	previewOverlay = Instance.new("Frame", widget)
+	previewOverlay.Size = UDim2.fromScale(1, 1)
+	previewOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
+	previewOverlay.BackgroundTransparency = 0.25
+	previewOverlay.BorderSizePixel = 0
+	previewOverlay.ZIndex = 60
+
+	local box = Instance.new("Frame", previewOverlay)
+	box.Size = UDim2.new(1, -24, 1, -24)
+	box.Position = UDim2.new(0, 12, 0, 12)
+	box.BackgroundColor3 = C.panel
+	box.BorderSizePixel = 0
+	box.ZIndex = 61
+	corner(box, 10)
+	stroke(box, C.stroke, 1)
+
+	local pad = Instance.new("UIPadding", box)
+	pad.PaddingTop = UDim.new(0, 12)
+	pad.PaddingBottom = UDim.new(0, 12)
+	pad.PaddingLeft = UDim.new(0, 12)
+	pad.PaddingRight = UDim.new(0, 12)
+
+	local title = Instance.new("TextLabel", box)
+	title.BackgroundTransparency = 1
+	title.Size = UDim2.new(1, 0, 0, 22)
+	title.Text = ("🔍  Preview — %d pending action(s)"):format(#pendingPreview)
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 14
+	title.TextColor3 = C.text
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.ZIndex = 62
+
+	local subtitle = Instance.new("TextLabel", box)
+	subtitle.BackgroundTransparency = 1
+	subtitle.Position = UDim2.new(0, 0, 0, 24)
+	subtitle.Size = UDim2.new(1, 0, 0, 16)
+	subtitle.Text = "Review what the AI generated. Apply All inserts into Studio (edit mode, undoable)."
+	subtitle.Font = Enum.Font.Gotham
+	subtitle.TextSize = 11
+	subtitle.TextColor3 = C.textDim
+	subtitle.TextXAlignment = Enum.TextXAlignment.Left
+	subtitle.ZIndex = 62
+
+	local scroll = Instance.new("ScrollingFrame", box)
+	scroll.Position = UDim2.new(0, 0, 0, 46)
+	scroll.Size = UDim2.new(1, 0, 1, -88)
+	scroll.BackgroundColor3 = C.bg
+	scroll.BorderSizePixel = 0
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.ScrollBarThickness = 6
+	scroll.ZIndex = 62
+	corner(scroll, 6)
+
+	local listLayout = Instance.new("UIListLayout", scroll)
+	listLayout.Padding = UDim.new(0, 6)
+	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	local scrollPad = Instance.new("UIPadding", scroll)
+	scrollPad.PaddingTop = UDim.new(0, 6)
+	scrollPad.PaddingBottom = UDim.new(0, 6)
+	scrollPad.PaddingLeft = UDim.new(0, 8)
+	scrollPad.PaddingRight = UDim.new(0, 8)
+
+	for i, a in ipairs(pendingPreview) do
+		local row = Instance.new("Frame", scroll)
+		row.LayoutOrder = i
+		row.BackgroundColor3 = C.panel
+		row.BorderSizePixel = 0
+		row.AutomaticSize = Enum.AutomaticSize.Y
+		row.Size = UDim2.new(1, -4, 0, 0)
+		row.ZIndex = 63
+		corner(row, 6)
+		stroke(row, C.stroke, 1)
+		local rp = Instance.new("UIPadding", row)
+		rp.PaddingTop = UDim.new(0, 6); rp.PaddingBottom = UDim.new(0, 6)
+		rp.PaddingLeft = UDim.new(0, 8); rp.PaddingRight = UDim.new(0, 8)
+		local rl = Instance.new("UIListLayout", row)
+		rl.Padding = UDim.new(0, 4); rl.SortOrder = Enum.SortOrder.LayoutOrder
+
+		local header = Instance.new("TextLabel", row)
+		header.LayoutOrder = 1
+		header.BackgroundTransparency = 1
+		header.AutomaticSize = Enum.AutomaticSize.Y
+		header.Size = UDim2.new(1, 0, 0, 0)
+		header.Font = Enum.Font.GothamMedium
+		header.TextSize = 12
+		header.TextColor3 = C.text
+		header.TextXAlignment = Enum.TextXAlignment.Left
+		header.TextYAlignment = Enum.TextYAlignment.Top
+		header.TextWrapped = true
+		local headerText = ("%s — %s"):format(tostring(a.type or "?"), tostring(a.name or a.className or a.parent or ""))
+		if a.parent then headerText = headerText .. ("   ·  in %s"):format(tostring(a.parent)) end
+		header.Text = headerText
+		header.ZIndex = 64
+
+		if a.source and #a.source > 0 then
+			local snippet = a.source
+			if #snippet > 1200 then snippet = snippet:sub(1, 1200) .. "\n... (truncated)" end
+			local code = Instance.new("TextLabel", row)
+			code.LayoutOrder = 2
+			code.BackgroundColor3 = C.bg
+			code.BorderSizePixel = 0
+			code.AutomaticSize = Enum.AutomaticSize.Y
+			code.Size = UDim2.new(1, 0, 0, 0)
+			code.Font = Enum.Font.Code
+			code.TextSize = 10
+			code.TextColor3 = C.textDim
+			code.TextXAlignment = Enum.TextXAlignment.Left
+			code.TextYAlignment = Enum.TextYAlignment.Top
+			code.TextWrapped = true
+			code.Text = snippet
+			code.ZIndex = 64
+			corner(code, 4)
+			local cp = Instance.new("UIPadding", code)
+			cp.PaddingTop = UDim.new(0, 4); cp.PaddingBottom = UDim.new(0, 4)
+			cp.PaddingLeft = UDim.new(0, 6); cp.PaddingRight = UDim.new(0, 6)
+		end
+	end
+
+	-- Bottom button row
+	local btnRow = Instance.new("Frame", box)
+	btnRow.AnchorPoint = Vector2.new(0, 1)
+	btnRow.Position = UDim2.new(0, 0, 1, 0)
+	btnRow.Size = UDim2.new(1, 0, 0, 32)
+	btnRow.BackgroundTransparency = 1
+	btnRow.ZIndex = 62
+	local bl = Instance.new("UIListLayout", btnRow)
+	bl.FillDirection = Enum.FillDirection.Horizontal
+	bl.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	bl.Padding = UDim.new(0, 8)
+
+	local function bigBtn(text, color, textColor, order)
+		local b = Instance.new("TextButton", btnRow)
+		b.LayoutOrder = order
+		b.Size = UDim2.new(0, 130, 1, 0)
+		b.BackgroundColor3 = color
+		b.TextColor3 = textColor
+		b.Font = Enum.Font.GothamBold
+		b.TextSize = 12
+		b.BorderSizePixel = 0
+		b.AutoButtonColor = true
+		b.Text = text
+		b.ZIndex = 63
+		corner(b, 6)
+		return b
+	end
+
+	local cancel  = bigBtn("Close",       C.panel,   C.textDim, 1)
+	local discard = bigBtn("Discard All", C.panel,   Color3.fromRGB(240,80,80), 2)
+	local apply   = bigBtn("Apply All",   C.primary, Color3.new(1,1,1), 3)
+	stroke(cancel, C.stroke, 1); stroke(discard, C.stroke, 1)
+
+	cancel.MouseButton1Click:Connect(closePreviewOverlay)
+	discard.MouseButton1Click:Connect(function()
+		local batch = pendingPreview
+		pendingPreview = {}
+		previewSeenIds = {}
+		refreshReviewBtnLabel()
+		closePreviewOverlay()
+		reportDiscarded(batch)
+		syncInfo.Text = ("Discarded %d pending action(s)"):format(#batch)
+	end)
+	apply.MouseButton1Click:Connect(function()
+		local batch = pendingPreview
+		pendingPreview = {}
+		previewSeenIds = {}
+		refreshReviewBtnLabel()
+		closePreviewOverlay()
+		applyActions(batch, "preview apply")
+	end)
+end
+
+reviewBtn.MouseButton1Click:Connect(openPreviewOverlay)
+previewToggleBtn.MouseButton1Click:Connect(function()
+	setPreview(not getPreview())
+	refreshPreviewToggleLabel()
+	if not getPreview() and #pendingPreview > 0 then
+		-- Turning preview OFF with pending items: apply them now.
+		local batch = pendingPreview
+		pendingPreview = {}
+		previewSeenIds = {}
+		refreshReviewBtnLabel()
+		applyActions(batch, "preview off")
+	end
+end)
+
+local function pull(manual)
+	if not activeProjectId then return end
+	if getPaused() then syncInfo.Text = "Paused — incoming actions are ignored"; return end
+	local data, err = postJSON("/sync", { projectId = activeProjectId, manual = manual == true })
+	if not data then syncInfo.Text = "Sync error: " .. tostring(err); return end
+
+	local actions = data.actions or {}
+	if #actions == 0 then return end
+	appendLog("Command received: " .. tostring(#actions) .. " action(s)")
+
+	-- Preview mode: stash actions for user review, do NOT touch the place.
+	if getPreview() then
+		local added = 0
+		for _, a in ipairs(actions) do
+			local key = a.id or (tostring(a.type) .. ":" .. tostring(a.name) .. ":" .. tostring(a.parent))
+			if not previewSeenIds[key] then
+				previewSeenIds[key] = true
+				table.insert(pendingPreview, a)
+				added = added + 1
+			end
+		end
+		refreshReviewBtnLabel()
+		if added > 0 then
+			syncInfo.Text = ("Preview mode: %d new action(s) queued · click Review Pending"):format(added)
+			setPill("idle")
+		end
+		return
+	end
+
+	local fp = fingerprintActions(actions)
+	if fp == lastFingerprint then return end
+	lastFingerprint = fp
+
+	applyActions(actions, "build")
 end
 
 
