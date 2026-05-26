@@ -17,8 +17,8 @@ async function sha256(text: string) {
 async function userFromToken(token: string | null) {
   if (!token) return null;
   const hash = await sha256(token);
-  const { data } = await supabaseAdmin.from("profiles").select("id").eq("plugin_token_hash", hash).maybeSingle();
-  return data?.id ?? null;
+  const { data } = await supabaseAdmin.from("plugin_tokens").select("user_id").eq("token_hash", hash).maybeSingle();
+  return data?.user_id ?? null;
 }
 
 type Report = {

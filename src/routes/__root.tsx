@@ -20,11 +20,14 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
   console.error(error);
+  const message = import.meta.env.DEV
+    ? error.message
+    : "An unexpected error occurred. Please try again.";
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="max-w-md text-center glass rounded-2xl p-10">
         <h1 className="text-xl font-semibold">Something went wrong</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{message}</p>
         <div className="mt-6 flex justify-center gap-2">
           <button onClick={() => { router.invalidate(); reset(); }} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">Try again</button>
           <a href="/" className="rounded-lg border border-border bg-surface px-4 py-2 text-sm">Home</a>
@@ -59,6 +62,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" },
     ],
+    scripts: [{
+      type: "application/ld+json",
+      children: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: "BloxSmith",
+        applicationCategory: "DeveloperApplication",
+        operatingSystem: "Web, Roblox Studio",
+        url: "https://bloxsmith.pro",
+        description: "Describe your Roblox game in plain English. BloxSmith generates scripts and systems and syncs them directly into Roblox Studio.",
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      }),
+    }],
   }),
   shellComponent: RootShell,
   component: RootComponent,

@@ -61,7 +61,7 @@ export const generatePluginToken = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const token = "bs_" + randomToken(32);
     const hash = await sha256(token);
-    const { error } = await supabase.from("profiles").update({ plugin_token_hash: hash }).eq("id", userId);
+    const { error } = await supabase.from("plugin_tokens").upsert({ user_id: userId, token_hash: hash, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
     if (error) throw new Error(error.message);
     return { token };
   });
