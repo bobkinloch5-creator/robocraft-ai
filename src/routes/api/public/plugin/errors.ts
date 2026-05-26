@@ -22,7 +22,7 @@ export const Route = createFileRoute("/api/public/plugin/errors")({
         const token = request.headers.get("x-plugin-token");
         if (!token) return new Response(JSON.stringify({ error: "missing token" }), { status: 401, headers: cors });
         const hash = await sha256(token);
-        const { data: profile } = await supabaseAdmin.from("profiles").select("id").eq("plugin_token_hash", hash).maybeSingle();
+        const { data: profile } = await supabaseAdmin.from("plugin_tokens").select("user_id").eq("token_hash", hash).maybeSingle();
         if (!profile) return new Response(JSON.stringify({ error: "invalid token" }), { status: 401, headers: cors });
         const body = await request.json().catch(() => ({}));
         const errs: Array<{ projectId?: string; file_path?: string; error_message: string }> = body?.errors ?? [];
