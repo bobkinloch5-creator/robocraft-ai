@@ -476,9 +476,10 @@ local function utilityButton(text, widthScale, order)
 	return b
 end
 
-local syncNowBtn = utilityButton("Sync Now", 0.34, 1)
-local reconnectBtn = utilityButton("Reconnect", 0.33, 2)
-local cancelScanBtn = utilityButton("Cancel Scan", 0.33, 3)
+local syncNowBtn = utilityButton("Sync Now", 0.25, 1)
+local reconnectBtn = utilityButton("Reconnect", 0.25, 2)
+local cancelScanBtn = utilityButton("Cancel Scan", 0.25, 3)
+local cleanSyncedBtn = utilityButton("Clean Synced", 0.25, 4)
 
 local function setPill(state)
 	local dotColor, label, textColor
@@ -1483,19 +1484,8 @@ local function pull(manual)
 
 	-- Backwards-compat: server may send {files = ...} OR {actions = ...}
 	local actions = data.actions or {}
-	if #actions == 0 and data.files then
-		for _, f in ipairs(data.files) do
-			table.insert(actions, {
-				type = "script",
-				name = (string.split(f.path or "Script", "/"))[#string.split(f.path or "Script", "/")],
-				parent = f.service_location or "ServerScriptService",
-				className = f.file_type or "Script",
-				source = f.content or "",
-				id = f.path,
-				rev = #(f.content or ""),
-			})
-		end
-	end
+	-- Legacy `data.files` fallback removed — it caused duplicate / nested
+	-- folder spam in Studio because every poll re-materialized the same files.
 
 	if #actions == 0 then return end
 	appendLog("Command received: " .. tostring(#actions) .. " action(s)")
@@ -1768,6 +1758,51 @@ end)
 cancelScanBtn.MouseButton1Click:Connect(function()
 	scanCancelRequested = true
 	appendLog("Scan cancel requested")
+end)
+cleanSyncedBtn.MouseButton1Click:Connect(function()
+	-- Remove the artifacts the old buggy sync left behind:
+	--   1) ServerStorage/__BloxSmithPreloadToken
+	--   2) Duplicate / recursively-nested StarterPlayerScripts folders inside StarterPlayer
+	--   3) Stray loose script copies directly under StarterPlayer (they belong in StarterPlayerScripts)
+	local removed = 0
+	local recId
+	if ChangeHistoryService.TryBeginRecording then
+		recId = ChangeHistoryService:TryBeginRecording("BloxSmith clean synced", "Remove auto-sync artifacts")
+	end
+
+	local tok = ServerStorage:FindFirstChild("__BloxSmithPreloadToken")
+	if tok then tok:Destroy(); removed = removed + 1 end
+
+	local sps = StarterPlayer:FindFirstChild("StarterPlayerScripts")
+	if sps then
+		-- Kill any nested StarterPlayerScripts inside StarterPlayerScripts
+		local function killNested(parent, depth)
+			if depth > 8 then return end
+			for _, child in ipairs(parent:GetChildren()) do
+				if child.Name == "StarterPlayerScripts" then
+					child:Destroy(); removed = removed + 1
+				else
+					killNested(child, depth + 1)
+				end
+			end
+		end
+		killNested(sps, 0)
+	end
+
+	-- Remove any loose script (Script/LocalScript/ModuleScript) directly under StarterPlayer
+	for _, child in ipairs(StarterPlayer:GetChildren()) do
+		if child:IsA("LuaSourceContainer") then
+			child:Destroy(); removed = removed + 1
+		end
+	end
+
+	if recId and ChangeHistoryService.FinishRecording then
+		ChangeHistoryService:FinishRecording(recId, Enum.FinishRecordingOperation.Commit)
+	end
+
+	syncInfo.Text = ("Cleaned %d auto-synced artifact(s)"):format(removed)
+	appendLog("Clean Synced: removed " .. tostring(removed) .. " object(s)")
+	task.defer(pushSnapshot)
 end)
 button.Click:Connect(function() widget.Enabled = not widget.Enabled end)
 
