@@ -470,8 +470,8 @@ footer.TextYAlignment = Enum.TextYAlignment.Top
 local apiLabel = Instance.new("TextLabel", root)
 apiLabel.LayoutOrder = 8
 apiLabel.BackgroundTransparency = 1
-apiLabel.Size = UDim2.new(1,0,0,14)
-apiLabel.Font = Enum.Font.GothamMedium; apiLabel.TextSize = 10
+apiLabel.Size = UDim2.new(1,0,0,12)
+apiLabel.Font = Enum.Font.GothamMedium; apiLabel.TextSize = 9
 apiLabel.TextColor3 = C.textDim
 register(apiLabel, "textDim")
 apiLabel.Text = "API URL (advanced — leave default)"
@@ -479,21 +479,21 @@ apiLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 local apiWrap = Instance.new("Frame", root)
 apiWrap.LayoutOrder = 9
-apiWrap.Size = UDim2.new(1,0,0,28)
+apiWrap.Size = UDim2.new(1,0,0,26)
 apiWrap.BackgroundColor3 = C.panel
 register(apiWrap, "panel")
 apiWrap.BorderSizePixel = 0
 corner(apiWrap, 6)
 stroke(apiWrap, C.stroke, 1)
 local apiBox = Instance.new("TextBox", apiWrap)
-apiBox.Size = UDim2.new(1,-20,1,0); apiBox.Position = UDim2.new(0,10,0,0)
+apiBox.Size = UDim2.new(1,-18,1,0); apiBox.Position = UDim2.new(0,9,0,0)
 apiBox.BackgroundTransparency = 1
 apiBox.TextColor3 = C.textDim
 register(apiBox, "textDim")
 apiBox.Text = getApiBase()
 apiBox.PlaceholderText = DEFAULT_API
 apiBox.PlaceholderColor3 = C.textMute
-apiBox.Font = Enum.Font.Code; apiBox.TextSize = 10
+apiBox.Font = Enum.Font.Code; apiBox.TextSize = 9
 apiBox.ClearTextOnFocus = false
 apiBox.TextXAlignment = Enum.TextXAlignment.Left
 apiBox.FocusLost:Connect(function() setApiBase(apiBox.Text or "") end)
