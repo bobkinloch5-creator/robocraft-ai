@@ -10,6 +10,7 @@ import {
   autopilotBuild,
   planBuild,
   queuePluginAction,
+  improvePrompt,
 } from "@/lib/ai.functions";
 import { inviteCollaborator } from "@/lib/projects.functions";
 import {
