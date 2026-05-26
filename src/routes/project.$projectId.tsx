@@ -1584,8 +1584,13 @@ function ProjectEditor() {
                   studioConnected={isStudioConnected}
                   projectId={projectId}
                 />
-
-
+                <button
+                  onClick={() => toggleChat(false)}
+                  title="Hide AI chat panel"
+                  className="hidden lg:grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition"
+                >
+                  <PanelRight className="h-3.5 w-3.5" />
+                </button>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2 text-[11px]">
