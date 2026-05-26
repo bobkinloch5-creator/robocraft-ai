@@ -968,13 +968,17 @@ Phase 6 — World: SpawnLocations, lobby/spawn build, lighting, atmosphere, terr
 - {type:"lighting", properties}
 - {type:"spawn", position:{__t:"Vector3",x,y,z}}
 
-## TOOLBOX / MARKETPLACE ASSETS (use them liberally — but ONLY free + verified)
-You SHOULD insertAsset to populate the world with realistic props, trees, vehicles, buildings, weapons, NPCs, animations, and audio. Rules:
-- BEFORE emitting any insertAsset / sound action, call the \`roblox_asset_search\` tool (and \`roblox_asset_info\` to confirm) to find a real asset that matches what you need.
-- ONLY use assets where the lookup confirms: Price = 0 (FREE), AssetTypeId is appropriate (Model/Decal/Audio/Mesh/Animation), and the creator is verified (Roblox, a verified developer, or shows a verified badge / millions of downloads from a reputable creator).
-- NEVER fabricate or guess asset IDs. If the search returns nothing trustworthy and free, DO NOT insertAsset — build the prop yourself from Parts/MeshParts with realistic Material + Color3 + Size instead.
-- Prefer Roblox-owned and well-known verified creators for ambient audio, footsteps, UI clicks, weapon SFX, environmental music.
-- Group inserted assets into themed Folders (Workspace/Props/Trees, Workspace/Props/Buildings, Workspace/NPCs, SoundService/Ambient, etc.) via organize/move actions.
+## TOOLBOX / MARKETPLACE ASSETS (MANDATORY — Toolbox-first, every build)
+You MUST build full Roblox games primarily out of Toolbox/Marketplace assets. Hand-built Parts are a LAST RESORT, only when no verified free asset exists.
+
+HARD RULES — apply on EVERY autopilot run, no exceptions:
+- Toolbox-first workflow: for EVERY visual/audio element a real game needs (map/terrain kit, buildings, houses, trees, rocks, foliage, vehicles, weapons, tools, NPCs/rigs, animations, GUI icons, decals, skyboxes, ambient music, SFX, footsteps, UI clicks), FIRST call \`roblox_asset_search\` + \`roblox_asset_info\` and insertAsset a real verified free asset. Only fall back to primitives if search returns nothing trustworthy.
+- Aim for AT LEAST 15-30 insertAsset actions per full game (map kit + props + vehicles + NPCs + weapons + animations + multiple SFX + music + GUI icons + skybox). A game with zero Toolbox assets is INCOMPLETE — do not ship it.
+- Verification gate before EVERY insertAsset/sound action: the lookup must confirm Price = 0 (FREE), correct AssetTypeId (Model/Decal/Audio/Mesh/Animation/Plugin/Image), and a trusted creator (Roblox, verified badge, or a well-known reputable creator with high favorites/downloads). NEVER fabricate or guess asset IDs.
+- If a search returns nothing free + verified, try 2-3 alternate queries before giving up. Only then build the prop from Parts/MeshParts with realistic Material + Color3 + Size.
+- Use Toolbox assets for the COMPLETE stack: environment (map kit, terrain decals, skybox), gameplay (vehicles, weapons, tools, pickups), characters (R6/R15 rigs, animation packs for idle/walk/run/jump/attack), audio (ambient loop, footsteps per material, weapon SFX, UI clicks, notification dings, victory/defeat stingers), UI (button icons, currency icons, badge frames).
+- Group inserted assets into themed Folders via organize/move actions: Workspace/Map, Workspace/Props/Trees, Workspace/Props/Buildings, Workspace/Vehicles, Workspace/NPCs, ReplicatedStorage/Animations, ReplicatedStorage/Weapons, SoundService/Music, SoundService/SFX/Footsteps, StarterGui/Icons.
+- Wire inserted assets into scripts (e.g. require animation IDs in a CharacterController, play SoundService sounds from a SoundManager ModuleScript, clone weapon Tools from ReplicatedStorage into Backpack on respawn).
 
 If the live workspace has loose/unsorted Instances, emit move/organize actions to tidy them.
 
