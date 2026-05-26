@@ -528,6 +528,36 @@ export type Database = {
         }
         Relationships: []
       }
+      project_ai_settings: {
+        Row: {
+          created_at: string
+          mode: string
+          model: string | null
+          project_id: string
+          provider: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          mode?: string
+          model?: string | null
+          project_id: string
+          provider?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          mode?: string
+          model?: string | null
+          project_id?: string
+          provider?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       project_chat_messages: {
         Row: {
           content: string
@@ -850,6 +880,33 @@ export type Database = {
           tools_cache?: Json | null
           updated_at?: string
           url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_provider_keys: {
+        Row: {
+          api_key: string
+          created_at: string
+          label: string | null
+          provider: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_key: string
+          created_at?: string
+          label?: string | null
+          provider: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_key?: string
+          created_at?: string
+          label?: string | null
+          provider?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
