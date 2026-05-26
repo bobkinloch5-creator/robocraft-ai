@@ -49,6 +49,7 @@ import { downloadRbxmx } from "@/lib/rbxmx-export";
 import { PluginStatus } from "@/components/PluginStatus";
 import { PushPreview, type PreviewPayload } from "@/components/PushPreview";
 import { SyncValidationDrawer } from "@/components/SyncValidationDrawer";
+import { TeamChat } from "@/components/TeamChat";
 
 export const Route = createFileRoute("/project/$projectId")({
   component: ProjectEditor,
