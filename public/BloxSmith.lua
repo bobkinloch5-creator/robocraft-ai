@@ -73,6 +73,37 @@ local function setPreview(v) plugin:SetSetting("bs_preview", v) end
 local function getClearMode()  return plugin:GetSetting("bs_clear_mode") == true end
 local function setClearMode(v) plugin:SetSetting("bs_clear_mode", v) end
 
+-- Ignore filters: comma-separated locations / folder names to exclude from
+-- snapshot scans, organize plans, and any applied move/rename/organize/clean
+-- actions. Patterns are matched case-insensitively against either a full
+-- path segment OR as a substring of the full instance path.
+-- Example: "StarterPlayer, Archive, _wip"
+local function getIgnoresRaw() return plugin:GetSetting("bs_ignores") or "" end
+local function setIgnoresRaw(v) plugin:SetSetting("bs_ignores", tostring(v or "")) end
+local function getIgnoreList()
+	local out = {}
+	for token in string.gmatch(getIgnoresRaw(), "([^,]+)") do
+		local t = token:gsub("^%s+", ""):gsub("%s+$", "")
+		if t ~= "" then table.insert(out, string.lower(t)) end
+	end
+	return out
+end
+local function pathIsIgnored(path)
+	if not path or path == "" then return false end
+	local list = getIgnoreList()
+	if #list == 0 then return false end
+	local lower = string.lower(path)
+	local segments = {}
+	for seg in string.gmatch(lower, "([^/.]+)") do table.insert(segments, seg) end
+	for _, pat in ipairs(list) do
+		for _, seg in ipairs(segments) do
+			if seg == pat then return true end
+		end
+		if string.find(lower, pat, 1, true) then return true end
+	end
+	return false
+end
+
 local function postJSON(path, body)
 	local apiBase = getApiBase()
 	local url = apiBase .. path
