@@ -30,6 +30,7 @@ export const Route = createFileRoute("/api/public/plugin/sync")({
         if (!userId) return new Response(JSON.stringify({ error: "invalid token" }), { status: 401, headers: cors });
         const body = await request.json().catch(() => ({}));
         const projectId = body?.projectId;
+        const manual = body?.manual === true;
         if (!projectId) return new Response(JSON.stringify({ error: "missing projectId" }), { status: 400, headers: cors });
 
         const { data: project } = await supabaseAdmin.from("projects").select("id,user_id,name").eq("id", projectId).maybeSingle();
@@ -41,14 +42,25 @@ export const Route = createFileRoute("/api/public/plugin/sync")({
         }
         if (!allowed) return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: cors });
 
+        // Respect the project owner's "Manual sync only" preference
+        const { data: ownerProfile } = await supabaseAdmin
+          .from("profiles")
+          .select("manual_sync_only")
+          .eq("id", project.user_id)
+          .maybeSingle();
+        const manualOnly = ownerProfile?.manual_sync_only === true;
+        const shouldDeliver = manual || !manualOnly;
+
         // Pull pending actions (queued by the AI) — cap to 200 per pull
-        const { data: pending } = await supabaseAdmin
-          .from("plugin_actions")
-          .select("id,action_type,payload,created_at")
-          .eq("project_id", projectId)
-          .eq("status", "pending")
-          .order("created_at", { ascending: true })
-          .limit(200);
+        const { data: pending } = shouldDeliver
+          ? await supabaseAdmin
+              .from("plugin_actions")
+              .select("id,action_type,payload,created_at")
+              .eq("project_id", projectId)
+              .eq("status", "pending")
+              .order("created_at", { ascending: true })
+              .limit(200)
+          : { data: [] as Array<{ id: string; action_type: string; payload: unknown; created_at: string }> };
 
         const actions = (pending ?? []).map((row) => ({
           id: row.id,
