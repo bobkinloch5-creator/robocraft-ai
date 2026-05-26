@@ -1932,7 +1932,6 @@ function ProjectEditor() {
                     </button>
                   )}
                 </div>
-                </div>
               </div>
               <div className="flex items-center justify-between">
                 <div className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated/60 border border-border/40 px-2.5 py-0.5 text-[10px]">
