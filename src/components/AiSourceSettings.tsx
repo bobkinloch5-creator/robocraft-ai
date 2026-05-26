@@ -149,9 +149,9 @@ export function AiSourceSettings({
       >
         <div className="flex items-center justify-between border-b border-border p-4">
           <div>
-            <h2 className="text-sm font-semibold">AI source</h2>
+            <h2 className="text-sm font-semibold">AI model</h2>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              Pick how this project talks to AI — built-in MCP or your own API key.
+              Pick the LLM that builds your game. MCP servers add tools on top — they don't replace the model.
             </p>
           </div>
           <button
@@ -169,6 +169,14 @@ export function AiSourceSettings({
           </div>
         ) : (
           <div className="space-y-5 p-4">
+            <div className="rounded-md border border-border bg-surface-elevated/40 px-3 py-2 text-[11px] text-muted-foreground leading-relaxed">
+              <span className="font-semibold text-foreground">About MCP:</span> any MCP server you
+              add in <span className="font-mono">Settings → MCP</span> is{" "}
+              <span className="text-foreground">always on</span> — its tools are merged into every
+              build automatically. MCP is not an AI provider, so connecting one (e.g. Codex MCP) does
+              not change which model runs. Pick the model below.
+            </div>
+
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => {
@@ -183,11 +191,10 @@ export function AiSourceSettings({
                 }`}
               >
                 <div className="flex items-center gap-2 text-xs font-semibold">
-                  <Server className="h-3.5 w-3.5" /> MCP server
+                  <Server className="h-3.5 w-3.5" /> Built-in (Groq)
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Built-in BloxSmith pipeline. External clients (Codex, Claude) can also connect via
-                  the MCP endpoint.
+                  Default BloxSmith pipeline running on Groq. Uses your credits.
                 </p>
               </button>
               <button
@@ -206,8 +213,7 @@ export function AiSourceSettings({
                   <Key className="h-3.5 w-3.5" /> My API key
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Use your own OpenAI / Anthropic / Google / Groq key. Pay nothing to BloxSmith for
-                  AI calls.
+                  Bring your own OpenAI / Anthropic / Google / Groq key (e.g. gpt-5-codex on OpenAI). No credits charged.
                 </p>
               </button>
             </div>
