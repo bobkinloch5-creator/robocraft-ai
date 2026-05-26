@@ -11,18 +11,28 @@ import {
 } from "@/lib/ai-gateway.server";
 import { buildBloxSmithTools } from "@/lib/ai-tools.server";
 
+const ALLOWED_ORIGIN_EXACT = new Set([
+  "https://bloxsmith.pro",
+  "https://www.bloxsmith.pro",
+  "https://robocraft-ai.lovable.app",
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://localhost:8080",
+]);
+const ALLOWED_ORIGIN_SUFFIX = [".lovable.app", ".lovable.dev", ".lovable.project"];
+
 function getCorsHeaders(request: Request) {
   const origin = request.headers.get("origin") || "";
-  const allowedOrigin =
-    origin.includes("bloxsmith.pro") ||
-    origin.includes("localhost") ||
-    origin.includes("lovable.app") ||
-    origin.includes("lovable.project")
-      ? origin
-      : "https://bloxsmith.pro";
+  let host = "";
+  try { host = new URL(origin).hostname; } catch { /* ignore */ }
+  const allowed =
+    ALLOWED_ORIGIN_EXACT.has(origin) ||
+    (host && ALLOWED_ORIGIN_SUFFIX.some((s) => host.endsWith(s)));
+  const allowedOrigin = allowed ? origin : "https://bloxsmith.pro";
 
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
+    "Vary": "Origin",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Content-Type": "application/json",
