@@ -2126,7 +2126,9 @@ function ProjectEditor() {
               </div>
             </div>
           )}
+        </aside>
       </main>
+
 
       {showAiSourceModal && (
         <AiSourceSettings projectId={projectId} onClose={() => setShowAiSourceModal(false)} />
