@@ -34,6 +34,7 @@ import { Route as ApiPublicMcpRouteImport } from './routes/api/public/mcp'
 import { Route as ApiAssistantExecuteRouteImport } from './routes/api/assistant/execute'
 import { Route as ApiPublicPluginSyncRouteImport } from './routes/api/public/plugin/sync'
 import { Route as ApiPublicPluginReportRouteImport } from './routes/api/public/plugin/report'
+import { Route as ApiPublicPluginOrganizeRouteImport } from './routes/api/public/plugin/organize'
 import { Route as ApiPublicPluginErrorsRouteImport } from './routes/api/public/plugin/errors'
 import { Route as ApiPublicPluginContextRouteImport } from './routes/api/public/plugin/context'
 import { Route as ApiPublicPluginAuthRouteImport } from './routes/api/public/plugin/auth'
@@ -164,6 +165,11 @@ const ApiPublicPluginReportRoute = ApiPublicPluginReportRouteImport.update({
   path: '/api/public/plugin/report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPluginOrganizeRoute = ApiPublicPluginOrganizeRouteImport.update({
+  id: '/api/public/plugin/organize',
+  path: '/api/public/plugin/organize',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPluginErrorsRoute = ApiPublicPluginErrorsRouteImport.update({
   id: '/api/public/plugin/errors',
   path: '/api/public/plugin/errors',
@@ -213,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/api/public/plugin/auth': typeof ApiPublicPluginAuthRoute
   '/api/public/plugin/context': typeof ApiPublicPluginContextRoute
   '/api/public/plugin/errors': typeof ApiPublicPluginErrorsRoute
+  '/api/public/plugin/organize': typeof ApiPublicPluginOrganizeRoute
   '/api/public/plugin/report': typeof ApiPublicPluginReportRoute
   '/api/public/plugin/sync': typeof ApiPublicPluginSyncRoute
 }
@@ -244,6 +251,7 @@ export interface FileRoutesByTo {
   '/api/public/plugin/auth': typeof ApiPublicPluginAuthRoute
   '/api/public/plugin/context': typeof ApiPublicPluginContextRoute
   '/api/public/plugin/errors': typeof ApiPublicPluginErrorsRoute
+  '/api/public/plugin/organize': typeof ApiPublicPluginOrganizeRoute
   '/api/public/plugin/report': typeof ApiPublicPluginReportRoute
   '/api/public/plugin/sync': typeof ApiPublicPluginSyncRoute
 }
@@ -276,6 +284,7 @@ export interface FileRoutesById {
   '/api/public/plugin/auth': typeof ApiPublicPluginAuthRoute
   '/api/public/plugin/context': typeof ApiPublicPluginContextRoute
   '/api/public/plugin/errors': typeof ApiPublicPluginErrorsRoute
+  '/api/public/plugin/organize': typeof ApiPublicPluginOrganizeRoute
   '/api/public/plugin/report': typeof ApiPublicPluginReportRoute
   '/api/public/plugin/sync': typeof ApiPublicPluginSyncRoute
 }
@@ -309,6 +318,7 @@ export interface FileRouteTypes {
     | '/api/public/plugin/auth'
     | '/api/public/plugin/context'
     | '/api/public/plugin/errors'
+    | '/api/public/plugin/organize'
     | '/api/public/plugin/report'
     | '/api/public/plugin/sync'
   fileRoutesByTo: FileRoutesByTo
@@ -340,6 +350,7 @@ export interface FileRouteTypes {
     | '/api/public/plugin/auth'
     | '/api/public/plugin/context'
     | '/api/public/plugin/errors'
+    | '/api/public/plugin/organize'
     | '/api/public/plugin/report'
     | '/api/public/plugin/sync'
   id:
@@ -371,6 +382,7 @@ export interface FileRouteTypes {
     | '/api/public/plugin/auth'
     | '/api/public/plugin/context'
     | '/api/public/plugin/errors'
+    | '/api/public/plugin/organize'
     | '/api/public/plugin/report'
     | '/api/public/plugin/sync'
   fileRoutesById: FileRoutesById
@@ -403,6 +415,7 @@ export interface RootRouteChildren {
   ApiPublicPluginAuthRoute: typeof ApiPublicPluginAuthRoute
   ApiPublicPluginContextRoute: typeof ApiPublicPluginContextRoute
   ApiPublicPluginErrorsRoute: typeof ApiPublicPluginErrorsRoute
+  ApiPublicPluginOrganizeRoute: typeof ApiPublicPluginOrganizeRoute
   ApiPublicPluginReportRoute: typeof ApiPublicPluginReportRoute
   ApiPublicPluginSyncRoute: typeof ApiPublicPluginSyncRoute
 }
@@ -584,6 +597,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPluginReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/plugin/organize': {
+      id: '/api/public/plugin/organize'
+      path: '/api/public/plugin/organize'
+      fullPath: '/api/public/plugin/organize'
+      preLoaderRoute: typeof ApiPublicPluginOrganizeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/plugin/errors': {
       id: '/api/public/plugin/errors'
       path: '/api/public/plugin/errors'
@@ -643,6 +663,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicPluginAuthRoute: ApiPublicPluginAuthRoute,
   ApiPublicPluginContextRoute: ApiPublicPluginContextRoute,
   ApiPublicPluginErrorsRoute: ApiPublicPluginErrorsRoute,
+  ApiPublicPluginOrganizeRoute: ApiPublicPluginOrganizeRoute,
   ApiPublicPluginReportRoute: ApiPublicPluginReportRoute,
   ApiPublicPluginSyncRoute: ApiPublicPluginSyncRoute,
 }
