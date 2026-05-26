@@ -2146,6 +2146,8 @@ local function pull(manual)
 	if getPaused() then syncInfo.Text = "Paused — incoming actions are ignored"; return end
 	local data, err = postJSON("/sync", { projectId = activeProjectId, manual = manual == true })
 	if not data then syncInfo.Text = "Sync error: " .. tostring(err); return end
+	lastSyncAt = os.time()
+	pcall(refreshStatsInfo)
 
 	local actions = data.actions or {}
 	if #actions == 0 then return end
