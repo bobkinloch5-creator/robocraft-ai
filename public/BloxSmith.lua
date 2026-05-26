@@ -1756,6 +1756,7 @@ syncNowBtn.MouseButton1Click:Connect(function()
 	end
 	task.spawn(function()
 		pushContext(true)
+		pull(true) -- user-initiated: bypass "Manual sync only" gating server-side
 		pushSnapshot()
 	end)
 end)
