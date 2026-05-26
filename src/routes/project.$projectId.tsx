@@ -316,6 +316,28 @@ function ProjectEditor() {
   const CHAT_COST = 1;
   const runChat = useServerFn(chatWithAI);
   const [thinking, setThinking] = useState(false);
+  const [mcpServers, setMcpServers] = useState<Array<{ name: string; enabled: boolean; ok: boolean | null }>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const { data } = await supabase
+        .from("user_mcp_servers")
+        .select("name,enabled,last_test_ok")
+        .eq("enabled", true);
+      if (cancelled) return;
+      setMcpServers(((data ?? []) as Array<{ name: string; enabled: boolean; last_test_ok: boolean | null }>)
+        .map((s) => ({ name: s.name, enabled: s.enabled, ok: s.last_test_ok })));
+    };
+    load();
+    const ch = supabase
+      .channel("mcp-indicator")
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_mcp_servers" }, load)
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(ch);
+    };
+  }, []);
   const [plansByMsg, setPlansByMsg] = useState<Record<string, { prompt: string; plan: string }>>(
     {},
   );
