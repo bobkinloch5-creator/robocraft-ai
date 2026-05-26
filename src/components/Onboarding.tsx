@@ -130,6 +130,15 @@ export function Onboarding({ force = false, onClose }: { force?: boolean; onClos
                   {S.cta.label}
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
+              ) : S.cta.external ? (
+                <a
+                  href={S.cta.external}
+                  onClick={() => setTimeout(next, 250)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-primary to-primary-glow px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity"
+                >
+                  {S.cta.label}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </a>
               ) : (
                 <button
                   onClick={next}
