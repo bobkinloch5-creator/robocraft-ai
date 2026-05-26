@@ -304,4 +304,79 @@ export const buildBloxSmithTools = (ctx: BloxSmithToolCtx = {}) => ({
       };
     },
   }),
+
+  // ── MCP servers (let the AI manage the user's own MCP server list) ──
+  list_mcp_servers: tool({
+    description:
+      "List the MCP (Model Context Protocol) servers the user has configured on their BloxSmith account. Returns name, URL, enabled flag, and last test status.",
+    inputSchema: z.object({}),
+    execute: async () => {
+      if (!ctx.userId) return { error: "not authenticated", servers: [] };
+      const { data, error } = await supabaseAdmin
+        .from("user_mcp_servers")
+        .select("id,name,url,enabled,last_test_ok,last_test_error,tool_count,last_tested_at")
+        .eq("user_id", ctx.userId)
+        .order("created_at", { ascending: false });
+      if (error) return { error: error.message, servers: [] };
+      return { count: data?.length ?? 0, servers: data ?? [] };
+    },
+  }),
+
+  add_mcp_server: tool({
+    description:
+      "Add a new MCP (Model Context Protocol) server to the user's BloxSmith account. Use this when the user asks you to 'add an MCP server' or pastes an MCP server URL. The URL must be a full https:// endpoint (Streamable HTTP). auth_header is optional — pass the full header value like 'Bearer xxx' if the server requires authentication. The server is added enabled; the user can test/disable it from the MCP page.",
+    inputSchema: z.object({
+      name: z.string().min(1).max(80).describe("Short friendly name, e.g. 'Notion' or 'My API'"),
+      url: z.string().url().describe("Full MCP endpoint URL, e.g. https://example.com/api/mcp"),
+      auth_header: z
+        .string()
+        .max(2000)
+        .optional()
+        .describe("Optional Authorization header value, e.g. 'Bearer sk-...'. Omit if no auth."),
+    }),
+    execute: async ({ name, url, auth_header }) => {
+      if (!ctx.userId) return { error: "not authenticated" };
+      if (!/^https:\/\//i.test(url)) return { error: "URL must start with https://" };
+      const { data: existing } = await supabaseAdmin
+        .from("user_mcp_servers")
+        .select("id")
+        .eq("user_id", ctx.userId)
+        .eq("url", url)
+        .maybeSingle();
+      if (existing) return { error: "An MCP server with that URL is already added", id: existing.id };
+      const { data, error } = await supabaseAdmin
+        .from("user_mcp_servers")
+        .insert({
+          user_id: ctx.userId,
+          name: name.trim(),
+          url: url.trim(),
+          auth_header: auth_header?.trim() || null,
+          enabled: true,
+        })
+        .select("id,name,url,enabled")
+        .single();
+      if (error) return { error: error.message };
+      return {
+        success: true,
+        server: data,
+        next: "Tell the user it was added and link them to /mcp-servers to test it.",
+      };
+    },
+  }),
+
+  remove_mcp_server: tool({
+    description:
+      "Remove one of the user's MCP servers by its id (from list_mcp_servers). Confirm with the user before calling.",
+    inputSchema: z.object({ id: z.string().uuid() }),
+    execute: async ({ id }) => {
+      if (!ctx.userId) return { error: "not authenticated" };
+      const { error } = await supabaseAdmin
+        .from("user_mcp_servers")
+        .delete()
+        .eq("user_id", ctx.userId)
+        .eq("id", id);
+      if (error) return { error: error.message };
+      return { success: true };
+    },
+  }),
 });
