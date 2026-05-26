@@ -11,6 +11,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export type BloxSmithToolCtx = {
   projectId?: string | null;
+  userId?: string | null;
 };
 
 export const buildBloxSmithTools = (ctx: BloxSmithToolCtx = {}) => ({

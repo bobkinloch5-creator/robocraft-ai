@@ -36,6 +36,14 @@ function McpPage() {
             Use Claude Code, ChatGPT Codex, Google Antigravity, Cursor, or any other
             MCP-compatible client to build Roblox games inside your BloxSmith projects.
           </p>
+          <p className="text-sm">
+            Want it the other way around?{" "}
+            <Link to="/mcp-servers" className="underline font-medium">
+              Connect your own MCP servers
+            </Link>{" "}
+            (Notion, Linear, GitHub, custom…) so the BloxSmith AI can use their tools
+            while building.
+          </p>
         </header>
 
         <section className="space-y-3">

@@ -15,6 +15,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PluginRouteImport } from './routes/plugin'
+import { Route as McpServersRouteImport } from './routes/mcp-servers'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FaqRouteImport } from './routes/faq'
@@ -67,6 +68,11 @@ const PricingRoute = PricingRouteImport.update({
 const PluginRoute = PluginRouteImport.update({
   id: '/plugin',
   path: '/plugin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpServersRoute = McpServersRouteImport.update({
+  id: '/mcp-servers',
+  path: '/mcp-servers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -195,6 +201,7 @@ export interface FileRoutesByFullPath {
   '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/mcp-servers': typeof McpServersRoute
   '/plugin': typeof PluginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -226,6 +233,7 @@ export interface FileRoutesByTo {
   '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/mcp-servers': typeof McpServersRoute
   '/plugin': typeof PluginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -258,6 +266,7 @@ export interface FileRoutesById {
   '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/mcp-servers': typeof McpServersRoute
   '/plugin': typeof PluginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -291,6 +300,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/login'
     | '/mcp'
+    | '/mcp-servers'
     | '/plugin'
     | '/pricing'
     | '/privacy'
@@ -322,6 +332,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/login'
     | '/mcp'
+    | '/mcp-servers'
     | '/plugin'
     | '/pricing'
     | '/privacy'
@@ -353,6 +364,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/login'
     | '/mcp'
+    | '/mcp-servers'
     | '/plugin'
     | '/pricing'
     | '/privacy'
@@ -385,6 +397,7 @@ export interface RootRouteChildren {
   FaqRoute: typeof FaqRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
+  McpServersRoute: typeof McpServersRoute
   PluginRoute: typeof PluginRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -449,6 +462,13 @@ declare module '@tanstack/react-router' {
       path: '/plugin'
       fullPath: '/plugin'
       preLoaderRoute: typeof PluginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp-servers': {
+      id: '/mcp-servers'
+      path: '/mcp-servers'
+      fullPath: '/mcp-servers'
+      preLoaderRoute: typeof McpServersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -625,6 +645,7 @@ const rootRouteChildren: RootRouteChildren = {
   FaqRoute: FaqRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
+  McpServersRoute: McpServersRoute,
   PluginRoute: PluginRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,

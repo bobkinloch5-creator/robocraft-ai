@@ -677,6 +677,39 @@ export type Database = {
           },
         ]
       }
+      user_mcp_servers: {
+        Row: {
+          auth_header: string | null
+          created_at: string
+          enabled: boolean
+          id: string
+          name: string
+          updated_at: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          auth_header?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name: string
+          updated_at?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          auth_header?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name?: string
+          updated_at?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
