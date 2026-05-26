@@ -32,11 +32,15 @@ export const Route = createFileRoute("/mcp-servers")({
   }),
 });
 
+type TestState = { status: "idle" | "loading" | "ok" | "fail"; toolCount?: number; error?: string; tools?: Array<{ name: string; description: string }> };
+
 function McpServersPage() {
   const [servers, setServers] = useState<Server[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: "", url: "", auth_header: "" });
   const [saving, setSaving] = useState(false);
+  const [tests, setTests] = useState<Record<string, TestState>>({});
+  const runTest = useServerFn(testMcpServer);
 
   const load = async () => {
     setLoading(true);
@@ -49,9 +53,23 @@ function McpServersPage() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  const testServer = async (s: Server, silent = false) => {
+    setTests((t) => ({ ...t, [s.id]: { status: "loading" } }));
+    try {
+      const res = await runTest({ data: { serverId: s.id } });
+      if (res.ok) {
+        setTests((t) => ({ ...t, [s.id]: { status: "ok", toolCount: res.toolCount, tools: res.tools } }));
+        if (!silent) toast.success(`${s.name}: ${res.toolCount} tool${res.toolCount === 1 ? "" : "s"} ready`);
+      } else {
+        setTests((t) => ({ ...t, [s.id]: { status: "fail", error: res.error } }));
+        if (!silent) toast.error(`${s.name}: ${res.error}`);
+      }
+    } catch (e: any) {
+      setTests((t) => ({ ...t, [s.id]: { status: "fail", error: e?.message ?? "Test failed" } }));
+      if (!silent) toast.error(e?.message ?? "Test failed");
+    }
+  };
+
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
