@@ -86,19 +86,19 @@ export const generateWithAI = createServerFn({ method: "POST" })
       .from("project_files")
       .select("path,file_type,service_location,content")
       .eq("project_id", projectId)
-      .limit(20);
+      .limit(15);
 
     const filesBlock = (existingFiles ?? [])
       .map(
         (f) =>
-          `--- ${f.path} (${f.file_type} in ${f.service_location}) ---\n${(f.content ?? "").slice(0, 500)}`,
+          `--- ${f.path} (${f.file_type} in ${f.service_location}) ---\n${(f.content ?? "").slice(0, 300)}`,
       )
       .join("\n\n")
-      .slice(0, 8000);
+      .slice(0, 4000);
 
     const liveBlock = liveContext?.context
-      ? `LIVE STUDIO WORKSPACE (snapshot at ${liveContext.updated_at}, ${liveContext.instance_count} instances):\n${JSON.stringify(liveContext.context, null, 0).slice(0, 5000)}`
-      : "LIVE STUDIO WORKSPACE: (not yet reported by plugin — assume empty baseplate)";
+      ? `LIVE STUDIO WORKSPACE (${liveContext.instance_count} instances):\n${JSON.stringify(liveContext.context).slice(0, 2500)}`
+      : "LIVE STUDIO WORKSPACE: (empty baseplate)";
 
     let result: { message: string; files: GenFile[]; actions: GenAction[] };
     try {
