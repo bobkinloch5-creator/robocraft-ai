@@ -161,7 +161,7 @@ local function register(element, category)
 	table.insert(UI_Elements[category], element)
 end
 
-local function corner(p, r) local c = Instance.new("UICorner", p); c.CornerRadius = UDim.new(0, r or 8); return c end
+local function corner(p, r) local c = Instance.new("UICorner", p); c.CornerRadius = UDim.new(0, r or 6); return c end
 local function stroke(p, col, t)
 	local s = Instance.new("UIStroke", p)
 	s.Color = col or C.stroke
