@@ -13,8 +13,8 @@ export const createGroqProvider = (groqApiKey: string) =>
 // Default = fast, versatile model for generating solid Luau.
 // Thinking = deeper reasoning for hard plans / fixes.
 // Fast = lightweight model for quick plan outlines.
-export const BLOXSMITH_MODEL = "openai/gpt-oss-20b";
-export const BLOXSMITH_THINK_MODEL = "openai/gpt-oss-120b";
+export const BLOXSMITH_MODEL = "llama-3.1-8b-instant";
+export const BLOXSMITH_THINK_MODEL = "llama-3.1-8b-instant";
 export const BLOXSMITH_FAST_MODEL = "llama-3.1-8b-instant";
 
 
