@@ -152,9 +152,10 @@ function Admin() {
                     <td className="py-2">{r.email}</td>
                     <td>{r.display_name ?? "—"}</td>
                     <td>{r.credits}</td>
-                    <td className="text-right">
-                      <button onClick={() => adjustCredits(r.id, 100)} className="text-xs rounded-md bg-primary/20 px-2 py-1 mr-1">+100</button>
-                      <button onClick={() => adjustCredits(r.id, -100)} className="text-xs rounded-md border border-border px-2 py-1">−100</button>
+                    <td className="text-right whitespace-nowrap">
+                      <button onClick={() => giftCustom(r)} className="text-xs rounded-md bg-primary px-2 py-1 mr-1 font-semibold text-primary-foreground">🎁 Gift</button>
+                      <button onClick={() => adjustCredits(r.id, 100, "quick +100")} className="text-xs rounded-md bg-primary/20 px-2 py-1 mr-1">+100</button>
+                      <button onClick={() => adjustCredits(r.id, -100, "quick -100")} className="text-xs rounded-md border border-border px-2 py-1">−100</button>
                     </td>
                   </tr>
                 ))}
