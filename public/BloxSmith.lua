@@ -476,9 +476,10 @@ local function utilityButton(text, widthScale, order)
 	return b
 end
 
-local syncNowBtn = utilityButton("Sync Now", 0.34, 1)
-local reconnectBtn = utilityButton("Reconnect", 0.33, 2)
-local cancelScanBtn = utilityButton("Cancel Scan", 0.33, 3)
+local syncNowBtn = utilityButton("Sync Now", 0.25, 1)
+local reconnectBtn = utilityButton("Reconnect", 0.25, 2)
+local cancelScanBtn = utilityButton("Cancel Scan", 0.25, 3)
+local cleanSyncedBtn = utilityButton("Clean Synced", 0.25, 4)
 
 local function setPill(state)
 	local dotColor, label, textColor
