@@ -1889,7 +1889,7 @@ function ProjectEditor() {
           ) : (
             <div className="border-t border-border p-3 space-y-2">
               <div
-                className={`rounded-xl border bg-background/45 p-2 transition ${planMode ? "border-primary/40" : "border-border focus-within:border-primary/40"}`}
+                className={`rounded-xl border bg-background/45 p-2 transition ${chatMode ? "border-accent/40" : planMode ? "border-primary/40" : "border-border focus-within:border-primary/40"}`}
               >
                 <textarea
                   value={prompt}
@@ -1902,9 +1902,11 @@ function ProjectEditor() {
                   }}
                   rows={3}
                   placeholder={
-                    planMode
-                      ? "Describe the Roblox system you want planned..."
-                      : "Type any command: build a map, add UI, create scripts, insert assets, fix bugs..."
+                    chatMode
+                      ? "Ask anything: ideas, Luau questions, code samples to copy — nothing runs in Studio."
+                      : planMode
+                        ? "Describe the Roblox system you want planned..."
+                        : "Type any command: build a map, add UI, create scripts, insert assets, fix bugs..."
                   }
                   className="min-h-20 w-full resize-none bg-transparent px-1 py-1 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none"
                 />
