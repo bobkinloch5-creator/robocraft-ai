@@ -216,10 +216,10 @@ local scroll = Instance.new("ScrollingFrame", widget)
 scroll.Size = UDim2.fromScale(1,1)
 scroll.BackgroundTransparency = 1
 scroll.BorderSizePixel = 0
-scroll.ScrollBarThickness = 4
+scroll.ScrollBarThickness = 3
 scroll.CanvasSize = UDim2.fromScale(0,0)
 scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-padAll(scroll, 12)
+padAll(scroll, 10)
 
 local root = Instance.new("Frame", scroll)
 root.Size = UDim2.new(1,0,0,0)
@@ -228,29 +228,29 @@ root.BackgroundTransparency = 1
 root.BorderSizePixel = 0
 
 local list = Instance.new("UIListLayout", root)
-list.Padding = UDim.new(0,10)
+list.Padding = UDim.new(0,8)
 list.SortOrder = Enum.SortOrder.LayoutOrder
 
 -- Header: logo + title + status pill
 local header = Instance.new("Frame", root)
 header.LayoutOrder = 1
 header.BackgroundTransparency = 1
-header.Size = UDim2.new(1,0,0,28)
+header.Size = UDim2.new(1,0,0,24)
 
 local logo = Instance.new("Frame", header)
-logo.Size = UDim2.fromOffset(26, 26)
-logo.Position = UDim2.new(0,0,0.5,-13)
+logo.Size = UDim2.fromOffset(22, 22)
+logo.Position = UDim2.new(0,0,0.5,-11)
 logo.BackgroundColor3 = C.primary
 logo.BorderSizePixel = 0
-corner(logo, 8)
+corner(logo, 6)
 gradient(logo, Color3.fromRGB(140, 120, 255), Color3.fromRGB(88, 70, 230), 125)
 local logoGlow = Instance.new("UIStroke", logo)
 logoGlow.Color = Color3.fromRGB(150, 135, 255)
 logoGlow.Thickness = 1
-logoGlow.Transparency = 0.45
+logoGlow.Transparency = 0.5
 local logoText = Instance.new("TextLabel", logo)
 logoText.BackgroundTransparency = 1; logoText.Size = UDim2.fromScale(1,1)
-logoText.Font = Enum.Font.GothamBold; logoText.TextSize = 14
+logoText.Font = Enum.Font.GothamBold; logoText.TextSize = 12
 logoText.TextColor3 = Color3.new(1,1,1); logoText.Text = "B"
 
 local title = Instance.new("TextLabel", header)
