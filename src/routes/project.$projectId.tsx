@@ -255,20 +255,20 @@ function ProjectEditor() {
       refreshCredits();
       refreshAiContext();
 
-      // Load or create the per-project agent conversation, then hydrate messages.
+      // Load or create the SHARED per-project agent conversation, then hydrate messages.
+      // (Collaborators all see the same conversation, not a per-user one.)
       const { data: existing } = await supabase
         .from("agent_conversations")
         .select("id")
         .eq("project_id", projectId)
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
+        .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
       let cid = existing?.id ?? null;
       if (!cid) {
         const { data: created } = await supabase
           .from("agent_conversations")
-          .insert({ project_id: projectId, user_id: user.id, title: "Chat" })
+          .insert({ project_id: projectId, user_id: user.id, title: "Team Chat" })
           .select("id")
           .single();
         cid = created?.id ?? null;
