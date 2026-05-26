@@ -19,16 +19,17 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 glass border-b border-border">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-        <Link to="/" className="flex items-center gap-2 notranslate" translate="no">
+        <Link to="/" className="flex items-center gap-2 shrink-0 notranslate" translate="no">
           <img src={logo} alt="BloxSmith" width={32} height={32} className="h-8 w-8" />
-          <span className="text-lg font-bold">
+          <span className="text-lg font-bold whitespace-nowrap">
             Blox<span className="gradient-text">Smith</span>
           </span>
-          <span className="ml-1 inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-400 border border-amber-500/20">
+          <span className="ml-1 hidden lg:inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-400 border border-amber-500/20">
             Beta
           </span>
         </Link>
-        <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
+        <nav className="hidden md:flex items-center gap-5 lg:gap-6 text-sm text-muted-foreground ml-4 shrink-0">
+
           <Link to="/pricing" className="hover:text-foreground">
             Pricing
           </Link>
