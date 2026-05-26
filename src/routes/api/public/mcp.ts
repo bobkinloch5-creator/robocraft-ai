@@ -7,6 +7,7 @@ import {
   listProjectsTool,
   searchToolboxTool,
 } from "@/lib/mcp/tools/bloxsmith";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const mcp = createMcpServer({
   name: "bloxsmith",
@@ -35,16 +36,46 @@ const methodNotAllowed = () =>
     },
   );
 
+async function sha256(text: string) {
+  const buf = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 const authedHandler = withMcpAuth(
   async (request, auth) => mcp.handleRequest(request, { auth }),
   async (request) => {
-    const expected = process.env.MCP_SECRET;
-    if (!expected) return null;
     const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
-    if (!token || token !== expected) return null;
-    return { token };
+    if (!token) return null;
+
+    // Admin override: shared workspace MCP_SECRET still works
+    const adminSecret = process.env.MCP_SECRET;
+    if (adminSecret && token === adminSecret) {
+      return { token, scope: "admin" as const, userId: null };
+    }
+
+    // Per-user revocable token
+    if (token.startsWith("bsmcp_")) {
+      const hash = await sha256(token);
+      const { data } = await supabaseAdmin
+        .from("mcp_tokens")
+        .select("user_id")
+        .eq("token_hash", hash)
+        .maybeSingle();
+      if (!data) return null;
+      // Best-effort update of last_used_at (don't block on it)
+      supabaseAdmin
+        .from("mcp_tokens")
+        .update({ last_used_at: new Date().toISOString() })
+        .eq("user_id", data.user_id)
+        .then(() => {}, () => {});
+      return { token, scope: "user" as const, userId: data.user_id };
+    }
+
+    return null;
   },
 );
+
 
 export const Route = createFileRoute("/api/public/mcp")({
   server: {
