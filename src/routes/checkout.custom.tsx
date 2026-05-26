@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/checkout/custom")({
   component: CustomCheckout,
-  head: () => ({ meta: [{ title: "Custom Credits — BloxSmith" }] }),
+  head: () => ({ meta: [{ title: "Custom Credits — BloxSmith" }, { name: "robots", content: "noindex, nofollow" }] }),
 });
 
 const PAYPAL_HANDLE = "kinloch930";
