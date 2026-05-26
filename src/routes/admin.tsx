@@ -30,6 +30,16 @@ function Admin() {
   const [stats, setStats] = useState<{ users: number; projects: number; generations: number } | null>(null);
   const [requests, setRequests] = useState<PR[]>([]);
   const [emails, setEmails] = useState<Record<string, string>>({});
+  const [promos, setPromos] = useState<Promo[]>([]);
+  const [newCode, setNewCode] = useState("");
+  const [newCredits, setNewCredits] = useState(50);
+  const [newMax, setNewMax] = useState<string>("");
+  const [newExpires, setNewExpires] = useState<string>("");
+
+  const loadPromos = async () => {
+    const { data } = await supabase.from("promo_codes").select("*").order("created_at", { ascending: false });
+    setPromos((data ?? []) as Promo[]);
+  };
 
   const loadRequests = async () => {
     const { data } = await supabase.from("payment_requests").select("*").eq("status", "pending").order("created_at", { ascending: false });
