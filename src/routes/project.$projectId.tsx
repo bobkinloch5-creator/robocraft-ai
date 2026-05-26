@@ -1209,9 +1209,34 @@ function ProjectEditor() {
       </div>
 
       <main
-        className="flex-1 grid lg:grid-cols-[240px_minmax(0,1fr)_var(--chat-w)] gap-0"
-        style={{ ["--chat-w" as any]: `${chatWidth}px` }}
+        className="flex-1 grid gap-0 relative"
+        style={{
+          ["--chat-w" as any]: `${chatWidth}px`,
+          gridTemplateColumns:
+            typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches
+              ? `${showFiles ? "240px" : "0px"} minmax(0,1fr) ${showChat ? "var(--chat-w)" : "0px"}`
+              : undefined,
+        }}
       >
+        {/* Floating toggles for collapsed side panels (desktop only) */}
+        {!showFiles && (
+          <button
+            onClick={() => toggleFiles(true)}
+            title="Show file panel"
+            className="hidden lg:flex absolute left-2 top-2 z-30 h-8 w-8 items-center justify-center rounded-md border border-border bg-surface/80 backdrop-blur text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition"
+          >
+            <PanelLeft className="h-4 w-4" />
+          </button>
+        )}
+        {!showChat && (
+          <button
+            onClick={() => toggleChat(true)}
+            title="Show AI chat"
+            className="hidden lg:flex absolute right-2 top-2 z-30 h-8 w-8 items-center justify-center rounded-md border border-border bg-surface/80 backdrop-blur text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition"
+          >
+            <PanelRight className="h-4 w-4" />
+          </button>
+        )}
         {/* File tree */}
         <aside
           className={`${mobileTab === "files" ? "block" : "hidden"} lg:block border-r border-border bg-surface/20 overflow-y-auto max-h-[calc(100vh-8rem)] flex flex-col`}
