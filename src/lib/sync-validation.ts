@@ -75,6 +75,19 @@ const REMOTE_CLASSES = new Set([
   "UnreliableRemoteEvent",
 ]);
 
+// Invented / non-existent Roblox Instance classes that the AI sometimes
+// hallucinates. We auto-remap to a real equivalent when possible, otherwise
+// drop the action. Studio's `Instance.new("DirectionalLight")` throws
+// "Unable to create an Instance of type 'DirectionalLight'" — we catch it here.
+const INVALID_CLASS_REMAP: Record<string, string | null> = {
+  DirectionalLight: "SpotLight",
+  AmbientLight: null, // belongs on the Lighting service, not an instance
+  GlobalLight: null,
+  Light: "PointLight",
+  DirectionalForce: "VectorForce",
+  Wind: null,
+};
+
 function rootOf(loc: string): string {
   const trimmed = (loc ?? "").replace(/^\/+/, "").trim();
   return trimmed.split(/[/.]/)[0] ?? "";
@@ -244,6 +257,55 @@ export function validateGenerated(
     if (!a || typeof a !== "object" || typeof a.type !== "string") {
       errors.push({ level: "error", scope: "action", target, message: "action missing 'type' field" });
       continue;
+    }
+
+    // Catch hallucinated Instance classes (e.g. "DirectionalLight") before
+    // they reach the Studio plugin and throw "Unable to create an Instance
+    // of type X". Remap to a real equivalent when we know one; otherwise drop.
+    if (a.type === "create" && typeof a.className === "string" && a.className in INVALID_CLASS_REMAP) {
+      const remap = INVALID_CLASS_REMAP[a.className];
+      if (remap) {
+        warnings.push({
+          level: "warning",
+          scope: "action",
+          target,
+          message: `"${a.className}" is not a real Roblox Instance — remapped to "${remap}"`,
+        });
+        a.className = remap;
+      } else {
+        errors.push({
+          level: "error",
+          scope: "action",
+          target,
+          message: `"${a.className}" is not a real Roblox Instance class — dropped (use Lighting service properties instead)`,
+        });
+        continue;
+      }
+    }
+    if (a.type === "create" && typeof a.children === "object" && Array.isArray(a.children)) {
+      a.children = a.children.filter((c: any) => {
+        if (c && typeof c.className === "string" && c.className in INVALID_CLASS_REMAP) {
+          const remap = INVALID_CLASS_REMAP[c.className];
+          if (remap) {
+            warnings.push({
+              level: "warning",
+              scope: "action",
+              target: `${target}>${c.name ?? c.className}`,
+              message: `child "${c.className}" is not a real Roblox Instance — remapped to "${remap}"`,
+            });
+            c.className = remap;
+            return true;
+          }
+          warnings.push({
+            level: "warning",
+            scope: "action",
+            target: `${target}>${c.name ?? c.className}`,
+            message: `child "${c.className}" is not a real Roblox Instance — dropped`,
+          });
+          return false;
+        }
+        return true;
+      });
     }
 
     if (a.type === "remote") {
