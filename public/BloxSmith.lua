@@ -1664,9 +1664,34 @@ local function fingerprintActions(actions)
 	return s
 end
 
+-- Returns true if this action targets (or would create things inside) any
+-- path the user has marked as ignored. Covers organize / move / rename /
+-- clean / script / create / etc. since they all reference a path-like field.
+local function actionTouchesIgnored(action)
+	if not action then return false end
+	local candidates = {
+		action.path, action.target, action.newParent, action.parent,
+		action.destination, action.dest, action.folder, action.container,
+	}
+	for _, p in ipairs(candidates) do
+		if type(p) == "string" and pathIsIgnored(p) then return true end
+	end
+	local items = action.items or action.objects or action.paths
+	if type(items) == "table" then
+		for _, p in ipairs(items) do
+			if type(p) == "string" and pathIsIgnored(p) then return true end
+		end
+	end
+	return false
+end
+
 local function dispatch(action)
 	local fn = Actions[action.type]
 	if not fn then return false, "unknown action: " .. tostring(action.type) end
+	if actionTouchesIgnored(action) then
+		appendLog("Skipped " .. tostring(action.type) .. " — matches ignore filter")
+		return true
+	end
 	return fn(action)
 end
 
