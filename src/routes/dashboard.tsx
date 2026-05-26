@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { createProject as createProjectFn } from "@/lib/projects.functions";
 import { GAME_TYPES, STARTER_TEMPLATES } from "@/lib/templates";
-import { Plus, Folder, Zap, Plug, BookOpen, CreditCard, ShieldCheck, X, Gamepad2, Sparkles } from "lucide-react";
+import { Plus, Folder, Plug, BookOpen, CreditCard, ShieldCheck, X, Gamepad2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Onboarding } from "@/components/Onboarding";
 
