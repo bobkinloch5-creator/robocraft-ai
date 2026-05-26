@@ -295,6 +295,80 @@ function StudioSyncSection() {
   );
 }
 
+function ProjectRulesSection({ projectId }: { projectId: string }) {
+  const [rules, setRules] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      const { data } = await supabase
+        .from("projects")
+        .select("ai_rules")
+        .eq("id", projectId)
+        .maybeSingle();
+      if (cancel) return;
+      setRules(((data as any)?.ai_rules as string) ?? "");
+      setLoaded(true);
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [projectId]);
+
+  async function save() {
+    setSaving(true);
+    const { error } = await supabase
+      .from("projects")
+      .update({ ai_rules: rules.trim() || null })
+      .eq("id", projectId);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    setDirty(false);
+    toast.success("Project rules saved");
+  }
+
+  return (
+    <div className="space-y-2">
+      <SectionTitle>Project AI rules</SectionTitle>
+      <p className="text-[11px] text-muted-foreground px-1">
+        Injected into every AI request for this project. Use it for naming conventions, code style, do/don'ts.
+      </p>
+      <textarea
+        value={rules}
+        disabled={!loaded}
+        onChange={(e) => {
+          setRules(e.target.value);
+          setDirty(true);
+        }}
+        placeholder={
+          loaded
+            ? "e.g. Always use PascalCase for parts. Put all RemoteEvents under ReplicatedStorage/Remotes. Prefer ModuleScripts over Scripts."
+            : "Loading…"
+        }
+        rows={5}
+        maxLength={4000}
+        className="w-full resize-y rounded-lg border border-border bg-background/40 px-2.5 py-2 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+      />
+      <div className="flex items-center justify-between px-1">
+        <span className="text-[10px] text-muted-foreground tabular-nums">
+          {rules.length}/4000
+        </span>
+        <button
+          onClick={save}
+          disabled={!dirty || saving}
+          className="rounded-md bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground hover:opacity-90 transition disabled:opacity-40"
+        >
+          {saving ? "Saving…" : "Save rules"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 function LinkRow({
   icon,
   title,
