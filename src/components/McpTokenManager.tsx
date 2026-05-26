@@ -18,6 +18,8 @@ type Status = {
   lastAttemptAt: string | null;
   lastAttemptOk: boolean | null;
   lastAttemptError: string | null;
+  lastClient: string | null;
+  lastUserAgent: string | null;
 };
 
 export function McpTokenManager() {
