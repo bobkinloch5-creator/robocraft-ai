@@ -698,3 +698,12 @@ html.rpg::before    { background-image: url("./assets/theme-rpg.jpg"); }
   position: relative;
   z-index: 1;
 }
+
+/* Hide per-section hero photos on Roblox-flavored themes so the
+   themed fixed background isn't doubled-up behind another image. */
+html.neon .hero-bg-img,
+html.obby .hero-bg-img,
+html.tycoon .hero-bg-img,
+html.rpg .hero-bg-img {
+  display: none;
+}
