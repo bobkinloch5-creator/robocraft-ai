@@ -117,36 +117,43 @@ function McpPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-2xl font-semibold">Claude (web & desktop app)</h2>
+          <h2 className="text-2xl font-semibold">Claude.ai (web & desktop app)</h2>
           <p className="text-muted-foreground">
-            In Claude, open <strong>Settings → Connectors → Add custom connector</strong>{" "}
-            (requires a Pro/Max/Team/Enterprise plan) and fill in:
+            Claude.ai's <strong>custom connector</strong> dialog requires OAuth and
+            ignores static bearer tokens, so pasting the MCP URL there will fail with
+            a 404 on <code className="bg-muted px-1.5 py-0.5 rounded">/authorize</code>.
+            Use the <strong>Claude Desktop</strong> config below instead — it bridges
+            the connection through <code className="bg-muted px-1.5 py-0.5 rounded">mcp-remote</code>
+            using your token.
           </p>
-          <ul className="list-disc list-inside text-muted-foreground space-y-1">
-            <li><strong>Name:</strong> <code className="bg-muted px-1.5 py-0.5 rounded">BloxSmith</code></li>
-            <li>
-              <strong>Remote MCP server URL:</strong>{" "}
-              <code className="bg-muted px-1.5 py-0.5 rounded">{endpoint}</code>
-            </li>
-            <li>
-              Open <strong>Advanced settings</strong> → add a custom header:
-              <ul className="list-disc list-inside ml-6 mt-1">
-                <li>
-                  Header name: <code className="bg-muted px-1.5 py-0.5 rounded">Authorization</code>
-                </li>
-                <li>
-                  Header value: <code className="bg-muted px-1.5 py-0.5 rounded">Bearer YOUR_MCP_TOKEN</code>
-                </li>
-              </ul>
-            </li>
-            <li>Click <strong>Add</strong>, then enable BloxSmith tools in any new chat.</li>
-          </ul>
+          <p className="text-muted-foreground">
+            Open <strong>Claude Desktop → Settings → Developer → Edit Config</strong>{" "}
+            and add:
+          </p>
+          <Code>{`{
+  "mcpServers": {
+    "bloxsmith": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "${endpoint}",
+        "--header",
+        "Authorization: Bearer \${BLOXSMITH_MCP_TOKEN}"
+      ],
+      "env": {
+        "BLOXSMITH_MCP_TOKEN": "YOUR_MCP_TOKEN"
+      }
+    }
+  }
+}`}</Code>
           <p className="text-sm text-muted-foreground">
-            Generate <code className="bg-muted px-1.5 py-0.5 rounded">YOUR_MCP_TOKEN</code> above
-            on this page (must be created on the live <strong>bloxsmith.pro</strong> site —
-            localhost tokens won't work).
+            Save, fully quit Claude Desktop, and reopen it. BloxSmith tools will appear
+            in the 🔌 menu. Token must be generated on the live{" "}
+            <strong>bloxsmith.pro</strong> site — localhost tokens won't work.
           </p>
         </section>
+
 
         <section className="space-y-3">
           <h2 className="text-2xl font-semibold">Claude Code</h2>
