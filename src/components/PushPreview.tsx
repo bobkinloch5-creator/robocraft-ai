@@ -80,11 +80,13 @@ export function PushPreview({
   onApplied,
   onDiscarded,
   autoApply = false,
+  readOnly = false,
 }: {
   preview: PreviewPayload;
   onApplied: () => void;
   onDiscarded: () => void;
   autoApply?: boolean;
+  readOnly?: boolean;
 }) {
   const apply = useServerFn(applyGeneration);
   const [status, setStatus] = useState<"idle" | "applying" | "done" | "skipped">("idle");
