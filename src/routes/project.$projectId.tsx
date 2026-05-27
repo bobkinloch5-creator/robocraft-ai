@@ -2197,9 +2197,41 @@ function ProjectEditor() {
               <div
                 className={`rounded-xl border bg-background/45 p-2 transition ${chatMode ? "border-accent/40" : planMode ? "border-primary/40" : "border-border focus-within:border-primary/40"}`}
               >
+                {attachments.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {attachments.map((src, i) => (
+                      <div
+                        key={i}
+                        className="group relative h-14 w-14 overflow-hidden rounded-md border border-border bg-surface"
+                      >
+                        <img src={src} alt="attachment" className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(i)}
+                          className="absolute right-0.5 top-0.5 grid h-4 w-4 place-items-center rounded-full bg-background/80 text-foreground opacity-0 group-hover:opacity-100 transition"
+                          title="Remove"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
+                  onPaste={(e) => {
+                    if (!chatMode) return;
+                    const items = Array.from(e.clipboardData?.items ?? []);
+                    const imgs = items
+                      .filter((it) => it.kind === "file" && it.type.startsWith("image/"))
+                      .map((it) => it.getAsFile())
+                      .filter((f): f is File => !!f);
+                    if (imgs.length) {
+                      e.preventDefault();
+                      void addAttachmentFiles(imgs);
+                    }
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
@@ -2209,12 +2241,25 @@ function ProjectEditor() {
                   rows={3}
                   placeholder={
                     chatMode
-                      ? "Ask anything: ideas, Luau questions, code samples to copy — nothing runs in Studio."
+                      ? "Ask anything, or attach a screenshot of your game/Studio — the AI will analyze it."
                       : planMode
                         ? "Describe the Roblox system you want planned..."
                         : "Type any command: build a map, add UI, create scripts, insert assets, fix bugs..."
                   }
                   className="min-h-20 w-full resize-none bg-transparent px-1 py-1 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none"
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  hidden
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length) {
+                      void addAttachmentFiles(e.target.files);
+                      e.target.value = "";
+                    }
+                  }}
                 />
                 <div className="mt-2 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1">
