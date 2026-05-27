@@ -323,6 +323,40 @@ function ProjectEditor() {
   const [conversations, setConversations] = useState<Array<{ id: string; title: string | null; updated_at: string }>>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [prompt, setPrompt] = useState("");
+  // Image attachments for chat mode (vision). data: URLs, max 4, ~6MB each
+  // pre-encoded — schema caps at 8.5MB encoded.
+  const [attachments, setAttachments] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const MAX_ATTACHMENTS = 4;
+  const MAX_ATTACHMENT_BYTES = 6 * 1024 * 1024;
+  const addAttachmentFiles = async (files: FileList | File[]) => {
+    const list = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (list.length === 0) return;
+    const slots = MAX_ATTACHMENTS - attachments.length;
+    if (slots <= 0) {
+      toast.error(`You can attach up to ${MAX_ATTACHMENTS} images.`);
+      return;
+    }
+    const accepted = list.slice(0, slots);
+    if (list.length > slots) toast.message(`Only added ${slots} more (max ${MAX_ATTACHMENTS}).`);
+    const dataUrls: string[] = [];
+    for (const f of accepted) {
+      if (f.size > MAX_ATTACHMENT_BYTES) {
+        toast.error(`"${f.name}" is over 6 MB — please shrink it first.`);
+        continue;
+      }
+      const url = await new Promise<string>((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result ?? ""));
+        r.onerror = () => rej(new Error("read failed"));
+        r.readAsDataURL(f);
+      });
+      if (url.startsWith("data:image/")) dataUrls.push(url);
+    }
+    if (dataUrls.length) setAttachments((prev) => [...prev, ...dataUrls]);
+  };
+  const removeAttachment = (i: number) =>
+    setAttachments((prev) => prev.filter((_, idx) => idx !== i));
   const [aiBusy, setAiBusy] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [showInvite, setShowInvite] = useState(false);
