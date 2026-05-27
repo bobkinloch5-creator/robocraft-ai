@@ -220,26 +220,25 @@ function ProjectEditor() {
 
   // Action status polling state
   const [actionStatuses, setActionStatuses] = useState<
-    Record<string, { status: "pending" | "executing" | "complete" | "error"; error?: string }>
+    Record<
+      string,
+      {
+        status: "pending" | "executing" | "complete" | "error" | "queued";
+        error?: string;
+        hint?: string;
+      }
+    >
   >({});
 
   const pollGenerationStatus = (generationId: string, msgId: string) => {
     let attempts = 0;
+    // Poll every 1s for up to 10 minutes. The plugin can be offline, paused,
+    // or working through a long batch — we should NOT throw a scary error
+    // just because Studio hasn't checked in yet. We downgrade to a soft
+    // "queued" state instead, and let the user resume by opening Studio.
+    const MAX_ATTEMPTS = 600; // 10 minutes
     const interval = setInterval(async () => {
       attempts++;
-      if (attempts > 60) {
-        // Timeout after 30 seconds
-        clearInterval(interval);
-        setActionStatuses((prev) => ({
-          ...prev,
-          [msgId]: {
-            status: "error",
-            error:
-              "No Studio plugin confirmation arrived. Check that the BloxSmith plugin is connected, then press Sync Project.",
-          },
-        }));
-        return;
-      }
 
       const { data, error } = await supabase
         .from("plugin_actions")
@@ -254,25 +253,67 @@ function ProjectEditor() {
       if (data && data.length > 0) {
         const statuses = data.map((a) => a.status);
         const hasFailed = statuses.includes("failed");
-        const hasPendingOrDelivered = statuses.some((s) => s === "pending" || s === "delivered");
+        const hasPendingOrDelivered = statuses.some(
+          (s) => s === "pending" || s === "delivered",
+        );
 
         if (hasFailed) {
           clearInterval(interval);
           const failedAction = data.find((a) => a.status === "failed");
           setActionStatuses((prev) => ({
             ...prev,
-            [msgId]: { status: "error", error: failedAction?.error_message ?? "Execution failed" },
+            [msgId]: {
+              status: "error",
+              error: failedAction?.error_message ?? "Execution failed",
+            },
           }));
-        } else if (!hasPendingOrDelivered) {
+          return;
+        }
+
+        if (!hasPendingOrDelivered) {
           // All executed successfully
           clearInterval(interval);
           setActionStatuses((prev) => ({
             ...prev,
             [msgId]: { status: "complete" },
           }));
+          return;
         }
       }
-    }, 500);
+
+      // Still pending — surface a friendly hint after ~20s so the user knows
+      // we're waiting on the plugin, not stuck.
+      if (attempts === 20) {
+        setActionStatuses((prev) => {
+          const cur = prev[msgId];
+          if (cur?.status === "complete" || cur?.status === "error") return prev;
+          return {
+            ...prev,
+            [msgId]: {
+              status: "executing",
+              hint:
+                "Still waiting for Roblox Studio. Open the BloxSmith plugin and press Sync Project to apply queued actions.",
+            },
+          };
+        });
+      }
+
+      if (attempts >= MAX_ATTEMPTS) {
+        clearInterval(interval);
+        setActionStatuses((prev) => {
+          const cur = prev[msgId];
+          if (cur?.status === "complete" || cur?.status === "error") return prev;
+          return {
+            ...prev,
+            [msgId]: {
+              status: "queued",
+              hint:
+                "Actions are queued and safe — they'll apply automatically the next time the BloxSmith plugin syncs in Studio.",
+            },
+          };
+        });
+      }
+    }, 1000);
   };
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
