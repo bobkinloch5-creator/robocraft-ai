@@ -28,6 +28,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjectProjectIdRouteImport } from './routes/project.$projectId'
 import { Route as CheckoutCustomRouteImport } from './routes/checkout.custom'
 import { Route as CheckoutPackRouteImport } from './routes/checkout.$pack'
+import { Route as DotwellKnownOauthAuthorizationServerRouteImport } from './routes/[.]well-known.oauth-authorization-server'
 import { Route as ApiStudioSnapshotRouteImport } from './routes/api/studio/snapshot'
 import { Route as ApiStudioPollRouteImport } from './routes/api/studio/poll'
 import { Route as ApiPublicMcpRouteImport } from './routes/api/public/mcp'
@@ -135,6 +136,12 @@ const CheckoutPackRoute = CheckoutPackRouteImport.update({
   path: '/checkout/$pack',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotwellKnownOauthAuthorizationServerRoute =
+  DotwellKnownOauthAuthorizationServerRouteImport.update({
+    id: '/.well-known/oauth-authorization-server',
+    path: '/.well-known/oauth-authorization-server',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiStudioSnapshotRoute = ApiStudioSnapshotRouteImport.update({
   id: '/api/studio/snapshot',
   path: '/api/studio/snapshot',
@@ -208,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
   '/checkout/$pack': typeof CheckoutPackRoute
   '/checkout/custom': typeof CheckoutCustomRoute
   '/project/$projectId': typeof ProjectProjectIdRoute
@@ -240,6 +248,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
   '/checkout/$pack': typeof CheckoutPackRoute
   '/checkout/custom': typeof CheckoutCustomRoute
   '/project/$projectId': typeof ProjectProjectIdRoute
@@ -273,6 +282,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
   '/checkout/$pack': typeof CheckoutPackRoute
   '/checkout/custom': typeof CheckoutCustomRoute
   '/project/$projectId': typeof ProjectProjectIdRoute
@@ -307,6 +317,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/terms'
+    | '/.well-known/oauth-authorization-server'
     | '/checkout/$pack'
     | '/checkout/custom'
     | '/project/$projectId'
@@ -339,6 +350,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/terms'
+    | '/.well-known/oauth-authorization-server'
     | '/checkout/$pack'
     | '/checkout/custom'
     | '/project/$projectId'
@@ -371,6 +383,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/terms'
+    | '/.well-known/oauth-authorization-server'
     | '/checkout/$pack'
     | '/checkout/custom'
     | '/project/$projectId'
@@ -404,6 +417,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
+  DotwellKnownOauthAuthorizationServerRoute: typeof DotwellKnownOauthAuthorizationServerRoute
   CheckoutPackRoute: typeof CheckoutPackRoute
   CheckoutCustomRoute: typeof CheckoutCustomRoute
   ProjectProjectIdRoute: typeof ProjectProjectIdRoute
@@ -555,6 +569,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckoutPackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/oauth-authorization-server': {
+      id: '/.well-known/oauth-authorization-server'
+      path: '/.well-known/oauth-authorization-server'
+      fullPath: '/.well-known/oauth-authorization-server'
+      preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/studio/snapshot': {
       id: '/api/studio/snapshot'
       path: '/api/studio/snapshot'
@@ -652,6 +673,8 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
+  DotwellKnownOauthAuthorizationServerRoute:
+    DotwellKnownOauthAuthorizationServerRoute,
   CheckoutPackRoute: CheckoutPackRoute,
   CheckoutCustomRoute: CheckoutCustomRoute,
   ProjectProjectIdRoute: ProjectProjectIdRoute,
@@ -670,3 +693,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
