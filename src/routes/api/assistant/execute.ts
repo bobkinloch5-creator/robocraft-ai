@@ -1685,6 +1685,7 @@ export const Route = createFileRoute("/api/assistant/execute")({
                 warnings: validation.warnings,
               },
               queuedCount: queued.length,
+              aiActivity,
             }),
             { headers: corsHeaders },
           );
