@@ -80,11 +80,13 @@ export function PushPreview({
   onApplied,
   onDiscarded,
   autoApply = false,
+  readOnly = false,
 }: {
   preview: PreviewPayload;
   onApplied: () => void;
   onDiscarded: () => void;
   autoApply?: boolean;
+  readOnly?: boolean;
 }) {
   const apply = useServerFn(applyGeneration);
   const [status, setStatus] = useState<"idle" | "applying" | "done" | "skipped">("idle");
@@ -162,10 +164,18 @@ export function PushPreview({
   }
 
   return (
-    <div className="rounded-xl border border-primary/30 bg-primary/[0.06] p-3 space-y-2.5">
+    <div className={`rounded-xl border p-3 space-y-2.5 ${readOnly ? "border-border bg-surface/40" : "border-primary/30 bg-primary/[0.06]"}`}>
       <div className="flex items-center justify-between gap-2 text-xs">
         <div className="font-semibold text-foreground inline-flex items-center gap-1.5">
-          <Send className="h-3.5 w-3.5 text-primary-glow" /> Ready to push to Roblox Studio
+          {readOnly ? (
+            <>
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> What BloxSmith built
+            </>
+          ) : (
+            <>
+              <Send className="h-3.5 w-3.5 text-primary-glow" /> Ready to push to Roblox Studio
+            </>
+          )}
         </div>
         <div className="text-muted-foreground">
           {totalOps} op{totalOps !== 1 ? "s" : ""} · {grouped.services.length} service{grouped.services.length !== 1 ? "s" : ""}
@@ -290,23 +300,25 @@ export function PushPreview({
       </div>
 
 
-      <div className="flex items-center justify-end gap-2 pt-1">
-        <button
-          onClick={() => { setStatus("skipped"); onDiscarded(); }}
-          disabled={status !== "idle"}
-          className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-surface disabled:opacity-50 inline-flex items-center gap-1.5"
-        >
-          <X className="h-3 w-3" /> Discard
-        </button>
-        <button
-          onClick={doApply}
-          disabled={status !== "idle"}
-          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 inline-flex items-center gap-1.5"
-        >
-          {status === "applying" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
-          {status === "applying" ? "Pushing…" : "Approve & Push to Studio"}
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <button
+            onClick={() => { setStatus("skipped"); onDiscarded(); }}
+            disabled={status !== "idle"}
+            className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-surface disabled:opacity-50 inline-flex items-center gap-1.5"
+          >
+            <X className="h-3 w-3" /> Discard
+          </button>
+          <button
+            onClick={doApply}
+            disabled={status !== "idle"}
+            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 inline-flex items-center gap-1.5"
+          >
+            {status === "applying" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+            {status === "applying" ? "Pushing…" : "Approve & Push to Studio"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

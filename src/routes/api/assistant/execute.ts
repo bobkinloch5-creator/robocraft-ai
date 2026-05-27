@@ -1244,6 +1244,7 @@ export const Route = createFileRoute("/api/assistant/execute")({
 
           // Check instant templates
           let result: ExecuteResult | null = null;
+          let aiActivity: Array<{ tool: string; summary: string; ok: boolean }> = [];
           const cleanedPrompt = prompt.toLowerCase().trim();
 
           if (
@@ -1420,7 +1421,7 @@ export const Route = createFileRoute("/api/assistant/execute")({
                     const systemWithRules = projectRules
                       ? `${baseSystem}\n\n=== PROJECT-SPECIFIC RULES (override defaults) ===\n${projectRules}`
                       : baseSystem;
-                    const { generateTextWithToolFallback } = await import("@/lib/ai-retry.server");
+                    const { generateTextWithToolFallback, extractToolActivity } = await import("@/lib/ai-retry.server");
                     const textRes = await withRateLimitRetry("ai-execute", () =>
                       generateTextWithToolFallback(generateText, {
                         model,
@@ -1431,9 +1432,37 @@ export const Route = createFileRoute("/api/assistant/execute")({
                       }, `ai-execute attempt#${i} src=${resolved.source} model=${att.modelId} slim=${useSlim}`),
                     );
                     rawText = textRes.text;
+                    // Capture tool calls so the UI can show the user what the AI did.
+                    try {
+                      const events = extractToolActivity(textRes);
+                      aiActivity = events.map((e) => {
+                        const a = e.args ?? {};
+                        let summary = "";
+                        if (e.tool === "roblox_asset_search") summary = `searched toolbox "${a.query ?? ""}" (${a.category ?? "Models"})`;
+                        else if (e.tool === "roblox_asset_info") summary = `checked asset ${a.assetId ?? ""}`;
+                        else if (e.tool === "roblox_asset_thumbnail") summary = `previewed asset ${a.assetId ?? ""}`;
+                        else if (e.tool === "web_search") summary = `web search "${a.query ?? ""}"`;
+                        else if (e.tool === "fetch_url") summary = `fetched ${a.url ?? ""}`;
+                        else if (e.tool === "list_project_files") summary = `listed your project files`;
+                        else if (e.tool === "read_project_file") summary = `read ${a.path ?? ""}`;
+                        else if (e.tool === "read_workspace_context") summary = `inspected your live Studio workspace`;
+                        else if (e.tool === "roblox_terrain_preset") summary = `loaded terrain preset "${a.preset ?? ""}"`;
+                        else if (e.tool === "add_mcp_server") summary = `added MCP server ${a.name ?? a.url ?? ""}`;
+                        else if (e.tool === "update_mcp_server") summary = `updated MCP server`;
+                        else if (e.tool === "list_mcp_servers") summary = `listed your MCP servers`;
+                        else summary = e.tool;
+                        return { tool: e.tool, summary, ok: e.ok };
+                      });
+                      if (aiActivity.length) {
+                        console.log(`[ai-execute] tool activity: ${aiActivity.length} call(s)`);
+                      }
+                    } catch (actErr) {
+                      console.warn("[ai-execute] failed to extract tool activity:", actErr);
+                    }
                     result = normalizeResult(tryParseJSON(rawText));
                     lastErr = null;
                     break;
+
 
                   } catch (err: any) {
                     lastErr = err;
@@ -1656,6 +1685,7 @@ export const Route = createFileRoute("/api/assistant/execute")({
                 warnings: validation.warnings,
               },
               queuedCount: queued.length,
+              aiActivity,
             }),
             { headers: corsHeaders },
           );
