@@ -1918,8 +1918,8 @@ local function applyActions(actions, sourceLabel)
 		if connected then setPill("connected") end
 	end)
 
-	syncInfo.Text = ("Built %d action(s)%s · %s · undoable"):format(
-		ok, (fail > 0 and (" · " .. fail .. " failed") or ""), os.date("%H:%M:%S"))
+	syncInfo.Text = ("[%s] Built %d action(s)%s · %s · undoable"):format(
+		activeProjectName or "project", ok, (fail > 0 and (" · " .. fail .. " failed") or ""), os.date("%H:%M:%S"))
 
 	return ok, fail, failedDetails
 end
@@ -2454,6 +2454,7 @@ local function doConnect()
 	local first = (data.projects or {})[1]
 	if first then
 		activeProjectId = first.id; activeProjectName = first.name
+		status.Text = "Connected as " .. (data.user.display_name or data.user.email) .. " · Project: " .. first.name
 		syncInfo.Text = "Auto-building: " .. first.name
 		syncInfo.TextColor3 = C.text
 		pushContext(true)
