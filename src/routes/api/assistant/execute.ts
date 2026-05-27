@@ -1244,6 +1244,7 @@ export const Route = createFileRoute("/api/assistant/execute")({
 
           // Check instant templates
           let result: ExecuteResult | null = null;
+          let aiActivity: Array<{ tool: string; summary: string; ok: boolean }> = [];
           const cleanedPrompt = prompt.toLowerCase().trim();
 
           if (
