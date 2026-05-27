@@ -941,6 +941,22 @@ end
 ----------------------------------------------------------------
 local Actions = {}
 
+-- Apply visibility defaults so generated BaseParts actually show up in Studio
+-- (anchored, opaque, collidable, reasonable size, above spawn).
+local function applyVisibleDefaults(inst, props)
+	if not inst:IsA("BasePart") then return end
+	local p = props or {}
+	if p.Anchored == nil and inst.Anchored == false then inst.Anchored = true end
+	if p.Transparency == nil and inst.Transparency >= 1 then inst.Transparency = 0 end
+	if p.CanCollide == nil then inst.CanCollide = true end
+	if p.Size == nil and inst.Size.Magnitude < 0.5 then
+		inst.Size = Vector3.new(4, 4, 4)
+	end
+	if p.Position == nil and p.CFrame == nil and inst.Position.Magnitude < 0.01 then
+		inst.CFrame = CFrame.new(0, 10, 0)
+	end
+end
+
 -- Create or overwrite a script (legacy file sync)
 function Actions.script(a)
 	local parent = resolvePath(a.parent or a.service_location or "ServerScriptService", true)
@@ -953,7 +969,8 @@ function Actions.script(a)
 		existing = Instance.new(className); existing.Name = name; existing.Parent = parent
 	end
 	existing.Source = a.source or a.content or ""
-	return true
+	task.defer(pushSnapshot)
+	return true, nil, existing
 end
 
 -- Create any Instance (Part, Model, Folder, Sound, ParticleEmitter, etc.)
@@ -963,6 +980,7 @@ function Actions.create(a)
 	local inst = Instance.new(a.className or "Part")
 	inst.Name = a.name or (a.className or "Part")
 	applyProps(inst, a.properties)
+	applyVisibleDefaults(inst, a.properties)
 	inst.Parent = parent
 	if a.children then
 		for _, c in ipairs(a.children) do
@@ -970,7 +988,7 @@ function Actions.create(a)
 			Actions.create(c)
 		end
 	end
-	return true
+	return true, nil, inst
 end
 
 -- Create a part with helper mapping for size, position, color, material, anchored properties
@@ -979,7 +997,7 @@ function Actions.create_part(a)
 	if not parent then return false, "bad parent" end
 	local part = Instance.new("Part")
 	part.Name = a.name or "Part"
-	
+
 	if a.size then
 		part.Size = Vector3.new(a.size[1] or 4, a.size[2] or 4, a.size[3] or 4)
 	end
@@ -994,11 +1012,20 @@ function Actions.create_part(a)
 	end
 	if a.anchored ~= nil then
 		part.Anchored = a.anchored
+	else
+		part.Anchored = true
 	end
-	
+	part.CanCollide = true
+	part.Transparency = 0
+
 	applyProps(part, a.properties)
+	-- Final visibility safety net (size/position) without overriding explicit input.
+	local hasPos = (a.position ~= nil) or (a.properties and (a.properties.Position or a.properties.CFrame))
+	if not hasPos and part.Position.Magnitude < 0.01 then
+		part.CFrame = CFrame.new(0, 10, 0)
+	end
 	part.Parent = parent
-	return true
+	return true, nil, part
 end
 
 -- Update an existing instance's properties
