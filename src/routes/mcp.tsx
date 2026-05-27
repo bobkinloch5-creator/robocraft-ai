@@ -117,6 +117,38 @@ function McpPage() {
         </section>
 
         <section className="space-y-3">
+          <h2 className="text-2xl font-semibold">Claude (web & desktop app)</h2>
+          <p className="text-muted-foreground">
+            In Claude, open <strong>Settings → Connectors → Add custom connector</strong>{" "}
+            (requires a Pro/Max/Team/Enterprise plan) and fill in:
+          </p>
+          <ul className="list-disc list-inside text-muted-foreground space-y-1">
+            <li><strong>Name:</strong> <code className="bg-muted px-1.5 py-0.5 rounded">BloxSmith</code></li>
+            <li>
+              <strong>Remote MCP server URL:</strong>{" "}
+              <code className="bg-muted px-1.5 py-0.5 rounded">{endpoint}</code>
+            </li>
+            <li>
+              Open <strong>Advanced settings</strong> → add a custom header:
+              <ul className="list-disc list-inside ml-6 mt-1">
+                <li>
+                  Header name: <code className="bg-muted px-1.5 py-0.5 rounded">Authorization</code>
+                </li>
+                <li>
+                  Header value: <code className="bg-muted px-1.5 py-0.5 rounded">Bearer YOUR_MCP_TOKEN</code>
+                </li>
+              </ul>
+            </li>
+            <li>Click <strong>Add</strong>, then enable BloxSmith tools in any new chat.</li>
+          </ul>
+          <p className="text-sm text-muted-foreground">
+            Generate <code className="bg-muted px-1.5 py-0.5 rounded">YOUR_MCP_TOKEN</code> above
+            on this page (must be created on the live <strong>bloxsmith.pro</strong> site —
+            localhost tokens won't work).
+          </p>
+        </section>
+
+        <section className="space-y-3">
           <h2 className="text-2xl font-semibold">Claude Code</h2>
           <p className="text-muted-foreground">
             Add to <code className="bg-muted px-1.5 py-0.5 rounded">~/.claude.json</code> or
@@ -132,6 +164,7 @@ function McpPage() {
   }
 }`}</Code>
         </section>
+
 
         <section className="space-y-3">
           <h2 className="text-2xl font-semibold">ChatGPT Codex CLI</h2>
