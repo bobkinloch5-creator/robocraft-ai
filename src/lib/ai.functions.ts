@@ -577,7 +577,7 @@ CHAT MODE RULES — never break these:
 
     let text = "";
     try {
-      const { text: out } = await generateText({ model, messages });
+      const { text: out } = await generateText({ model, messages: messages as any });
       text = out;
     } catch (err: any) {
       if (!isOwner)
