@@ -20,6 +20,31 @@ with the shape:
 { "message": string, "files": [...], "actions": [...] }
 No markdown, no code fences, no commentary, no tool calls.`;
 
+export type AIToolEvent = {
+  tool: string;
+  args?: any;
+  result?: any;
+  ok: boolean;
+};
+
+export function extractToolActivity(textRes: any): AIToolEvent[] {
+  const steps = textRes?.steps ?? [];
+  const events: AIToolEvent[] = [];
+  for (const step of steps) {
+    const calls = step?.toolCalls ?? [];
+    const results = step?.toolResults ?? [];
+    for (const c of calls) {
+      const toolName = c.toolName ?? c.name ?? "tool";
+      const args = c.args ?? c.input ?? undefined;
+      const matched = results.find((r: any) => r.toolCallId === c.toolCallId);
+      const resultVal = matched?.result ?? matched?.output;
+      const ok = !matched?.isError && !(resultVal && typeof resultVal === "object" && "error" in resultVal && resultVal.error);
+      events.push({ tool: toolName, args, result: resultVal, ok });
+    }
+  }
+  return events;
+}
+
 export async function generateTextWithToolFallback(
   generateText: GenerateTextFn,
   opts: any,
