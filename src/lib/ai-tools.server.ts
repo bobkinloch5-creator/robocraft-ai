@@ -416,7 +416,7 @@ export const buildBloxSmithTools = (ctx: BloxSmithToolCtx = {}) => ({
       if (rawAuth && !/^Bearer\s+/i.test(rawAuth) && !rawAuth.includes(" ")) {
         rawAuth = `Bearer ${rawAuth}`;
       }
-      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      const patch: any = { updated_at: new Date().toISOString() };
       if (name) patch.name = name.trim();
       if (url) patch.url = url.trim();
       if (rawAuth) patch.auth_header = rawAuth;
