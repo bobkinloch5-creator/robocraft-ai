@@ -131,46 +131,115 @@ function recordTokenAttempt(userId: string, ok: boolean, ua: string | null, erro
 }
 
 
-const authedHandler = withMcpAuth(
-  async (request, auth) => mcp.handleRequest(request, { auth }),
-  async (request) => {
-    const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
-    const ua = request.headers.get("User-Agent");
-    if (!token) return null;
+function authError(message: string, hint?: string) {
+  const fullMessage = hint ? `${message} ${hint}` : message;
+  return new Response(
+    JSON.stringify({
+      jsonrpc: "2.0",
+      error: {
+        code: -32001,
+        message: fullMessage,
+        data: { reason: message, hint, docs: "https://bloxsmith.pro/mcp" },
+      },
+      id: null,
+    }),
+    {
+      status: 401,
+      headers: {
+        "Content-Type": "application/json",
+        "WWW-Authenticate": 'Bearer realm="bloxsmith-mcp"',
+        ...corsHeaders,
+      },
+    },
+  );
+}
 
-    const adminSecret = process.env.MCP_SECRET;
-    if (adminSecret && token === adminSecret) {
-      return { token, claims: { scope: "admin", userId: null } };
-    }
+async function authenticate(request: Request) {
+  const authHeader =
+    request.headers.get("Authorization") ?? request.headers.get("authorization");
+  const apiKeyHeader =
+    request.headers.get("X-Bloxsmith-Api-Key") ??
+    request.headers.get("x-bloxsmith-api-key");
+  const token =
+    authHeader?.replace(/^Bearer\s+/i, "").trim() ||
+    apiKeyHeader?.trim() ||
+    "";
+  const ua = request.headers.get("User-Agent");
+  const prefix = token ? token.slice(0, 8) + "…" : "(none)";
 
-    if (token.startsWith("bsmcp_")) {
-      const hash = await sha256(token);
-      const { data } = await supabaseAdmin
-        .from("mcp_tokens")
-        .select("user_id")
-        .eq("token_hash", hash)
-        .maybeSingle();
+  if (!token) {
+    console.log(`[mcp] auth: missing token (ua=${ua ?? "?"})`);
+    return {
+      ok: false as const,
+      response: authError(
+        "Missing MCP token.",
+        "Send Authorization: Bearer <token>. Generate a token at https://bloxsmith.pro/mcp.",
+      ),
+    };
+  }
 
-      if (!data) return null;
+  const adminSecret = process.env.MCP_SECRET;
+  if (adminSecret && token === adminSecret) {
+    console.log(`[mcp] auth: admin secret ok (prefix=${prefix})`);
+    return { ok: true as const, auth: { token, claims: { scope: "admin", userId: null } } };
+  }
 
-      recordTokenAttempt(data.user_id, true, ua);
-      return { token, claims: { scope: "user", userId: data.user_id } };
-    }
+  if (!token.startsWith("bsmcp_")) {
+    console.log(`[mcp] auth: bad prefix (prefix=${prefix})`);
+    return {
+      ok: false as const,
+      response: authError(
+        "Invalid MCP token format.",
+        "Tokens must start with 'bsmcp_'. Generate one at https://bloxsmith.pro/mcp.",
+      ),
+    };
+  }
 
-    return null;
-  },
-);
+  const hash = await sha256(token);
+  const { data, error } = await supabaseAdmin
+    .from("mcp_tokens")
+    .select("user_id")
+    .eq("token_hash", hash)
+    .maybeSingle();
 
+  if (error) {
+    console.error(`[mcp] auth: db lookup error`, error.message);
+    return {
+      ok: false as const,
+      response: authError("Auth service temporarily unavailable.", "Please retry."),
+    };
+  }
 
+  if (!data) {
+    console.log(`[mcp] auth: hash not found (prefix=${prefix}, ua=${ua ?? "?"})`);
+    return {
+      ok: false as const,
+      response: authError(
+        "Invalid or revoked MCP token.",
+        "Generate a fresh token at https://bloxsmith.pro/mcp. Tokens from local development do not work in production.",
+      ),
+    };
+  }
 
+  console.log(`[mcp] auth: ok user=${data.user_id} prefix=${prefix} client=${detectClient(ua)}`);
+  recordTokenAttempt(data.user_id, true, ua);
+  return { ok: true as const, auth: { token, claims: { scope: "user", userId: data.user_id } } };
+}
 
 export const Route = createFileRoute("/api/public/mcp")({
   server: {
     handlers: {
-      POST: async ({ request }) => authedHandler(request),
+      POST: async ({ request }) => {
+        const result = await authenticate(request);
+        if (!result.ok) return result.response;
+        return mcp.handleRequest(request, { auth: result.auth });
+      },
       GET: async () => publicDiscovery(),
       DELETE: async () => methodNotAllowed(),
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
     },
   },
 });
+
+// Keep withMcpAuth import referenced (no longer used directly).
+void withMcpAuth;
