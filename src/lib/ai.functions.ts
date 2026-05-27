@@ -138,7 +138,7 @@ export const generateWithAI = createServerFn({ method: "POST" })
         model,
         system: SYSTEM_PROMPT,
         prompt: fullPrompt,
-        tools: { ...buildBloxSmithTools({ userId }), ...(await (await import("./mcp-client.server")).buildUserMcpTools(userId)) } as any,
+        tools: buildBloxSmithTools({ userId }) as any,
         stopWhen: stepCountIs(isComplex ? 30 : 12),
       }, "generateWithAI");
       // Parse JSON from the raw text response
@@ -770,7 +770,7 @@ Respond ONLY with the JSON object specified.`;
         model,
         system: FIX_SYSTEM,
         prompt: `STUDIO OUTPUT LOGS:\n\`\`\`\n${logs}\n\`\`\`\n\n${liveBlock}\n\nProject files in DB:\n${filesBlock || "(empty)"}\n\nThink step-by-step. Use web_search / fetch_url if you need to look up a Roblox API to fix the error. Then patch the broken files now.`,
-        tools: { ...buildBloxSmithTools({ userId }), ...(await (await import("./mcp-client.server")).buildUserMcpTools(userId)) } as any,
+        tools: buildBloxSmithTools({ userId }) as any,
         stopWhen: stepCountIs(40),
       }, "fixErrorsWithAI");
       // Parse JSON from raw text
