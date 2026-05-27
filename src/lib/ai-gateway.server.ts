@@ -1,5 +1,30 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
+// Groq's OpenAI-compatible API returns `reasoning_content` on assistant
+// messages from reasoning models (gpt-oss-*), but rejects it on input:
+//   "messages.N: property 'reasoning_content' is unsupported"
+// The Vercel AI SDK echoes prior assistant turns back verbatim during
+// multi-step tool calling, so we strip the field on every outbound request.
+const sanitizingFetch: typeof fetch = async (input, init) => {
+  if (init?.body && typeof init.body === "string") {
+    try {
+      const parsed = JSON.parse(init.body);
+      if (Array.isArray(parsed?.messages)) {
+        parsed.messages = parsed.messages.map((m: any) => {
+          if (!m || typeof m !== "object") return m;
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { reasoning_content, reasoning, ...rest } = m;
+          return rest;
+        });
+        init = { ...init, body: JSON.stringify(parsed) };
+      }
+    } catch {
+      // not JSON — leave body untouched
+    }
+  }
+  return fetch(input as any, init);
+};
+
 export const createGroqProvider = (groqApiKey: string) =>
   createOpenAICompatible({
     name: "groq",
@@ -7,7 +32,9 @@ export const createGroqProvider = (groqApiKey: string) =>
     headers: {
       Authorization: `Bearer ${groqApiKey}`,
     },
+    fetch: sanitizingFetch,
   });
+
 
 // Model picks for the Groq backend.
 // Default = strong 120B model so BloxSmith actually follows the long system
