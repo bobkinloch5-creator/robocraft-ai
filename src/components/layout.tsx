@@ -45,6 +45,10 @@ export function Header() {
           <Link to="/changelog" className="hover:text-foreground">
             Changelog
           </Link>
+          <a href="https://kingdavez.click" target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
+            3D Models
+          </a>
+
 
           {user && (
             <Link to="/dashboard" className="hover:text-foreground">
