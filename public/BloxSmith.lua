@@ -2442,19 +2442,20 @@ local function doConnect()
 		return false
 	end
 	connected = true
-	status.Text = "Connected as " .. (data.user.display_name or data.user.email)
+	local creditsTxt = (data.user.credits ~= nil) and (" · " .. tostring(data.user.credits) .. " credits") or ""
+	status.Text = "Connected as " .. (data.user.display_name or data.user.email) .. creditsTxt
 	status.TextColor3 = C.text
 	connectBtn.Text = "Disconnect"
 	connectBtn:SetAttribute("Base", "disconnect")
 	connectBtn.BackgroundColor3 = C.disconnect
 	connectGrad.Enabled = false
 	setPill("connected")
-	appendLog("Plugin connected")
+	appendLog("Plugin connected" .. ((data.user.credits ~= nil) and (" — " .. tostring(data.user.credits) .. " credits remaining") or ""))
 
 	local first = (data.projects or {})[1]
 	if first then
 		activeProjectId = first.id; activeProjectName = first.name
-		status.Text = "Connected as " .. (data.user.display_name or data.user.email) .. " · Project: " .. first.name
+		status.Text = "Connected as " .. (data.user.display_name or data.user.email) .. creditsTxt .. " · Project: " .. first.name
 		syncInfo.Text = "Auto-building: " .. first.name
 		syncInfo.TextColor3 = C.text
 		pushContext(true)
