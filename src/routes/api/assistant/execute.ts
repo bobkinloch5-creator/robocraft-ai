@@ -1507,9 +1507,10 @@ export const Route = createFileRoute("/api/assistant/execute")({
                 const msg = String(outerErr?.message ?? outerErr);
                 if (/too large|context length|tpm/i.test(msg)) {
                   throw new Error(
-                    "Your request was too large for the AI model even after compressing the project context. Try a more specific prompt or focus on one system at a time.",
+                    "Your project context is too large for this model even after the AI compressed it down to just your prompt. Try a shorter, more focused request (e.g. 'add a jump pad' instead of 'build the whole game'), or split the build into smaller steps.",
                   );
                 }
+
                 if (msg.includes("429")) throw new Error("AI rate limit. Try again in a moment.");
                 if (msg.includes("402"))
                   throw new Error("AI credits exhausted. Add credits in workspace settings.");
