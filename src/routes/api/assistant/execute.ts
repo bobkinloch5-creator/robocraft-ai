@@ -224,7 +224,7 @@ function studioSafeMessage(message: string, queuedCount: number, autoExecute: bo
     .replace(/\bI(?:'ve| have)?\s+(created|inserted|updated|fixed|built|pushed|applied|added)\b/gi, "I queued")
     .replace(/\b(Created|Inserted|Updated|Fixed|Built|Pushed|Applied|Added)\b/g, "Queued");
   const suffix = autoExecute
-    ? "Waiting for the Studio plugin to confirm the apply."
+    ? "Sent to Studio — it auto-applies in edit mode."
     : "Code generated, not applied yet. Review the preview, then approve it to send to Studio.";
   return `${cleaned}\n\n${suffix}`;
 }
