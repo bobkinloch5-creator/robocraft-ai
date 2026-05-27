@@ -2313,6 +2313,21 @@ function ProjectEditor() {
                     >
                       {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                     </button>
+                    {chatMode && (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        title={
+                          attachments.length >= MAX_ATTACHMENTS
+                            ? `Max ${MAX_ATTACHMENTS} images`
+                            : "Attach image for AI to analyze"
+                        }
+                        disabled={attachments.length >= MAX_ATTACHMENTS}
+                        className={`h-8 w-8 grid place-items-center rounded-lg transition disabled:opacity-40 ${attachments.length > 0 ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-surface"}`}
+                      >
+                        <ImagePlus className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                   {aiBusy ? (
                     <button
