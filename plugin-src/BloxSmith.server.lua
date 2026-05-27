@@ -24,7 +24,7 @@ local Terrain               = Workspace.Terrain
 -- API base is user-configurable so the plugin works against bloxsmith.pro
 -- (production) AND any Lovable preview / staging URL the user is testing.
 local DEFAULT_API   = "https://bloxsmith.pro/api/public/plugin"
-local POLL_SECONDS  = 0.5
+local POLL_SECONDS  = 0.2
 local CTX_SECONDS   = 15  -- how often we re-send workspace context to the AI
 local SCAN_TIMEOUT_SECONDS = 15
 local pushSnapshot
@@ -64,6 +64,45 @@ local function getConsent()  return plugin:GetSetting("bs_consent_v1") == true e
 local function setConsent(v) plugin:SetSetting("bs_consent_v1", v) end
 local function getPaused()   return plugin:GetSetting("bs_paused") == true end
 local function setPaused(v)  plugin:SetSetting("bs_paused", v) end
+local function getPreview()  return plugin:GetSetting("bs_preview") == true end
+local function setPreview(v) plugin:SetSetting("bs_preview", v) end
+-- Clear Mode: when ON, the plugin ONLY applies incoming actions. It will
+-- never scan/push your project files, never re-materialize file lists,
+-- and never auto-send workspace context. Useful when the sync is noisy
+-- or you only want the AI to push changes you've explicitly asked for.
+local function getClearMode()  return plugin:GetSetting("bs_clear_mode") == true end
+local function setClearMode(v) plugin:SetSetting("bs_clear_mode", v) end
+
+-- Ignore filters: comma-separated locations / folder names to exclude from
+-- snapshot scans, organize plans, and any applied move/rename/organize/clean
+-- actions. Patterns are matched case-insensitively against either a full
+-- path segment OR as a substring of the full instance path.
+-- Example: "StarterPlayer, Archive, _wip"
+local function getIgnoresRaw() return plugin:GetSetting("bs_ignores") or "" end
+local function setIgnoresRaw(v) plugin:SetSetting("bs_ignores", tostring(v or "")) end
+local function getIgnoreList()
+	local out = {}
+	for token in string.gmatch(getIgnoresRaw(), "([^,]+)") do
+		local t = token:gsub("^%s+", ""):gsub("%s+$", "")
+		if t ~= "" then table.insert(out, string.lower(t)) end
+	end
+	return out
+end
+local function pathIsIgnored(path)
+	if not path or path == "" then return false end
+	local list = getIgnoreList()
+	if #list == 0 then return false end
+	local lower = string.lower(path)
+	local segments = {}
+	for seg in string.gmatch(lower, "([^/.]+)") do table.insert(segments, seg) end
+	for _, pat in ipairs(list) do
+		for _, seg in ipairs(segments) do
+			if seg == pat then return true end
+		end
+		if string.find(lower, pat, 1, true) then return true end
+	end
+	return false
+end
 
 local function postJSON(path, body)
 	local apiBase = getApiBase()
@@ -94,18 +133,18 @@ end
 -- UI (polished)
 ----------------------------------------------------------------
 local C = {
-	bg        = Color3.fromRGB(13, 13, 24),
-	panel     = Color3.fromRGB(22, 22, 38),
-	stroke    = Color3.fromRGB(45, 45, 70),
-	primary   = Color3.fromRGB(99, 91, 255),
-	primaryHi = Color3.fromRGB(124, 116, 255),
-	disconnect= Color3.fromRGB(60, 60, 90),
-	text      = Color3.fromRGB(235, 235, 245),
-	textDim   = Color3.fromRGB(150, 150, 175),
-	textMute  = Color3.fromRGB(105, 105, 130),
-	accent    = Color3.fromRGB(160, 150, 255),
-	success   = Color3.fromRGB(80, 220, 160),
-	idle      = Color3.fromRGB(120, 120, 150),
+	bg        = Color3.fromRGB(10, 10, 14),
+	panel     = Color3.fromRGB(17, 17, 22),
+	stroke    = Color3.fromRGB(38, 38, 48),
+	primary   = Color3.fromRGB(120, 110, 240),
+	primaryHi = Color3.fromRGB(142, 132, 250),
+	disconnect= Color3.fromRGB(38, 38, 48),
+	text      = Color3.fromRGB(240, 240, 245),
+	textDim   = Color3.fromRGB(160, 160, 175),
+	textMute  = Color3.fromRGB(100, 100, 115),
+	accent    = Color3.fromRGB(170, 160, 250),
+	success   = Color3.fromRGB(90, 220, 160),
+	idle      = Color3.fromRGB(110, 110, 130),
 }
 
 local UI_Elements = {
@@ -122,7 +161,7 @@ local function register(element, category)
 	table.insert(UI_Elements[category], element)
 end
 
-local function corner(p, r) local c = Instance.new("UICorner", p); c.CornerRadius = UDim.new(0, r or 8); return c end
+local function corner(p, r) local c = Instance.new("UICorner", p); c.CornerRadius = UDim.new(0, r or 6); return c end
 local function stroke(p, col, t)
 	local s = Instance.new("UIStroke", p)
 	s.Color = col or C.stroke
@@ -177,10 +216,10 @@ local scroll = Instance.new("ScrollingFrame", widget)
 scroll.Size = UDim2.fromScale(1,1)
 scroll.BackgroundTransparency = 1
 scroll.BorderSizePixel = 0
-scroll.ScrollBarThickness = 4
+scroll.ScrollBarThickness = 3
 scroll.CanvasSize = UDim2.fromScale(0,0)
 scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-padAll(scroll, 12)
+padAll(scroll, 10)
 
 local root = Instance.new("Frame", scroll)
 root.Size = UDim2.new(1,0,0,0)
@@ -189,36 +228,36 @@ root.BackgroundTransparency = 1
 root.BorderSizePixel = 0
 
 local list = Instance.new("UIListLayout", root)
-list.Padding = UDim.new(0,10)
+list.Padding = UDim.new(0,8)
 list.SortOrder = Enum.SortOrder.LayoutOrder
 
 -- Header: logo + title + status pill
 local header = Instance.new("Frame", root)
 header.LayoutOrder = 1
 header.BackgroundTransparency = 1
-header.Size = UDim2.new(1,0,0,28)
+header.Size = UDim2.new(1,0,0,24)
 
 local logo = Instance.new("Frame", header)
-logo.Size = UDim2.fromOffset(26, 26)
-logo.Position = UDim2.new(0,0,0.5,-13)
+logo.Size = UDim2.fromOffset(22, 22)
+logo.Position = UDim2.new(0,0,0.5,-11)
 logo.BackgroundColor3 = C.primary
 logo.BorderSizePixel = 0
-corner(logo, 8)
+corner(logo, 6)
 gradient(logo, Color3.fromRGB(140, 120, 255), Color3.fromRGB(88, 70, 230), 125)
 local logoGlow = Instance.new("UIStroke", logo)
 logoGlow.Color = Color3.fromRGB(150, 135, 255)
 logoGlow.Thickness = 1
-logoGlow.Transparency = 0.45
+logoGlow.Transparency = 0.5
 local logoText = Instance.new("TextLabel", logo)
 logoText.BackgroundTransparency = 1; logoText.Size = UDim2.fromScale(1,1)
-logoText.Font = Enum.Font.GothamBold; logoText.TextSize = 14
+logoText.Font = Enum.Font.GothamBold; logoText.TextSize = 12
 logoText.TextColor3 = Color3.new(1,1,1); logoText.Text = "B"
 
 local title = Instance.new("TextLabel", header)
 title.BackgroundTransparency = 1
-title.Position = UDim2.new(0,32,0,0)
-title.Size = UDim2.new(1,-130,1,0)
-title.Font = Enum.Font.GothamBold; title.TextSize = 14
+title.Position = UDim2.new(0,28,0,0)
+title.Size = UDim2.new(1,-126,1,0)
+title.Font = Enum.Font.GothamBold; title.TextSize = 12
 title.TextColor3 = C.text
 register(title, "text")
 title.Text = "BloxSmith AI"
@@ -228,29 +267,29 @@ title.TextYAlignment = Enum.TextYAlignment.Center
 local pill = Instance.new("Frame", header)
 pill.AnchorPoint = Vector2.new(1, 0.5)
 pill.Position = UDim2.new(1, 0, 0.5, 0)
-pill.Size = UDim2.fromOffset(94, 22)
+pill.Size = UDim2.fromOffset(86, 20)
 pill.BackgroundColor3 = C.panel
 register(pill, "panel")
 pill.BorderSizePixel = 0
-corner(pill, 11)
+corner(pill, 10)
 stroke(pill, C.stroke, 1)
 
 local pillDot = Instance.new("Frame", pill)
-pillDot.Size = UDim2.fromOffset(6,6)
-pillDot.Position = UDim2.new(0, 11, 0.5, -3)
+pillDot.Size = UDim2.fromOffset(5,5)
+pillDot.Position = UDim2.new(0, 10, 0.5, -2)
 pillDot.BackgroundColor3 = C.idle
 pillDot.BorderSizePixel = 0
 corner(pillDot, 3)
 local pillDotGlow = Instance.new("UIStroke", pillDot)
 pillDotGlow.Color = C.idle
-pillDotGlow.Thickness = 3
+pillDotGlow.Thickness = 2
 pillDotGlow.Transparency = 0.6
 
 local pillText = Instance.new("TextLabel", pill)
 pillText.BackgroundTransparency = 1
-pillText.Position = UDim2.new(0, 22, 0, 0)
-pillText.Size = UDim2.new(1, -28, 1, 0)
-pillText.Font = Enum.Font.GothamMedium; pillText.TextSize = 10
+pillText.Position = UDim2.new(0, 20, 0, 0)
+pillText.Size = UDim2.new(1, -26, 1, 0)
+pillText.Font = Enum.Font.GothamMedium; pillText.TextSize = 9
 pillText.TextColor3 = C.textDim
 pillText.Text = "Offline"
 pillText.TextXAlignment = Enum.TextXAlignment.Left
@@ -258,8 +297,8 @@ pillText.TextXAlignment = Enum.TextXAlignment.Left
 local subtitle = Instance.new("TextLabel", root)
 subtitle.LayoutOrder = 2
 subtitle.BackgroundTransparency = 1
-subtitle.Size = UDim2.new(1,0,0,14)
-subtitle.Font = Enum.Font.Gotham; subtitle.TextSize = 11
+subtitle.Size = UDim2.new(1,0,0,12)
+subtitle.Font = Enum.Font.Gotham; subtitle.TextSize = 10
 subtitle.TextColor3 = C.textMute
 register(subtitle, "textMute")
 subtitle.Text = "Build Roblox games with AI"
@@ -278,23 +317,23 @@ tokenLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 local tokenWrap = Instance.new("Frame", root)
 tokenWrap.LayoutOrder = 4
-tokenWrap.Size = UDim2.new(1,0,0,34)
+tokenWrap.Size = UDim2.new(1,0,0,30)
 tokenWrap.BackgroundColor3 = C.panel
 register(tokenWrap, "panel")
 tokenWrap.BorderSizePixel = 0
-corner(tokenWrap, 8)
+corner(tokenWrap, 6)
 local tokenStroke = stroke(tokenWrap, C.stroke, 1)
 
 local tokenBox = Instance.new("TextBox", tokenWrap)
-tokenBox.Size = UDim2.new(1,-20,1,0)
-tokenBox.Position = UDim2.new(0,10,0,0)
+tokenBox.Size = UDim2.new(1,-18,1,0)
+tokenBox.Position = UDim2.new(0,9,0,0)
 tokenBox.BackgroundTransparency = 1
 tokenBox.TextColor3 = C.text
 register(tokenBox, "text")
 tokenBox.Text = getToken()
 tokenBox.PlaceholderText = "Paste your plugin token"
 tokenBox.PlaceholderColor3 = C.textMute
-tokenBox.Font = Enum.Font.Code; tokenBox.TextSize = 12
+tokenBox.Font = Enum.Font.Code; tokenBox.TextSize = 11
 tokenBox.ClearTextOnFocus = false
 tokenBox.TextXAlignment = Enum.TextXAlignment.Left
 tokenBox.Focused:Connect(function() tokenStroke.Color = C.primary; tokenStroke.Thickness = 1.5 end)
@@ -303,15 +342,15 @@ tokenBox.FocusLost:Connect(function() tokenStroke.Color = C.stroke; tokenStroke.
 -- Primary button
 local connectBtn = Instance.new("TextButton", root)
 connectBtn.LayoutOrder = 5
-connectBtn.Size = UDim2.new(1,0,0,38)
+connectBtn.Size = UDim2.new(1,0,0,32)
 connectBtn.BackgroundColor3 = C.primary
 connectBtn.TextColor3 = Color3.new(1,1,1)
 connectBtn.Text = "Connect"
-connectBtn.Font = Enum.Font.GothamBold; connectBtn.TextSize = 13
+connectBtn.Font = Enum.Font.GothamBold; connectBtn.TextSize = 12
 connectBtn.BorderSizePixel = 0
 connectBtn.AutoButtonColor = false
-corner(connectBtn, 9)
-shadow(connectBtn, 0.7, 9)
+corner(connectBtn, 7)
+shadow(connectBtn, 0.75, 8)
 local connectGrad = gradient(connectBtn,
 	Color3.fromRGB(132, 118, 255), Color3.fromRGB(92, 78, 232), 115)
 connectBtn:SetAttribute("Base", "primary")
@@ -339,30 +378,30 @@ card.Size = UDim2.new(1,0,0,118)
 card.BackgroundColor3 = C.panel
 register(card, "panel")
 card.BorderSizePixel = 0
-corner(card, 10)
+corner(card, 8)
 stroke(card, C.stroke, 1)
 sheen(card)
-padAll(card, 12)
-local cardList = Instance.new("UIListLayout", card); cardList.Padding = UDim.new(0,6)
+padAll(card, 10)
+local cardList = Instance.new("UIListLayout", card); cardList.Padding = UDim.new(0,5)
 
 local function infoRow(order, labelText)
 	local row = Instance.new("Frame", card)
 	row.LayoutOrder = order
 	row.BackgroundTransparency = 1
-	row.Size = UDim2.new(1,0,0,16)
+	row.Size = UDim2.new(1,0,0,14)
 	local lbl = Instance.new("TextLabel", row)
 	lbl.BackgroundTransparency = 1
-	lbl.Size = UDim2.new(0,62,1,0)
-	lbl.Font = Enum.Font.GothamMedium; lbl.TextSize = 10
+	lbl.Size = UDim2.new(0,58,1,0)
+	lbl.Font = Enum.Font.GothamMedium; lbl.TextSize = 9
 	lbl.TextColor3 = C.textMute
 	register(lbl, "textMute")
 	lbl.Text = labelText
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
 	local val = Instance.new("TextLabel", row)
 	val.BackgroundTransparency = 1
-	val.Position = UDim2.new(0,66,0,0)
-	val.Size = UDim2.new(1,-66,1,0)
-	val.Font = Enum.Font.Gotham; val.TextSize = 11
+	val.Position = UDim2.new(0,62,0,0)
+	val.Size = UDim2.new(1,-62,1,0)
+	val.Font = Enum.Font.Gotham; val.TextSize = 10
 	val.TextColor3 = C.textDim
 	register(val, "textDim")
 	val.Text = "—"
@@ -386,11 +425,40 @@ local function appendLog(message)
 	print("[BloxSmith] " .. tostring(message))
 end
 
+-- Session counters + last-sync heartbeat. Reset every plugin load. Surfaced
+-- in the STATS info row so the user can tell at a glance how many actions
+-- actually landed vs. failed without scrolling through the log buffer.
+local statsApplied, statsSkipped, statsErrors = 0, 0, 0
+local lastSyncAt = 0
+local statsInfo = infoRow(5, "STATS")
+local function refreshStatsInfo()
+	local agoText
+	if lastSyncAt == 0 then
+		agoText = "never"
+	else
+		local d = os.time() - lastSyncAt
+		if d < 2 then agoText = "just now"
+		elseif d < 60 then agoText = d .. "s ago"
+		elseif d < 3600 then agoText = math.floor(d/60) .. "m ago"
+		else agoText = math.floor(d/3600) .. "h ago"
+		end
+	end
+	statsInfo.Text = ("Applied %d · Skipped %d · Errors %d · Last sync: %s"):format(
+		statsApplied, statsSkipped, statsErrors, agoText)
+end
+refreshStatsInfo()
+task.spawn(function()
+	while true do
+		task.wait(2)
+		pcall(refreshStatsInfo)
+	end
+end)
+
 local footer = Instance.new("TextLabel", root)
 footer.LayoutOrder = 7
 footer.BackgroundTransparency = 1
-footer.Size = UDim2.new(1,0,0,28)
-footer.Font = Enum.Font.Gotham; footer.TextSize = 10
+footer.Size = UDim2.new(1,0,0,26)
+footer.Font = Enum.Font.Gotham; footer.TextSize = 9
 footer.TextColor3 = C.textMute
 register(footer, "textMute")
 footer.Text = "bloxsmith.pro · sends script source + workspace snapshot to BloxSmith's AI. You can pause or disconnect at any time. All changes are undoable (Ctrl+Z)."
@@ -402,8 +470,8 @@ footer.TextYAlignment = Enum.TextYAlignment.Top
 local apiLabel = Instance.new("TextLabel", root)
 apiLabel.LayoutOrder = 8
 apiLabel.BackgroundTransparency = 1
-apiLabel.Size = UDim2.new(1,0,0,14)
-apiLabel.Font = Enum.Font.GothamMedium; apiLabel.TextSize = 10
+apiLabel.Size = UDim2.new(1,0,0,12)
+apiLabel.Font = Enum.Font.GothamMedium; apiLabel.TextSize = 9
 apiLabel.TextColor3 = C.textDim
 register(apiLabel, "textDim")
 apiLabel.Text = "API URL (advanced — leave default)"
@@ -411,21 +479,21 @@ apiLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 local apiWrap = Instance.new("Frame", root)
 apiWrap.LayoutOrder = 9
-apiWrap.Size = UDim2.new(1,0,0,28)
+apiWrap.Size = UDim2.new(1,0,0,26)
 apiWrap.BackgroundColor3 = C.panel
 register(apiWrap, "panel")
 apiWrap.BorderSizePixel = 0
 corner(apiWrap, 6)
 stroke(apiWrap, C.stroke, 1)
 local apiBox = Instance.new("TextBox", apiWrap)
-apiBox.Size = UDim2.new(1,-20,1,0); apiBox.Position = UDim2.new(0,10,0,0)
+apiBox.Size = UDim2.new(1,-18,1,0); apiBox.Position = UDim2.new(0,9,0,0)
 apiBox.BackgroundTransparency = 1
 apiBox.TextColor3 = C.textDim
 register(apiBox, "textDim")
 apiBox.Text = getApiBase()
 apiBox.PlaceholderText = DEFAULT_API
 apiBox.PlaceholderColor3 = C.textMute
-apiBox.Font = Enum.Font.Code; apiBox.TextSize = 10
+apiBox.Font = Enum.Font.Code; apiBox.TextSize = 9
 apiBox.ClearTextOnFocus = false
 apiBox.TextXAlignment = Enum.TextXAlignment.Left
 apiBox.FocusLost:Connect(function() setApiBase(apiBox.Text or "") end)
@@ -433,13 +501,13 @@ apiBox.FocusLost:Connect(function() setApiBase(apiBox.Text or "") end)
 -- Pause/resume toggle (lets the user stop incoming actions without losing the token)
 local pauseBtn = Instance.new("TextButton", root)
 pauseBtn.LayoutOrder = 10
-pauseBtn.Size = UDim2.new(1,0,0,26)
+pauseBtn.Size = UDim2.new(1,0,0,24)
 pauseBtn.BackgroundColor3 = C.panel
 register(pauseBtn, "panel")
 pauseBtn.TextColor3 = C.textDim
 register(pauseBtn, "textDim")
 pauseBtn.Text = getPaused() and "▶  Resume sync" or "⏸  Pause sync"
-pauseBtn.Font = Enum.Font.GothamMedium; pauseBtn.TextSize = 11
+pauseBtn.Font = Enum.Font.GothamMedium; pauseBtn.TextSize = 10
 pauseBtn.BorderSizePixel = 0
 pauseBtn.AutoButtonColor = false
 corner(pauseBtn, 6)
@@ -452,14 +520,14 @@ end)
 local utilityRow = Instance.new("Frame", root)
 utilityRow.LayoutOrder = 11
 utilityRow.BackgroundTransparency = 1
-utilityRow.Size = UDim2.new(1,0,0,28)
+utilityRow.Size = UDim2.new(1,0,0,24)
 local utilityList = Instance.new("UIListLayout", utilityRow)
 utilityList.FillDirection = Enum.FillDirection.Horizontal
 utilityList.Padding = UDim.new(0,6)
 utilityList.SortOrder = Enum.SortOrder.LayoutOrder
 
-local function utilityButton(text, widthScale, order)
-	local b = Instance.new("TextButton", utilityRow)
+local function utilityButton(parent, text, widthScale, order)
+	local b = Instance.new("TextButton", parent)
 	b.LayoutOrder = order
 	b.Size = UDim2.new(widthScale, -4, 1, 0)
 	b.BackgroundColor3 = C.panel
@@ -468,7 +536,7 @@ local function utilityButton(text, widthScale, order)
 	register(b, "textDim")
 	b.Text = text
 	b.Font = Enum.Font.GothamMedium
-	b.TextSize = 10
+	b.TextSize = 9
 	b.BorderSizePixel = 0
 	b.AutoButtonColor = false
 	corner(b, 6)
@@ -476,9 +544,158 @@ local function utilityButton(text, widthScale, order)
 	return b
 end
 
-local syncNowBtn = utilityButton("Sync Now", 0.34, 1)
-local reconnectBtn = utilityButton("Reconnect", 0.33, 2)
-local cancelScanBtn = utilityButton("Cancel Scan", 0.33, 3)
+local syncNowBtn      = utilityButton(utilityRow, "Sync Now",     0.2, 1)
+local reconnectBtn    = utilityButton(utilityRow, "Reconnect",    0.2, 2)
+local cancelScanBtn   = utilityButton(utilityRow, "Cancel Scan",  0.2, 3)
+local cleanSyncedBtn  = utilityButton(utilityRow, "Clean Synced", 0.2, 4)
+local testConnBtn     = utilityButton(utilityRow, "Test",         0.2, 5)
+
+-- Preview mode row: when ON, incoming AI actions are stashed locally so you
+-- can review every script + change before it touches your place. Stays in
+-- Studio edit mode (never enters Play).
+local previewRow = Instance.new("Frame", root)
+previewRow.LayoutOrder = 12
+previewRow.BackgroundTransparency = 1
+previewRow.Size = UDim2.new(1,0,0,24)
+local previewList = Instance.new("UIListLayout", previewRow)
+previewList.FillDirection = Enum.FillDirection.Horizontal
+previewList.Padding = UDim.new(0,6)
+previewList.SortOrder = Enum.SortOrder.LayoutOrder
+
+local previewToggleBtn = utilityButton(previewRow, "", 0.5, 1)
+local reviewBtn        = utilityButton(previewRow, "Review Pending (0)", 0.5, 2)
+
+local function refreshPreviewToggleLabel()
+	previewToggleBtn.Text = getPreview() and "👁  Preview Mode: ON" or "👁  Preview Mode: OFF"
+	if getPreview() then
+		previewToggleBtn.TextColor3 = C.accent
+	else
+		previewToggleBtn.TextColor3 = C.textDim
+	end
+end
+refreshPreviewToggleLabel()
+
+-- Clear Mode row: when ON, the plugin acts as an apply-only client.
+-- No project scans, no snapshot uploads, no auto-context — incoming
+-- build actions are still executed (or queued in Preview Mode).
+local clearRow = Instance.new("Frame", root)
+clearRow.LayoutOrder = 13
+clearRow.BackgroundTransparency = 1
+clearRow.Size = UDim2.new(1,0,0,24)
+local clearList = Instance.new("UIListLayout", clearRow)
+clearList.FillDirection = Enum.FillDirection.Horizontal
+clearList.Padding = UDim.new(0,6)
+clearList.SortOrder = Enum.SortOrder.LayoutOrder
+
+local clearModeBtn = utilityButton(clearRow, "", 1, 1)
+local function refreshClearModeLabel()
+	clearModeBtn.Text = getClearMode()
+		and "🧹  Clear Mode: ON  (apply-only, no file sync)"
+		or  "🧹  Clear Mode: OFF  (full sync)"
+	clearModeBtn.TextColor3 = getClearMode() and C.accent or C.textDim
+end
+refreshClearModeLabel()
+clearModeBtn.MouseButton1Click:Connect(function()
+	setClearMode(not getClearMode())
+	refreshClearModeLabel()
+	if getClearMode() then
+		appendLog("Clear Mode enabled — file sync disabled")
+		syncInfo.Text = "Clear Mode — apply-only"
+	else
+		appendLog("Clear Mode disabled — full sync resumed")
+	end
+end)
+
+-- Organize Workspace row: asks the BloxSmith AI to plan organize / move /
+-- rename actions for the current project's live workspace snapshot. The
+-- resulting actions land in the normal pull queue and apply automatically.
+local organizeRow = Instance.new("Frame", root)
+organizeRow.LayoutOrder = 14
+organizeRow.BackgroundTransparency = 1
+organizeRow.Size = UDim2.new(1,0,0,24)
+local organizeList = Instance.new("UIListLayout", organizeRow)
+organizeList.FillDirection = Enum.FillDirection.Horizontal
+organizeList.Padding = UDim.new(0,6)
+organizeList.SortOrder = Enum.SortOrder.LayoutOrder
+
+local organizeBtn = utilityButton(organizeRow, "🗂  Organize Workspace (AI)", 1, 1)
+organizeBtn.TextColor3 = C.accent
+
+organizeBtn.MouseButton1Click:Connect(function()
+	if not connected or not activeProjectId then
+		syncInfo.Text = "Connect a project before organizing"
+		appendLog("Organize requested while offline")
+		return
+	end
+	organizeBtn.Text = "🗂  Organizing…"
+	organizeBtn.TextColor3 = C.textDim
+	appendLog("Organize Workspace requested")
+	task.spawn(function()
+		-- Make sure the server has a fresh snapshot to plan against, unless
+		-- the user has Clear Mode on (in which case we trust whatever the
+		-- server last saw).
+		if not getClearMode() then
+			pcall(pushSnapshot)
+		end
+		local data, err = postJSON("/organize", { projectId = activeProjectId, ignores = getIgnoreList() })
+		if err then
+			organizeBtn.Text = "🗂  Organize Workspace (AI)"
+			organizeBtn.TextColor3 = C.accent
+			syncInfo.Text = "Organize error: " .. tostring(err)
+			appendLog("Organize error: " .. tostring(err))
+			return
+		end
+		local queued = (data and data.queued) or 0
+		local msg = (data and data.message) or ("Queued " .. tostring(queued) .. " action(s).")
+		syncInfo.Text = msg
+		appendLog("Organize: " .. msg)
+		organizeBtn.Text = "🗂  Organize Workspace (AI)"
+		organizeBtn.TextColor3 = C.accent
+	end)
+end)
+
+-- Ignore Filters row: comma-separated list of services / folder names / path
+-- substrings to exclude from scans, organize plans, and any applied actions.
+local ignoreLabel = Instance.new("TextLabel", root)
+ignoreLabel.LayoutOrder = 15
+ignoreLabel.BackgroundTransparency = 1
+ignoreLabel.Size = UDim2.new(1,0,0,12)
+ignoreLabel.Font = Enum.Font.GothamMedium; ignoreLabel.TextSize = 9
+ignoreLabel.TextColor3 = C.textDim
+register(ignoreLabel, "textDim")
+ignoreLabel.Text = "IGNORE FILTERS  (comma-separated)"
+ignoreLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local ignoreWrap = Instance.new("Frame", root)
+ignoreWrap.LayoutOrder = 16
+ignoreWrap.Size = UDim2.new(1,0,0,26)
+ignoreWrap.BackgroundColor3 = C.panel
+register(ignoreWrap, "panel")
+ignoreWrap.BorderSizePixel = 0
+corner(ignoreWrap, 6)
+local ignoreStroke = stroke(ignoreWrap, C.stroke, 1)
+
+local ignoreBox = Instance.new("TextBox", ignoreWrap)
+ignoreBox.Size = UDim2.new(1,-18,1,0)
+ignoreBox.Position = UDim2.new(0,9,0,0)
+ignoreBox.BackgroundTransparency = 1
+ignoreBox.TextColor3 = C.text
+register(ignoreBox, "text")
+ignoreBox.Text = getIgnoresRaw()
+ignoreBox.PlaceholderText = "e.g. StarterPlayer, Archive, _wip"
+ignoreBox.PlaceholderColor3 = C.textMute
+ignoreBox.Font = Enum.Font.Code; ignoreBox.TextSize = 11
+ignoreBox.ClearTextOnFocus = false
+ignoreBox.TextXAlignment = Enum.TextXAlignment.Left
+ignoreBox.Focused:Connect(function() ignoreStroke.Color = C.primary; ignoreStroke.Thickness = 1.5 end)
+ignoreBox.FocusLost:Connect(function(enter)
+	ignoreStroke.Color = C.stroke; ignoreStroke.Thickness = 1
+	setIgnoresRaw(ignoreBox.Text)
+	local n = #getIgnoreList()
+	appendLog("Ignore filters saved (" .. n .. " pattern" .. (n == 1 and "" or "s") .. ")")
+end)
+
+
 
 local function setPill(state)
 	local dotColor, label, textColor
@@ -724,6 +941,22 @@ end
 ----------------------------------------------------------------
 local Actions = {}
 
+-- Apply visibility defaults so generated BaseParts actually show up in Studio
+-- (anchored, opaque, collidable, reasonable size, above spawn).
+local function applyVisibleDefaults(inst, props)
+	if not inst:IsA("BasePart") then return end
+	local p = props or {}
+	if p.Anchored == nil and inst.Anchored == false then inst.Anchored = true end
+	if p.Transparency == nil and inst.Transparency >= 1 then inst.Transparency = 0 end
+	if p.CanCollide == nil then inst.CanCollide = true end
+	if p.Size == nil and inst.Size.Magnitude < 0.5 then
+		inst.Size = Vector3.new(4, 4, 4)
+	end
+	if p.Position == nil and p.CFrame == nil and inst.Position.Magnitude < 0.01 then
+		inst.CFrame = CFrame.new(0, 10, 0)
+	end
+end
+
 -- Create or overwrite a script (legacy file sync)
 function Actions.script(a)
 	local parent = resolvePath(a.parent or a.service_location or "ServerScriptService", true)
@@ -736,7 +969,8 @@ function Actions.script(a)
 		existing = Instance.new(className); existing.Name = name; existing.Parent = parent
 	end
 	existing.Source = a.source or a.content or ""
-	return true
+	task.defer(pushSnapshot)
+	return true, nil, existing
 end
 
 -- Create any Instance (Part, Model, Folder, Sound, ParticleEmitter, etc.)
@@ -746,6 +980,7 @@ function Actions.create(a)
 	local inst = Instance.new(a.className or "Part")
 	inst.Name = a.name or (a.className or "Part")
 	applyProps(inst, a.properties)
+	applyVisibleDefaults(inst, a.properties)
 	inst.Parent = parent
 	if a.children then
 		for _, c in ipairs(a.children) do
@@ -753,7 +988,7 @@ function Actions.create(a)
 			Actions.create(c)
 		end
 	end
-	return true
+	return true, nil, inst
 end
 
 -- Create a part with helper mapping for size, position, color, material, anchored properties
@@ -762,7 +997,7 @@ function Actions.create_part(a)
 	if not parent then return false, "bad parent" end
 	local part = Instance.new("Part")
 	part.Name = a.name or "Part"
-	
+
 	if a.size then
 		part.Size = Vector3.new(a.size[1] or 4, a.size[2] or 4, a.size[3] or 4)
 	end
@@ -777,11 +1012,20 @@ function Actions.create_part(a)
 	end
 	if a.anchored ~= nil then
 		part.Anchored = a.anchored
+	else
+		part.Anchored = true
 	end
-	
+	part.CanCollide = true
+	part.Transparency = 0
+
 	applyProps(part, a.properties)
+	-- Final visibility safety net (size/position) without overriding explicit input.
+	local hasPos = (a.position ~= nil) or (a.properties and (a.properties.Position or a.properties.CFrame))
+	if not hasPos and part.Position.Magnitude < 0.01 then
+		part.CFrame = CFrame.new(0, 10, 0)
+	end
 	part.Parent = parent
-	return true
+	return true, nil, part
 end
 
 -- Update an existing instance's properties
@@ -1046,6 +1290,17 @@ function Actions.update_script(a)
 	if not inst then return false, "script not found: " .. tostring(path) end
 	if not inst:IsA("LuaSourceContainer") then return false, "target is not a script" end
 	inst.Source = a.source or a.content or ""
+	task.defer(pushSnapshot)
+	return true
+end
+
+-- Delete a script (web workspace delete reflects into Studio)
+function Actions.delete_script(a)
+	local path = a.path or a.file_path
+	if not path then return false, "missing path" end
+	local inst = resolvePath(path, false)
+	if not inst then return true end -- already gone, treat as success
+	pcall(function() inst:Destroy() end)
 	task.defer(pushSnapshot)
 	return true
 end
@@ -1359,6 +1614,8 @@ local function scanProject(timeoutSeconds)
 		if shouldStop() then return end
 		scanned += 1
 		local currentPath = parentPath == "" and inst.Name or (parentPath .. "/" .. inst.Name)
+		-- Honor ignore filters: skip this subtree entirely.
+		if pathIsIgnored(currentPath) then return end
 		local isScript = inst:IsA("LuaSourceContainer")
 		local includeObj = false
 		
@@ -1393,11 +1650,13 @@ local function scanProject(timeoutSeconds)
 
 	for _, svcName in ipairs(scanServices) do
 		if shouldStop() then break end
-		local svc = getService(svcName)
-		if svc then
-			for _, child in ipairs(svc:GetChildren()) do
-				traverse(child, svcName)
-				if timedOut or cancelled then break end
+		if not pathIsIgnored(svcName) then
+			local svc = getService(svcName)
+			if svc then
+				for _, child in ipairs(svc:GetChildren()) do
+					traverse(child, svcName)
+					if timedOut or cancelled then break end
+				end
 			end
 		end
 	end
@@ -1411,6 +1670,10 @@ end
 
 function pushSnapshot()
 	if not activeProjectId then return end
+	if getClearMode() then
+		syncInfo.Text = "Clear Mode — snapshot skipped"
+		return
+	end
 	if scanInProgress then
 		syncInfo.Text = "Scan already running"
 		return
@@ -1469,87 +1732,151 @@ local function fingerprintActions(actions)
 	return s
 end
 
+-- Returns true if this action targets (or would create things inside) any
+-- path the user has marked as ignored. Covers organize / move / rename /
+-- clean / script / create / etc. since they all reference a path-like field.
+local function actionTouchesIgnored(action)
+	if not action then return false end
+	local candidates = {
+		action.path, action.target, action.newParent, action.parent,
+		action.destination, action.dest, action.folder, action.container,
+	}
+	for _, p in ipairs(candidates) do
+		if type(p) == "string" and pathIsIgnored(p) then return true end
+	end
+	local items = action.items or action.objects or action.paths
+	if type(items) == "table" then
+		for _, p in ipairs(items) do
+			if type(p) == "string" and pathIsIgnored(p) then return true end
+		end
+	end
+	return false
+end
+
 local function dispatch(action)
 	local fn = Actions[action.type]
 	if not fn then return false, "unknown action: " .. tostring(action.type) end
+	if actionTouchesIgnored(action) then
+		appendLog("Skipped " .. tostring(action.type) .. " — matches ignore filter")
+		statsSkipped = statsSkipped + 1
+		pcall(refreshStatsInfo)
+		return true
+	end
 	return fn(action)
 end
 
-local function pull()
-	if not activeProjectId then return end
-	if getPaused() then syncInfo.Text = "Paused — incoming actions are ignored"; return end
-	local data, err = postJSON("/sync", { projectId = activeProjectId })
-	if not data then syncInfo.Text = "Sync error: " .. tostring(err); return end
+-- ============================================================
+-- Preview mode queue + apply pipeline
+-- ============================================================
+local pendingPreview = {}        -- queued actions awaiting user approval
+local previewSeenIds = {}        -- de-dup so the same action isn't re-queued
 
-	-- Backwards-compat: server may send {files = ...} OR {actions = ...}
-	local actions = data.actions or {}
-	if #actions == 0 and data.files then
-		for _, f in ipairs(data.files) do
-			table.insert(actions, {
-				type = "script",
-				name = (string.split(f.path or "Script", "/"))[#string.split(f.path or "Script", "/")],
-				parent = f.service_location or "ServerScriptService",
-				className = f.file_type or "Script",
-				source = f.content or "",
-				id = f.path,
-				rev = #(f.content or ""),
-			})
+local function refreshReviewBtnLabel()
+	reviewBtn.Text = ("Review Pending (%d)"):format(#pendingPreview)
+end
+refreshReviewBtnLabel()
+
+-- Focus the Studio camera on a freshly created instance so the user immediately
+-- sees what BloxSmith inserted (only for visible BaseParts / Models).
+local function focusOn(instances)
+	if not instances or #instances == 0 then return end
+	pcall(function() Selection:Set(instances) end)
+	local target
+	for _, inst in ipairs(instances) do
+		if inst and inst.Parent then
+			if inst:IsA("Model") or inst:IsA("BasePart") then target = inst; break end
 		end
 	end
+	if not target then return end
+	pcall(function()
+		local cam = Workspace.CurrentCamera
+		if not cam then return end
+		local cf
+		if target:IsA("Model") then
+			local ok, pivot = pcall(function() return target:GetPivot() end)
+			if ok then cf = pivot end
+		else
+			cf = target.CFrame
+		end
+		if cf then
+			cam.CFrame = CFrame.new(cf.Position + Vector3.new(20, 15, 20), cf.Position)
+		end
+	end)
+end
 
+-- Runs the actual Studio mutations + reports status back to the website.
+-- Used by both immediate sync and "Apply" inside the preview overlay.
+local function applyActions(actions, sourceLabel)
 	if #actions == 0 then return end
-	appendLog("Command received: " .. tostring(#actions) .. " action(s)")
 
-	-- Check if we are in Edit mode
 	local RunService = game:GetService("RunService")
 	if not RunService:IsEdit() then
 		syncInfo.Text = "Stop Play mode first to apply changes!"
 		setPill("error")
 		warn("[BloxSmith] Stop Play mode first so I can apply this permanently in Studio edit mode.")
-		
-		-- Report all actions as failed
 		local reports = {}
 		for _, a in ipairs(actions) do
 			if a.id then
 				table.insert(reports, {
-					id = a.id,
-					status = "failed",
-					error = "Stop Play mode first so I can apply this permanently in Studio edit mode."
+					id = a.id, status = "failed",
+					error = "Stop Play mode first so I can apply this permanently in Studio edit mode.",
 				})
 			end
 		end
 		if #reports > 0 then
 			pcall(function() postJSON("/report", { reports = reports }) end)
 		end
-		return
+		statsErrors = statsErrors + #actions
+		pcall(refreshStatsInfo)
+		return 0, #actions, {}
 	end
 
-	local fp = fingerprintActions(actions)
-	if fp == lastFingerprint then return end
-	lastFingerprint = fp
-
 	setPill("executing")
-
-	-- Use modern TryBeginRecording so every batch is a single, named, undoable
-	-- entry in the user's Edit > Undo history (Roblox plugin guideline).
 	local recordingId = nil
 	if ChangeHistoryService.TryBeginRecording then
-		recordingId = ChangeHistoryService:TryBeginRecording("BloxSmith build", "BloxSmith AI generation")
+		recordingId = ChangeHistoryService:TryBeginRecording(
+			"BloxSmith " .. (sourceLabel or "build"),
+			"BloxSmith AI generation"
+		)
 	else
 		ChangeHistoryService:SetWaypoint("BloxSmith pre-build")
 	end
 
 	local ok, fail = 0, 0
 	local reports = {}
+	local failedDetails = {}
+	local createdInstances = {}
 	for _, a in ipairs(actions) do
-		local success, e = pcall(dispatch, a)
-		local executed = success and e ~= false
+		local pcOk, success, errOrInst, instMaybe = pcall(dispatch, a)
+		local executed = pcOk and success and success ~= false
+		local createdInst = nil
+		local errMsg = nil
+		if executed then
+			-- dispatch returns (true, nil, instance) for create-style actions
+			if typeof(errOrInst) == "Instance" then createdInst = errOrInst
+			elseif typeof(instMaybe) == "Instance" then createdInst = instMaybe end
+		else
+			if pcOk then
+				errMsg = tostring(errOrInst or "failed")
+			else
+				errMsg = tostring(success or "error")
+			end
+		end
 		if executed then
 			ok = ok + 1
-			if a.id then table.insert(reports, { id = a.id, status = "executed" }) end
+			if createdInst then table.insert(createdInstances, createdInst) end
+			if a.id then
+				local report = { id = a.id, status = "executed" }
+				if createdInst then
+					report.path = instancePath(createdInst)
+					report.className = createdInst.ClassName
+					report.name = createdInst.Name
+				end
+				table.insert(reports, report)
+			end
 		else
 			fail = fail + 1
-			local errMsg = tostring(e)
+			table.insert(failedDetails, { action = a, error = errMsg })
 			if a.id then table.insert(reports, { id = a.id, status = "failed", error = errMsg }) end
 			pcall(function()
 				postJSON("/errors", { errors = {{
@@ -1562,7 +1889,6 @@ local function pull()
 		end
 	end
 
-	-- Report execution status back so the website shows real progress.
 	if #reports > 0 then
 		pcall(function() postJSON("/report", { reports = reports }) end)
 	end
@@ -1572,26 +1898,445 @@ local function pull()
 	else
 		ChangeHistoryService:SetWaypoint(("BloxSmith built %d (%d failed)"):format(ok, fail))
 	end
-	
-	if fail > 0 then
-		setPill("error")
-	else
-		setPill("complete")
+
+	-- Select + camera-focus the freshly created objects so the user
+	-- can SEE the result in Studio edit mode immediately.
+	if #createdInstances > 0 then
+		pcall(focusOn, createdInstances)
 	end
+
+	if fail > 0 then setPill("error") else setPill("complete") end
 	appendLog(("Command executed: %d ok, %d failed"):format(ok, fail))
+
+	-- Bump session counters for the STATS row.
+	statsApplied = statsApplied + ok
+	statsErrors  = statsErrors  + fail
+	pcall(refreshStatsInfo)
 
 	task.defer(pushSnapshot)
 	task.delay(3, function()
 		if connected then setPill("connected") end
 	end)
 
-	syncInfo.Text = ("Built %d action(s)%s · %s · undoable"):format(
-		ok, (fail > 0 and (" · " .. fail .. " failed") or ""), os.date("%H:%M:%S"))
+	syncInfo.Text = ("[%s] Built %d action(s)%s · %s · undoable"):format(
+		activeProjectName or "project", ok, (fail > 0 and (" · " .. fail .. " failed") or ""), os.date("%H:%M:%S"))
+
+	return ok, fail, failedDetails
+end
+
+-- Tells the website "these actions were rejected" so the build status doesn't
+-- hang forever in the dashboard.
+local function reportDiscarded(actions)
+	local reports = {}
+	for _, a in ipairs(actions) do
+		if a.id then
+			table.insert(reports, { id = a.id, status = "failed", error = "Discarded in Preview Mode" })
+		end
+	end
+	if #reports > 0 then
+		pcall(function() postJSON("/report", { reports = reports }) end)
+	end
+end
+
+-- ============================================================
+-- Preview overlay — lists each queued action and lets the user
+-- Apply All / Discard All without ever entering Play mode.
+-- ============================================================
+local previewOverlay = nil
+local function closePreviewOverlay()
+	if previewOverlay then
+		previewOverlay:Destroy()
+		previewOverlay = nil
+	end
+end
+
+local function openPreviewOverlay()
+	closePreviewOverlay()
+	if #pendingPreview == 0 then
+		syncInfo.Text = "Nothing pending. Ask the AI to build something first."
+		return
+	end
+
+	previewOverlay = Instance.new("Frame", widget)
+	previewOverlay.Size = UDim2.fromScale(1, 1)
+	previewOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
+	previewOverlay.BackgroundTransparency = 0.25
+	previewOverlay.BorderSizePixel = 0
+	previewOverlay.ZIndex = 60
+
+	local box = Instance.new("Frame", previewOverlay)
+	box.Size = UDim2.new(1, -24, 1, -24)
+	box.Position = UDim2.new(0, 12, 0, 12)
+	box.BackgroundColor3 = C.panel
+	box.BorderSizePixel = 0
+	box.ZIndex = 61
+	corner(box, 10)
+	stroke(box, C.stroke, 1)
+
+	local pad = Instance.new("UIPadding", box)
+	pad.PaddingTop = UDim.new(0, 12)
+	pad.PaddingBottom = UDim.new(0, 12)
+	pad.PaddingLeft = UDim.new(0, 12)
+	pad.PaddingRight = UDim.new(0, 12)
+
+	local title = Instance.new("TextLabel", box)
+	title.BackgroundTransparency = 1
+	title.Size = UDim2.new(1, 0, 0, 22)
+	title.Text = ("🔍  Preview — %d pending action(s)"):format(#pendingPreview)
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 14
+	title.TextColor3 = C.text
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.ZIndex = 62
+
+	local subtitle = Instance.new("TextLabel", box)
+	subtitle.BackgroundTransparency = 1
+	subtitle.Position = UDim2.new(0, 0, 0, 24)
+	subtitle.Size = UDim2.new(1, 0, 0, 16)
+	subtitle.Text = "Review what the AI generated. Apply All inserts into Studio (edit mode, undoable)."
+	subtitle.Font = Enum.Font.Gotham
+	subtitle.TextSize = 11
+	subtitle.TextColor3 = C.textDim
+	subtitle.TextXAlignment = Enum.TextXAlignment.Left
+	subtitle.ZIndex = 62
+
+	local scroll = Instance.new("ScrollingFrame", box)
+	scroll.Position = UDim2.new(0, 0, 0, 46)
+	scroll.Size = UDim2.new(1, 0, 1, -88)
+	scroll.BackgroundColor3 = C.bg
+	scroll.BorderSizePixel = 0
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.ScrollBarThickness = 6
+	scroll.ZIndex = 62
+	corner(scroll, 6)
+
+	local listLayout = Instance.new("UIListLayout", scroll)
+	listLayout.Padding = UDim.new(0, 6)
+	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	local scrollPad = Instance.new("UIPadding", scroll)
+	scrollPad.PaddingTop = UDim.new(0, 6)
+	scrollPad.PaddingBottom = UDim.new(0, 6)
+	scrollPad.PaddingLeft = UDim.new(0, 8)
+	scrollPad.PaddingRight = UDim.new(0, 8)
+
+	-- Build a human-readable summary line for any action type so the user
+	-- can tell at a glance which folders/files will be created, moved, or
+	-- renamed before clicking Apply.
+	local function describeAction(a)
+		local t = tostring(a.type or "?")
+		if t == "move" then
+			return ("Move  %s  →  %s"):format(tostring(a.path or "?"), tostring(a.newParent or a.parent or "?"))
+		elseif t == "rename" then
+			return ("Rename  %s  →  %s"):format(tostring(a.path or "?"), tostring(a.newName or a.name or "?"))
+		elseif t == "organize" then
+			local items = a.items or a.objects or {}
+			local dest = tostring(a.parent or "Workspace") .. "/" .. tostring(a.name or a.folderName or "Folder")
+			local sample = {}
+			for i = 1, math.min(4, #items) do table.insert(sample, tostring(items[i])) end
+			local more = (#items > 4) and (" (+ " .. (#items - 4) .. " more)") or ""
+			return ("Organize  →  %s  [%d item(s)]\n  • %s%s"):format(dest, #items, table.concat(sample, "\n  • "), more)
+		elseif t == "delete" then
+			return ("Delete  %s"):format(tostring(a.path or "?"))
+		elseif t == "script" then
+			return ("Script  %s  in  %s  (%s)"):format(
+				tostring(a.name or "?"),
+				tostring(a.parent or a.service_location or "ServerScriptService"),
+				tostring(a.className or a.file_type or "Script"))
+		elseif t == "create" then
+			return ("Create  %s  '%s'  in  %s"):format(
+				tostring(a.className or "Instance"),
+				tostring(a.name or "?"),
+				tostring(a.parent or "Workspace"))
+		elseif t == "set" then
+			return ("Set props on  %s"):format(tostring(a.path or "?"))
+		elseif t == "insertAsset" then
+			return ("Insert asset  %s  →  %s/%s"):format(
+				tostring(a.assetId or "?"), tostring(a.parent or "Workspace"), tostring(a.name or "Asset"))
+		end
+		return ("%s  %s"):format(t, tostring(a.name or a.path or a.parent or ""))
+	end
+
+	-- Track per-action skip state. Skipped items stay in pendingPreview
+	-- but are filtered out at Apply time.
+	local skipFlags = {}
+
+	for i, a in ipairs(pendingPreview) do
+		local row = Instance.new("Frame", scroll)
+		row.LayoutOrder = i
+		row.BackgroundColor3 = C.panel
+		row.BorderSizePixel = 0
+		row.AutomaticSize = Enum.AutomaticSize.Y
+		row.Size = UDim2.new(1, -4, 0, 0)
+		row.ZIndex = 63
+		corner(row, 6)
+		stroke(row, C.stroke, 1)
+		local rp = Instance.new("UIPadding", row)
+		rp.PaddingTop = UDim.new(0, 6); rp.PaddingBottom = UDim.new(0, 6)
+		rp.PaddingLeft = UDim.new(0, 8); rp.PaddingRight = UDim.new(0, 8)
+		local rl = Instance.new("UIListLayout", row)
+		rl.Padding = UDim.new(0, 4); rl.SortOrder = Enum.SortOrder.LayoutOrder
+
+		-- Top line: skip toggle + action type tag
+		local topRow = Instance.new("Frame", row)
+		topRow.LayoutOrder = 1
+		topRow.BackgroundTransparency = 1
+		topRow.Size = UDim2.new(1, 0, 0, 18)
+		topRow.ZIndex = 64
+
+		local skipBtn = Instance.new("TextButton", topRow)
+		skipBtn.Size = UDim2.fromOffset(64, 18)
+		skipBtn.Position = UDim2.new(1, -64, 0, 0)
+		skipBtn.BackgroundColor3 = C.bg
+		skipBtn.TextColor3 = C.textDim
+		skipBtn.Font = Enum.Font.GothamMedium
+		skipBtn.TextSize = 10
+		skipBtn.Text = "Include"
+		skipBtn.BorderSizePixel = 0
+		skipBtn.AutoButtonColor = false
+		skipBtn.ZIndex = 65
+		corner(skipBtn, 4); stroke(skipBtn, C.stroke, 1)
+
+		local typeTag = Instance.new("TextLabel", topRow)
+		typeTag.BackgroundTransparency = 1
+		typeTag.Size = UDim2.new(1, -72, 1, 0)
+		typeTag.Font = Enum.Font.GothamBold
+		typeTag.TextSize = 10
+		typeTag.TextColor3 = a.error and Color3.fromRGB(255, 120, 120) or C.accent
+		typeTag.TextXAlignment = Enum.TextXAlignment.Left
+		typeTag.Text = ("#%d  ·  %s%s"):format(
+			i,
+			string.upper(tostring(a.type or "?")),
+			a.error and "  ·  FAILED" or "")
+		typeTag.ZIndex = 65
+
+		-- If the action previously failed during Apply All, paint the row
+		-- with a red tint so it's visually obvious it needs attention.
+		if a.error then
+			row.BackgroundColor3 = Color3.fromRGB(48, 22, 28)
+		end
+
+		skipBtn.MouseButton1Click:Connect(function()
+			skipFlags[i] = not skipFlags[i]
+			if skipFlags[i] then
+				skipBtn.Text = "Skipped"
+				skipBtn.TextColor3 = Color3.fromRGB(240, 140, 80)
+				row.BackgroundTransparency = 0.55
+			else
+				skipBtn.Text = "Include"
+				skipBtn.TextColor3 = C.textDim
+				row.BackgroundTransparency = 0
+			end
+		end)
+
+		local header = Instance.new("TextLabel", row)
+		header.LayoutOrder = 2
+		header.BackgroundTransparency = 1
+		header.AutomaticSize = Enum.AutomaticSize.Y
+		header.Size = UDim2.new(1, 0, 0, 0)
+		header.Font = Enum.Font.GothamMedium
+		header.TextSize = 12
+		header.TextColor3 = C.text
+		header.TextXAlignment = Enum.TextXAlignment.Left
+		header.TextYAlignment = Enum.TextYAlignment.Top
+		header.TextWrapped = true
+		header.Text = describeAction(a)
+		header.ZIndex = 64
+
+		if a.source and #a.source > 0 then
+			local snippet = a.source
+			if #snippet > 1200 then snippet = snippet:sub(1, 1200) .. "\n... (truncated)" end
+			local code = Instance.new("TextLabel", row)
+			code.LayoutOrder = 3
+			code.BackgroundColor3 = C.bg
+			code.BorderSizePixel = 0
+			code.AutomaticSize = Enum.AutomaticSize.Y
+			code.Size = UDim2.new(1, 0, 0, 0)
+			code.Font = Enum.Font.Code
+			code.TextSize = 10
+			code.TextColor3 = C.textDim
+			code.TextXAlignment = Enum.TextXAlignment.Left
+			code.TextYAlignment = Enum.TextYAlignment.Top
+			code.TextWrapped = true
+			code.Text = snippet
+			code.ZIndex = 64
+			corner(code, 4)
+			local cp = Instance.new("UIPadding", code)
+			cp.PaddingTop = UDim.new(0, 4); cp.PaddingBottom = UDim.new(0, 4)
+			cp.PaddingLeft = UDim.new(0, 6); cp.PaddingRight = UDim.new(0, 6)
+		end
+
+		-- Render the captured error from a previous Apply All run, so the
+		-- user can see exactly why this action failed and decide to skip,
+		-- fix it on the website side, or retry.
+		if a.error then
+			local errLabel = Instance.new("TextLabel", row)
+			errLabel.LayoutOrder = 4
+			errLabel.BackgroundColor3 = Color3.fromRGB(70, 24, 32)
+			errLabel.BorderSizePixel = 0
+			errLabel.AutomaticSize = Enum.AutomaticSize.Y
+			errLabel.Size = UDim2.new(1, 0, 0, 0)
+			errLabel.Font = Enum.Font.GothamMedium
+			errLabel.TextSize = 11
+			errLabel.TextColor3 = Color3.fromRGB(255, 190, 190)
+			errLabel.TextXAlignment = Enum.TextXAlignment.Left
+			errLabel.TextYAlignment = Enum.TextYAlignment.Top
+			errLabel.TextWrapped = true
+			errLabel.Text = "⚠ " .. tostring(a.error)
+			errLabel.ZIndex = 64
+			corner(errLabel, 4)
+			local ep = Instance.new("UIPadding", errLabel)
+			ep.PaddingTop = UDim.new(0, 4); ep.PaddingBottom = UDim.new(0, 4)
+			ep.PaddingLeft = UDim.new(0, 6); ep.PaddingRight = UDim.new(0, 6)
+		end
+	end
+
+	-- Bottom button row
+	local btnRow = Instance.new("Frame", box)
+	btnRow.AnchorPoint = Vector2.new(0, 1)
+	btnRow.Position = UDim2.new(0, 0, 1, 0)
+	btnRow.Size = UDim2.new(1, 0, 0, 32)
+	btnRow.BackgroundTransparency = 1
+	btnRow.ZIndex = 62
+	local bl = Instance.new("UIListLayout", btnRow)
+	bl.FillDirection = Enum.FillDirection.Horizontal
+	bl.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	bl.Padding = UDim.new(0, 8)
+
+	local function bigBtn(text, color, textColor, order)
+		local b = Instance.new("TextButton", btnRow)
+		b.LayoutOrder = order
+		b.Size = UDim2.new(0, 130, 1, 0)
+		b.BackgroundColor3 = color
+		b.TextColor3 = textColor
+		b.Font = Enum.Font.GothamBold
+		b.TextSize = 12
+		b.BorderSizePixel = 0
+		b.AutoButtonColor = true
+		b.Text = text
+		b.ZIndex = 63
+		corner(b, 6)
+		return b
+	end
+
+	local cancel  = bigBtn("Close",       C.panel,   C.textDim, 1)
+	local discard = bigBtn("Discard All", C.panel,   Color3.fromRGB(240,80,80), 2)
+	local apply   = bigBtn("Apply All",   C.primary, Color3.new(1,1,1), 3)
+	stroke(cancel, C.stroke, 1); stroke(discard, C.stroke, 1)
+
+	cancel.MouseButton1Click:Connect(closePreviewOverlay)
+	discard.MouseButton1Click:Connect(function()
+		local batch = pendingPreview
+		pendingPreview = {}
+		previewSeenIds = {}
+		refreshReviewBtnLabel()
+		closePreviewOverlay()
+		reportDiscarded(batch)
+		statsSkipped = statsSkipped + #batch
+		pcall(refreshStatsInfo)
+		syncInfo.Text = ("Discarded %d pending action(s)"):format(#batch)
+	end)
+	apply.MouseButton1Click:Connect(function()
+		-- Split pending into "apply now" vs "skipped" based on per-row toggles.
+		local toApply, toDiscard = {}, {}
+		for i, act in ipairs(pendingPreview) do
+			if skipFlags[i] then table.insert(toDiscard, act) else table.insert(toApply, act) end
+		end
+		pendingPreview = {}
+		previewSeenIds = {}
+		refreshReviewBtnLabel()
+		closePreviewOverlay()
+		if #toDiscard > 0 then
+			reportDiscarded(toDiscard)
+			statsSkipped = statsSkipped + #toDiscard
+			pcall(refreshStatsInfo)
+		end
+		if #toApply > 0 then
+			local okN, failN, failedDetails = applyActions(toApply, "preview apply")
+			-- If anything failed, re-queue just the failed actions with their
+			-- error attached, and re-open the overlay so the user can see
+			-- exactly what broke and why.
+			if failedDetails and #failedDetails > 0 then
+				for _, fd in ipairs(failedDetails) do
+					fd.action.error = fd.error
+					table.insert(pendingPreview, fd.action)
+					local key = fd.action.id or (tostring(fd.action.type) .. ":" .. tostring(fd.action.name))
+					previewSeenIds[key] = true
+				end
+				refreshReviewBtnLabel()
+				syncInfo.Text = ("Applied %d, %d failed (review below)"):format(okN or 0, failN or #failedDetails)
+				task.defer(openPreviewOverlay)
+			else
+				syncInfo.Text = ("Applied %d, skipped %d"):format(#toApply, #toDiscard)
+			end
+		else
+			syncInfo.Text = ("Nothing applied — skipped %d"):format(#toDiscard)
+		end
+	end)
+end
+
+reviewBtn.MouseButton1Click:Connect(openPreviewOverlay)
+previewToggleBtn.MouseButton1Click:Connect(function()
+	setPreview(not getPreview())
+	refreshPreviewToggleLabel()
+	if not getPreview() and #pendingPreview > 0 then
+		-- Turning preview OFF with pending items: apply them now.
+		local batch = pendingPreview
+		pendingPreview = {}
+		previewSeenIds = {}
+		refreshReviewBtnLabel()
+		applyActions(batch, "preview off")
+	end
+end)
+
+local function pull(manual)
+	if not activeProjectId then return end
+	if getPaused() then syncInfo.Text = "Paused — incoming actions are ignored"; return end
+	local data, err = postJSON("/sync", { projectId = activeProjectId, manual = manual == true })
+	if not data then syncInfo.Text = "Sync error: " .. tostring(err); return end
+	lastSyncAt = os.time()
+	pcall(refreshStatsInfo)
+
+	local actions = data.actions or {}
+	if #actions == 0 then return end
+	appendLog("Command received: " .. tostring(#actions) .. " action(s)")
+
+	-- Preview mode: stash actions for user review, do NOT touch the place.
+	if getPreview() then
+		local added = 0
+		for _, a in ipairs(actions) do
+			local key = a.id or (tostring(a.type) .. ":" .. tostring(a.name) .. ":" .. tostring(a.parent))
+			if not previewSeenIds[key] then
+				previewSeenIds[key] = true
+				table.insert(pendingPreview, a)
+				added = added + 1
+			end
+		end
+		refreshReviewBtnLabel()
+		if added > 0 then
+			syncInfo.Text = ("Preview: %d new action(s) queued · opening review…"):format(added)
+			setPill("idle")
+			-- Auto-open the preview overlay so the user immediately sees
+			-- what's about to run before they approve it.
+			task.defer(openPreviewOverlay)
+		end
+		return
+	end
+
+	local fp = fingerprintActions(actions)
+	if fp == lastFingerprint then return end
+	lastFingerprint = fp
+
+	applyActions(actions, "build")
 end
 
 
 local function pushContext(force)
 	if not activeProjectId then return end
+	if getClearMode() then
+		ctxInfo.Text = "Clear Mode — context skipped"
+		return
+	end
 	local now = os.time()
 	if not force and (now - lastContextSentAt) < CTX_SECONDS then return end
 	lastContextSentAt = now
@@ -1697,18 +2442,20 @@ local function doConnect()
 		return false
 	end
 	connected = true
-	status.Text = "Connected as " .. (data.user.display_name or data.user.email)
+	local creditsTxt = (data.user.credits ~= nil) and (" · " .. tostring(data.user.credits) .. " credits") or ""
+	status.Text = "Connected as " .. (data.user.display_name or data.user.email) .. creditsTxt
 	status.TextColor3 = C.text
 	connectBtn.Text = "Disconnect"
 	connectBtn:SetAttribute("Base", "disconnect")
 	connectBtn.BackgroundColor3 = C.disconnect
 	connectGrad.Enabled = false
 	setPill("connected")
-	appendLog("Plugin connected")
+	appendLog("Plugin connected" .. ((data.user.credits ~= nil) and (" — " .. tostring(data.user.credits) .. " credits remaining") or ""))
 
 	local first = (data.projects or {})[1]
 	if first then
 		activeProjectId = first.id; activeProjectName = first.name
+		status.Text = "Connected as " .. (data.user.display_name or data.user.email) .. creditsTxt .. " · Project: " .. first.name
 		syncInfo.Text = "Auto-building: " .. first.name
 		syncInfo.TextColor3 = C.text
 		pushContext(true)
@@ -1756,6 +2503,7 @@ syncNowBtn.MouseButton1Click:Connect(function()
 	end
 	task.spawn(function()
 		pushContext(true)
+		pull(true) -- user-initiated: bypass "Manual sync only" gating server-side
 		pushSnapshot()
 	end)
 end)
@@ -1768,15 +2516,110 @@ cancelScanBtn.MouseButton1Click:Connect(function()
 	scanCancelRequested = true
 	appendLog("Scan cancel requested")
 end)
+cleanSyncedBtn.MouseButton1Click:Connect(function()
+	-- Remove the artifacts the old buggy sync left behind:
+	--   1) ServerStorage/__BloxSmithPreloadToken
+	--   2) Duplicate / recursively-nested StarterPlayerScripts folders inside StarterPlayer
+	--   3) Stray loose script copies directly under StarterPlayer (they belong in StarterPlayerScripts)
+	local removed = 0
+	local recId
+	if ChangeHistoryService.TryBeginRecording then
+		recId = ChangeHistoryService:TryBeginRecording("BloxSmith clean synced", "Remove auto-sync artifacts")
+	end
+
+	local tok = ServerStorage:FindFirstChild("__BloxSmithPreloadToken")
+	if tok then tok:Destroy(); removed = removed + 1 end
+
+	local sps = StarterPlayer:FindFirstChild("StarterPlayerScripts")
+	if sps then
+		-- Kill any nested StarterPlayerScripts inside StarterPlayerScripts
+		local function killNested(parent, depth)
+			if depth > 8 then return end
+			for _, child in ipairs(parent:GetChildren()) do
+				if child.Name == "StarterPlayerScripts" then
+					child:Destroy(); removed = removed + 1
+				else
+					killNested(child, depth + 1)
+				end
+			end
+		end
+		killNested(sps, 0)
+	end
+
+	-- Remove any loose script (Script/LocalScript/ModuleScript) directly under StarterPlayer
+	for _, child in ipairs(StarterPlayer:GetChildren()) do
+		if child:IsA("LuaSourceContainer") then
+			child:Destroy(); removed = removed + 1
+		end
+	end
+
+	if recId and ChangeHistoryService.FinishRecording then
+		ChangeHistoryService:FinishRecording(recId, Enum.FinishRecordingOperation.Commit)
+	end
+
+	syncInfo.Text = ("Cleaned %d auto-synced artifact(s)"):format(removed)
+	appendLog("Clean Synced: removed " .. tostring(removed) .. " object(s)")
+	task.defer(pushSnapshot)
+end)
+
+-- Test Connection: pings the server with the current token + API URL and
+-- reports whether the token is valid and the server is reachable. Works
+-- whether or not a project is currently connected.
+testConnBtn.MouseButton1Click:Connect(function()
+	if getToken() == "" then
+		syncInfo.Text = "❌ Test failed — no plugin token set"
+		appendLog("Test Connection: no token")
+		return
+	end
+	local originalText = testConnBtn.Text
+	testConnBtn.Text = "Testing…"
+	task.spawn(function()
+		local apiBase = getApiBase()
+		local probeId = activeProjectId or "00000000-0000-0000-0000-000000000000"
+		local ok, res = pcall(function()
+			return HttpService:RequestAsync({
+				Url = apiBase .. "/sync",
+				Method = "POST",
+				Headers = {
+					["Content-Type"] = "application/json",
+					["x-plugin-token"] = getToken(),
+				},
+				Body = HttpService:JSONEncode({ projectId = probeId, manual = true }),
+			})
+		end)
+		testConnBtn.Text = originalText
+		if not ok then
+			syncInfo.Text = "❌ Cannot reach " .. apiBase
+			appendLog("Test Connection failed: " .. tostring(res))
+			return
+		end
+		local code = res.StatusCode
+		if code == 401 or code == 403 then
+			syncInfo.Text = "❌ Token rejected by server (HTTP " .. code .. ")"
+			appendLog("Test Connection: token rejected (" .. code .. ")")
+		elseif code >= 200 and code < 500 then
+			-- 2xx = full success; 404/409/400 = server reachable + token
+			-- valid, just no/invalid project — still a healthy probe.
+			syncInfo.Text = ("✅ Server reachable · token OK (HTTP %d)"):format(code)
+			appendLog("Test Connection: OK (" .. code .. ")")
+		else
+			syncInfo.Text = ("⚠️ Server error HTTP %d"):format(code)
+			appendLog("Test Connection: server error " .. code)
+		end
+	end)
+end)
+
 button.Click:Connect(function() widget.Enabled = not widget.Enabled end)
 
--- Background loop: pull actions + push context + auto-reconnect retries
+-- Action-pull loop: tight 0.2s tick so scan/script actions get picked up almost
+-- instantly. Auto-reconnect lives here too. We deliberately DO NOT call the
+-- heavier pushContext() here — that runs on its own slower loop below so a
+-- big buildContext() can't stall pulling the next action.
 task.spawn(function()
 	local lastRetryTime = 0
 	while true do
 		task.wait(POLL_SECONDS)
-		
-		-- Auto-reconnect/retry connection if shouldBeConnected is true but we are offline
+
 		if shouldBeConnected and not connected then
 			local now = os.time()
 			if now - lastRetryTime >= 5 then
@@ -1784,9 +2627,19 @@ task.spawn(function()
 				pcall(doConnect)
 			end
 		end
-		
+
 		if connected then
 			pcall(pull)
+		end
+	end
+end)
+
+-- Context-push loop: heavier workspace snapshot, throttled internally by
+-- CTX_SECONDS. Runs on its own thread so it never blocks action polling.
+task.spawn(function()
+	while true do
+		task.wait(2)
+		if connected then
 			pcall(pushContext, false)
 		end
 	end
