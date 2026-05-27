@@ -492,7 +492,7 @@ export const chatWithAI = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ChatInputSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { projectId, prompt, history, thinking } = data;
+    const { projectId, prompt, history, thinking, attachments } = data;
 
     const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userId);
     const isOwner = (roles ?? []).some((r) => r.role === "owner" || r.role === "admin");
