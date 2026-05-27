@@ -1371,7 +1371,7 @@ export const Route = createFileRoute("/api/assistant/execute")({
                 // single attempt with the user's chosen model. For built-in
                 // (groq) source we keep the 3-step compression ladder.
                 type Attempt = {
-                  level: 0 | 1 | 2;
+                  level: 0 | 1 | 2 | 3;
                   modelId: string;
                   budget: number;
                   useResolved: boolean;
@@ -1379,11 +1379,14 @@ export const Route = createFileRoute("/api/assistant/execute")({
                 const attempts: Attempt[] = resolved.source === "api_key"
                   ? [
                       { level: 1, modelId: resolved.modelName, budget: BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET, useResolved: true },
+                      { level: 2, modelId: resolved.modelName, budget: BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET, useResolved: true },
+                      { level: 3, modelId: resolved.modelName, budget: BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET, useResolved: true },
                     ]
                   : [
                       { level: 0, modelId: thinking ? BLOXSMITH_THINK_MODEL : BLOXSMITH_MODEL, budget: BLOXSMITH_MODEL_TOKEN_BUDGET, useResolved: true },
                       { level: 1, modelId: thinking ? BLOXSMITH_THINK_MODEL : BLOXSMITH_MODEL, budget: BLOXSMITH_MODEL_TOKEN_BUDGET, useResolved: false },
                       { level: 2, modelId: BLOXSMITH_LARGE_MODEL, budget: BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET, useResolved: false },
+                      { level: 3, modelId: BLOXSMITH_LARGE_MODEL, budget: BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET, useResolved: false },
                     ];
 
                 const systemTokens = estimateTokens(SYSTEM_PROMPT);
@@ -1394,13 +1397,14 @@ export const Route = createFileRoute("/api/assistant/execute")({
                 for (let i = 0; i < attempts.length; i++) {
                   const att = attempts[i];
                   const built = buildContextBlock(att.level, ctxInputs);
-                  const useSlim = att.level === 2;
+                  const useSlim = att.level >= 2;
                   const baseSystem = useSlim ? SLIM_SYSTEM_PROMPT : SYSTEM_PROMPT;
                   const baseSystemTokens = useSlim ? slimSystemTokens : systemTokens;
                   const promptTokens =
                     baseSystemTokens +
                     estimateTokens(built.contextBlock) +
                     built.trimmedHistory.reduce((sum, m) => sum + estimateTokens(m.content), 0);
+
 
                   console.log(
                     `[ai-execute] attempt=${i} src=${resolved.source} level=${att.level} model=${att.modelId} ` +
