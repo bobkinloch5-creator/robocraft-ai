@@ -1081,18 +1081,27 @@ function ProjectEditor() {
     }
   };
 
-  const runChatRequest = async (userPrompt: string) => {
+  const runChatRequest = async (userPrompt: string, images: string[] = []) => {
     if (aiBusy) return;
     if (credits !== null && credits < CHAT_COST) {
       toast.error("Not enough credits for chat.");
       return;
     }
     setAiBusy(true);
-    await pushMsg("user", userPrompt);
+    const bubble = images.length
+      ? `${userPrompt}\n\n_📎 attached ${images.length} image${images.length === 1 ? "" : "s"}_`
+      : userPrompt;
+    await pushMsg("user", bubble);
     try {
       const history = messages.slice(-10).map((m) => ({ role: m.role, content: m.content }));
       const out: any = await runChat({
-        data: { projectId, prompt: userPrompt, history, thinking },
+        data: {
+          projectId,
+          prompt: userPrompt,
+          history,
+          thinking,
+          ...(images.length ? { attachments: images } : {}),
+        },
       });
       await pushMsg("assistant", out.reply, { kind: "chat" });
     } catch (e: any) {
@@ -1106,10 +1115,12 @@ function ProjectEditor() {
   };
 
   const send = async () => {
-    if (!prompt.trim() || aiBusy) return;
+    if ((!prompt.trim() && attachments.length === 0) || aiBusy) return;
     const p = prompt;
+    const imgs = attachments;
     setPrompt("");
-    if (chatMode) await runChatRequest(p);
+    setAttachments([]);
+    if (chatMode) await runChatRequest(p || "Analyze the attached image(s).", imgs);
     else if (planMode) await runPlanRequest(p);
     else await runGenerate(p);
   };
