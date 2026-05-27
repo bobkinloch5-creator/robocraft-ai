@@ -1934,9 +1934,31 @@ function ProjectEditor() {
                       {isUser ? m.content : <AssistantMessage content={m.content} />}
                     </div>
                     <div className="w-full space-y-2">
+                      {!isUser && activityByMsg[m.id]?.length > 0 && (
+                        <div className="rounded-lg border border-border/60 bg-surface/40 p-2 space-y-1">
+                          <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 px-0.5">
+                            AI activity · {activityByMsg[m.id].length} tool call{activityByMsg[m.id].length === 1 ? "" : "s"}
+                          </div>
+                          <ul className="space-y-0.5">
+                            {activityByMsg[m.id].slice(0, 12).map((ev, i) => (
+                              <li key={i} className="flex items-center gap-1.5 text-[11px] text-foreground/80">
+                                <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${ev.ok ? "bg-emerald-400" : "bg-amber-400"}`} />
+                                <span className="font-mono text-muted-foreground text-[10px]">{ev.tool}</span>
+                                <span className="truncate">{ev.summary}</span>
+                              </li>
+                            ))}
+                            {activityByMsg[m.id].length > 12 && (
+                              <li className="text-[10px] italic text-muted-foreground px-3">
+                                …and {activityByMsg[m.id].length - 12} more
+                              </li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
                       {!isUser && previewsByMsg[m.id] && (
                         <PushPreview
                           preview={previewsByMsg[m.id]}
+                          readOnly={actionStatuses[m.id]?.status === "executing" || actionStatuses[m.id]?.status === "complete"}
                           onApplied={() =>
                             setPreviewsByMsg((p) => {
                               const n = { ...p };
