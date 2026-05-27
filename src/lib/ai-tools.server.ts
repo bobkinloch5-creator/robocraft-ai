@@ -324,33 +324,53 @@ export const buildBloxSmithTools = (ctx: BloxSmithToolCtx = {}) => ({
 
   add_mcp_server: tool({
     description:
-      "Add a new MCP (Model Context Protocol) server to the user's BloxSmith account. Use this when the user asks you to 'add an MCP server' or pastes an MCP server URL. The URL must be a full https:// endpoint (Streamable HTTP). auth_header is optional — pass the full header value like 'Bearer xxx' if the server requires authentication. The server is added enabled; the user can test/disable it from the MCP page.",
+      "Add a new MCP (Model Context Protocol) server to the user's BloxSmith account. Use this when the user asks you to 'add an MCP server', pastes an MCP server URL, or pastes a BloxSmith MCP token (starts with 'bsmcp_'). If the user gives ONLY a 'bsmcp_...' token with no URL, default to BloxSmith's own MCP server (name: 'BloxSmith', url: 'https://bloxsmith.pro/api/public/mcp'). auth_header is optional — pass either the raw token or the full 'Bearer xxx' value; this tool will prepend 'Bearer ' automatically when missing. After adding, tell the user it's configured and they can manage it at /mcp-servers.",
     inputSchema: z.object({
-      name: z.string().min(1).max(80).describe("Short friendly name, e.g. 'Notion' or 'My API'"),
-      url: z.string().url().describe("Full MCP endpoint URL, e.g. https://example.com/api/mcp"),
+      name: z.string().min(1).max(80).optional().describe("Short friendly name. Defaults to 'BloxSmith' for bsmcp_ tokens."),
+      url: z.string().url().optional().describe("Full MCP endpoint URL. Defaults to https://bloxsmith.pro/api/public/mcp for bsmcp_ tokens."),
       auth_header: z
         .string()
         .max(2000)
         .optional()
-        .describe("Optional Authorization header value, e.g. 'Bearer sk-...'. Omit if no auth."),
+        .describe("Optional token or Authorization header. 'Bearer ' is added automatically if missing."),
+      token: z.string().max(2000).optional().describe("Alias for auth_header — accepts a bare token like 'bsmcp_...'."),
     }),
-    execute: async ({ name, url, auth_header }) => {
+    execute: async ({ name, url, auth_header, token }) => {
       if (!ctx.userId) return { error: "not authenticated" };
+      let rawAuth = (auth_header ?? token ?? "").trim();
+      const isBsmcp = rawAuth.replace(/^Bearer\s+/i, "").startsWith("bsmcp_");
+      if (!url && isBsmcp) url = "https://bloxsmith.pro/api/public/mcp";
+      if (!name && isBsmcp) name = "BloxSmith";
+      if (!url) return { error: "Missing MCP server URL. Ask the user for the full https:// endpoint." };
+      if (!name) return { error: "Missing name. Ask the user for a short label for this server." };
       if (!/^https:\/\//i.test(url)) return { error: "URL must start with https://" };
+      if (rawAuth && !/^Bearer\s+/i.test(rawAuth) && !rawAuth.includes(" ")) {
+        rawAuth = `Bearer ${rawAuth}`;
+      }
       const { data: existing } = await supabaseAdmin
         .from("user_mcp_servers")
         .select("id")
         .eq("user_id", ctx.userId)
         .eq("url", url)
         .maybeSingle();
-      if (existing) return { error: "An MCP server with that URL is already added", id: existing.id };
+      if (existing) {
+        if (rawAuth) {
+          await supabaseAdmin
+            .from("user_mcp_servers")
+            .update({ auth_header: rawAuth, enabled: true })
+            .eq("id", existing.id)
+            .eq("user_id", ctx.userId);
+          return { success: true, updated: true, id: existing.id, message: "Token updated on existing server." };
+        }
+        return { error: "An MCP server with that URL is already added", id: existing.id };
+      }
       const { data, error } = await supabaseAdmin
         .from("user_mcp_servers")
         .insert({
           user_id: ctx.userId,
           name: name.trim(),
           url: url.trim(),
-          auth_header: auth_header?.trim() || null,
+          auth_header: rawAuth || null,
           enabled: true,
         })
         .select("id,name,url,enabled")
@@ -361,6 +381,55 @@ export const buildBloxSmithTools = (ctx: BloxSmithToolCtx = {}) => ({
         server: data,
         next: "Tell the user it was added and link them to /mcp-servers to test it.",
       };
+    },
+  }),
+
+  update_mcp_server: tool({
+    description:
+      "Update an existing MCP server's token, name, url, or enabled state. Use this when the user provides a new bearer token / API key for a server they already added. Identify the server by id (from list_mcp_servers) or by matching url/name. 'Bearer ' is prepended automatically when missing.",
+    inputSchema: z.object({
+      id: z.string().uuid().optional(),
+      match_url: z.string().url().optional().describe("Find the server by URL if id not provided."),
+      match_name: z.string().optional().describe("Find the server by name (case-insensitive) if id and match_url not provided."),
+      name: z.string().min(1).max(80).optional(),
+      url: z.string().url().optional(),
+      auth_header: z.string().max(2000).optional(),
+      token: z.string().max(2000).optional(),
+      enabled: z.boolean().optional(),
+    }),
+    execute: async ({ id, match_url, match_name, name, url, auth_header, token, enabled }) => {
+      if (!ctx.userId) return { error: "not authenticated" };
+      let targetId = id;
+      if (!targetId) {
+        let q = supabaseAdmin.from("user_mcp_servers").select("id,name,url").eq("user_id", ctx.userId);
+        if (match_url) q = q.eq("url", match_url);
+        const { data: rows } = await q;
+        let row = rows?.[0];
+        if (!row && match_name && rows) {
+          row = rows.find((r: any) => r.name?.toLowerCase() === match_name.toLowerCase());
+        }
+        if (!row && rows && rows.length === 1) row = rows[0];
+        if (!row) return { error: "Could not find a matching MCP server. Call list_mcp_servers and pass an id." };
+        targetId = row.id;
+      }
+      let rawAuth = (auth_header ?? token ?? "").trim();
+      if (rawAuth && !/^Bearer\s+/i.test(rawAuth) && !rawAuth.includes(" ")) {
+        rawAuth = `Bearer ${rawAuth}`;
+      }
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (name) patch.name = name.trim();
+      if (url) patch.url = url.trim();
+      if (rawAuth) patch.auth_header = rawAuth;
+      if (typeof enabled === "boolean") patch.enabled = enabled;
+      const { data, error } = await supabaseAdmin
+        .from("user_mcp_servers")
+        .update(patch)
+        .eq("id", targetId)
+        .eq("user_id", ctx.userId)
+        .select("id,name,url,enabled")
+        .single();
+      if (error) return { error: error.message };
+      return { success: true, server: data };
     },
   }),
 
@@ -380,3 +449,4 @@ export const buildBloxSmithTools = (ctx: BloxSmithToolCtx = {}) => ({
     },
   }),
 });
+
