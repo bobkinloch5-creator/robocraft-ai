@@ -478,6 +478,13 @@ const ChatInputSchema = z.object({
     .max(20)
     .optional(),
   thinking: z.boolean().default(false),
+  // Vision: data URLs (e.g. "data:image/png;base64,...") captured from the
+  // chat composer's attach-image button. Limited to 4 images, ~6 MB each
+  // after base64 encoding to stay within model + gateway limits.
+  attachments: z
+    .array(z.string().startsWith("data:image/").max(8_500_000))
+    .max(4)
+    .optional(),
 });
 
 export const chatWithAI = createServerFn({ method: "POST" })
