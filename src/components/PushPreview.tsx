@@ -164,10 +164,18 @@ export function PushPreview({
   }
 
   return (
-    <div className="rounded-xl border border-primary/30 bg-primary/[0.06] p-3 space-y-2.5">
+    <div className={`rounded-xl border p-3 space-y-2.5 ${readOnly ? "border-border bg-surface/40" : "border-primary/30 bg-primary/[0.06]"}`}>
       <div className="flex items-center justify-between gap-2 text-xs">
         <div className="font-semibold text-foreground inline-flex items-center gap-1.5">
-          <Send className="h-3.5 w-3.5 text-primary-glow" /> Ready to push to Roblox Studio
+          {readOnly ? (
+            <>
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> What BloxSmith built
+            </>
+          ) : (
+            <>
+              <Send className="h-3.5 w-3.5 text-primary-glow" /> Ready to push to Roblox Studio
+            </>
+          )}
         </div>
         <div className="text-muted-foreground">
           {totalOps} op{totalOps !== 1 ? "s" : ""} · {grouped.services.length} service{grouped.services.length !== 1 ? "s" : ""}
