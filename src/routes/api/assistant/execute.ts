@@ -1426,7 +1426,7 @@ export const Route = createFileRoute("/api/assistant/execute")({
                         model,
                         system: systemWithRules,
                         messages,
-                        tools: buildBloxSmithTools({ projectId }) as any,
+                        tools: buildBloxSmithTools({ projectId, userId }) as any,
                         stopWhen: stepCountIs(thinking ? 60 : 45),
                       }, `ai-execute attempt#${i} src=${resolved.source} model=${att.modelId} slim=${useSlim}`),
                     );
