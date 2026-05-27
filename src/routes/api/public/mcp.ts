@@ -160,37 +160,44 @@ async function authenticate(request: Request) {
   const apiKeyHeader =
     request.headers.get("X-Bloxsmith-Api-Key") ??
     request.headers.get("x-bloxsmith-api-key");
+  const hasAuthHeader = !!authHeader;
+  const hasApiKeyHeader = !!apiKeyHeader;
   const token =
     authHeader?.replace(/^Bearer\s+/i, "").trim() ||
     apiKeyHeader?.trim() ||
     "";
   const ua = request.headers.get("User-Agent");
+  const client = detectClient(ua);
+  const path = new URL(request.url).pathname;
   const prefix = token ? token.slice(0, 8) + "…" : "(none)";
 
+  console.log(
+    `[mcp] POST ${path} auth_header=${hasAuthHeader ? "yes" : "no"} api_key_header=${hasApiKeyHeader ? "yes" : "no"} prefix=${prefix} client=${client}`,
+  );
+
   if (!token) {
-    console.log(`[mcp] auth: missing token (ua=${ua ?? "?"})`);
     return {
       ok: false as const,
       response: authError(
-        "Missing MCP token.",
-        "Send Authorization: Bearer <token>. Generate a token at https://bloxsmith.pro/mcp.",
+        "Missing Authorization header.",
+        "Send `Authorization: Bearer <bsmcp_…>` (or `X-Bloxsmith-Api-Key`). Generate a token at https://bloxsmith.pro/mcp.",
       ),
     };
   }
 
   const adminSecret = process.env.MCP_SECRET;
   if (adminSecret && token === adminSecret) {
-    console.log(`[mcp] auth: admin secret ok (prefix=${prefix})`);
+    console.log(`[mcp] auth: admin secret accepted (internal server-to-server)`);
     return { ok: true as const, auth: { token, claims: { scope: "admin", userId: null } } };
   }
 
   if (!token.startsWith("bsmcp_")) {
-    console.log(`[mcp] auth: bad prefix (prefix=${prefix})`);
+    console.log(`[mcp] auth: invalid prefix (prefix=${prefix})`);
     return {
       ok: false as const,
       response: authError(
         "Invalid MCP token format.",
-        "Tokens must start with 'bsmcp_'. Generate one at https://bloxsmith.pro/mcp.",
+        "Tokens must start with 'bsmcp_'. Do NOT use MCP_SECRET — that's an internal value. Generate a user token at https://bloxsmith.pro/mcp.",
       ),
     };
   }
@@ -206,22 +213,43 @@ async function authenticate(request: Request) {
     console.error(`[mcp] auth: db lookup error`, error.message);
     return {
       ok: false as const,
-      response: authError("Auth service temporarily unavailable.", "Please retry."),
+      response: authError("Auth service temporarily unavailable.", "Please retry in a moment."),
     };
   }
 
   if (!data) {
-    console.log(`[mcp] auth: hash not found (prefix=${prefix}, ua=${ua ?? "?"})`);
+    console.log(`[mcp] auth: token not found (prefix=${prefix}, client=${client})`);
     return {
       ok: false as const,
       response: authError(
-        "Invalid or revoked MCP token.",
-        "Generate a fresh token at https://bloxsmith.pro/mcp. Tokens from local development do not work in production.",
+        "Invalid, revoked, or wrong-environment MCP token.",
+        "Tokens generated on localhost/127.0.0.1 do NOT work against https://bloxsmith.pro. Generate a production token at https://bloxsmith.pro/mcp and update BLOXSMITH_MCP_TOKEN.",
       ),
     };
   }
 
-  console.log(`[mcp] auth: ok user=${data.user_id} prefix=${prefix} client=${detectClient(ua)}`);
+  const { data: userRow, error: userErr } = await supabaseAdmin
+    .from("profiles")
+    .select("id,banned")
+    .eq("id", data.user_id)
+    .maybeSingle();
+  if (userErr || !userRow) {
+    console.log(`[mcp] auth: user not found user=${data.user_id}`);
+    recordTokenAttempt(data.user_id, false, ua, "user not found");
+    return {
+      ok: false as const,
+      response: authError("User account not found.", "Sign in at https://bloxsmith.pro and regenerate your token."),
+    };
+  }
+  if (userRow.banned) {
+    recordTokenAttempt(data.user_id, false, ua, "account suspended");
+    return {
+      ok: false as const,
+      response: authError("Account suspended.", "Contact support."),
+    };
+  }
+
+  console.log(`[mcp] auth: ok user=${data.user_id} prefix=${prefix} client=${client} path=${path}`);
   recordTokenAttempt(data.user_id, true, ua);
   return { ok: true as const, auth: { token, claims: { scope: "user", userId: data.user_id } } };
 }
