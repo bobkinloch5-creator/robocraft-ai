@@ -308,6 +308,9 @@ function ProjectEditor() {
   const [autoBusy, setAutoBusy] = useState(false);
   const [mobileTab, setMobileTab] = useState<"files" | "editor" | "chat">("editor");
   const [previewsByMsg, setPreviewsByMsg] = useState<Record<string, PreviewPayload>>({});
+  const [activityByMsg, setActivityByMsg] = useState<
+    Record<string, Array<{ tool: string; summary: string; ok: boolean }>>
+  >({});
   const [planMode, setPlanMode] = useState(false);
   const [chatMode, setChatMode] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
