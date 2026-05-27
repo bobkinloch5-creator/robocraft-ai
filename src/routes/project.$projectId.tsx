@@ -1711,6 +1711,61 @@ function ProjectEditor() {
                     </button>
                   );
                 })()}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowHistory((v) => !v)}
+                    title="Chat history"
+                    className="h-7 w-7 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition"
+                  >
+                    <History className="h-3.5 w-3.5" />
+                  </button>
+                  {showHistory && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowHistory(false)} />
+                      <div className="absolute right-0 top-8 z-50 w-72 max-h-96 overflow-y-auto rounded-lg border border-border bg-background/95 backdrop-blur-xl shadow-2xl p-1">
+                        <button
+                          onClick={newChat}
+                          className="w-full flex items-center gap-2 px-2 py-2 text-xs font-medium rounded-md hover:bg-surface-elevated text-foreground"
+                        >
+                          <span className="grid h-4 w-4 place-items-center rounded bg-primary/20 text-primary">+</span>
+                          New chat
+                        </button>
+                        <div className="my-1 border-t border-border" />
+                        {conversations.length === 0 ? (
+                          <p className="px-2 py-3 text-[11px] text-muted-foreground text-center">No history yet</p>
+                        ) : (
+                          conversations.map((c) => {
+                            const active = c.id === convoId;
+                            return (
+                              <div
+                                key={c.id}
+                                className={`group flex items-center gap-1 rounded-md px-2 py-1.5 text-xs ${active ? "bg-primary/10 text-foreground" : "text-muted-foreground hover:bg-surface-elevated hover:text-foreground"}`}
+                              >
+                                <button
+                                  onClick={() => loadConversation(c.id)}
+                                  className="flex-1 min-w-0 text-left truncate"
+                                  title={c.title ?? "Chat"}
+                                >
+                                  {c.title || "New chat"}
+                                </button>
+                                <span className="text-[9px] text-muted-foreground/60 tabular-nums shrink-0">
+                                  {new Date(c.updated_at).toLocaleDateString([], { month: "short", day: "numeric" })}
+                                </span>
+                                <button
+                                  onClick={() => deleteConversation(c.id)}
+                                  title="Delete conversation"
+                                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
                 <button
                   onClick={() => {
                     if (messages.length === 0) return;
