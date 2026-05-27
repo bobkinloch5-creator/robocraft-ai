@@ -909,25 +909,29 @@ function ProjectEditor() {
       const finalId = realId ?? tempId;
       if (realId) setMessages((m) => m.map((x) => (x.id === tempId ? { ...x, id: realId } : x)));
 
-      if (out.status === "executing") {
-        if (out.generationId) {
-          setActionStatuses((prev) => ({
-            ...prev,
-            [finalId]: { status: "executing" },
-          }));
-          pollGenerationStatus(out.generationId, finalId);
-        }
-      } else {
-        if (out.generationId && out.queuedCount > 0) {
-          setPreviewsByMsg((p) => ({
-            ...p,
-            [finalId]: {
-              generationId: out.generationId,
-              files: out.files ?? [],
-              actions: out.actions ?? [],
-            },
-          }));
-        }
+      // Always surface what the AI built so the user can see files + actions,
+      // even when Auto Execute is on.
+      if (out.generationId && out.queuedCount > 0) {
+        setPreviewsByMsg((p) => ({
+          ...p,
+          [finalId]: {
+            generationId: out.generationId,
+            files: out.files ?? [],
+            actions: out.actions ?? [],
+            readOnly: out.status === "executing",
+          },
+        }));
+      }
+      if (out.aiActivity?.length) {
+        setActivityByMsg((p) => ({ ...p, [finalId]: out.aiActivity }));
+      }
+
+      if (out.status === "executing" && out.generationId) {
+        setActionStatuses((prev) => ({
+          ...prev,
+          [finalId]: { status: "executing" },
+        }));
+        pollGenerationStatus(out.generationId, finalId);
       }
 
       if (v?.errors?.length || v?.warnings?.length) {
