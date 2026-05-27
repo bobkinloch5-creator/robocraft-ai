@@ -921,7 +921,6 @@ function ProjectEditor() {
             generationId: out.generationId,
             files: out.files ?? [],
             actions: out.actions ?? [],
-            readOnly: out.status === "executing",
           },
         }));
       }
