@@ -105,16 +105,25 @@ type ContextInputs = {
   keywords: string[];
 };
 
-function buildContextBlock(level: 0 | 1 | 2, inp: ContextInputs): {
+function buildContextBlock(level: 0 | 1 | 2 | 3, inp: ContextInputs): {
   contextBlock: string;
   trimmedHistory: { role: "user" | "assistant"; content: string }[];
   filesIncluded: number;
 } {
+  // level 3 = ultra-minimal: just the user's prompt + studio status.
   const liveCharBudget = level === 0 ? 6000 : level === 1 ? 1500 : 0;
   const maxFiles = level === 0 ? 6 : level === 1 ? 3 : 0;
   const perFileChars = level === 0 ? 800 : level === 1 ? 400 : 0;
   const historyTurns = level === 0 ? 6 : level === 1 ? 2 : 0;
   const historyChars = level === 0 ? 600 : 200;
+  if (level === 3) {
+    const contextBlock =
+      `Studio plugin status: ${inp.studioConnected ? "connected" : "not connected"}.\n\n` +
+      `User request:\n${inp.prompt}\n\n` +
+      `Return ONLY the strict JSON object from the output contract.`;
+    return { contextBlock, trimmedHistory: [], filesIncluded: 0 };
+  }
+
 
   const relevant = maxFiles > 0
     ? pickRelevantFiles(inp.files, inp.keywords, maxFiles, perFileChars)
@@ -1362,7 +1371,7 @@ export const Route = createFileRoute("/api/assistant/execute")({
                 // single attempt with the user's chosen model. For built-in
                 // (groq) source we keep the 3-step compression ladder.
                 type Attempt = {
-                  level: 0 | 1 | 2;
+                  level: 0 | 1 | 2 | 3;
                   modelId: string;
                   budget: number;
                   useResolved: boolean;
@@ -1370,11 +1379,14 @@ export const Route = createFileRoute("/api/assistant/execute")({
                 const attempts: Attempt[] = resolved.source === "api_key"
                   ? [
                       { level: 1, modelId: resolved.modelName, budget: BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET, useResolved: true },
+                      { level: 2, modelId: resolved.modelName, budget: BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET, useResolved: true },
+                      { level: 3, modelId: resolved.modelName, budget: BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET, useResolved: true },
                     ]
                   : [
                       { level: 0, modelId: thinking ? BLOXSMITH_THINK_MODEL : BLOXSMITH_MODEL, budget: BLOXSMITH_MODEL_TOKEN_BUDGET, useResolved: true },
                       { level: 1, modelId: thinking ? BLOXSMITH_THINK_MODEL : BLOXSMITH_MODEL, budget: BLOXSMITH_MODEL_TOKEN_BUDGET, useResolved: false },
                       { level: 2, modelId: BLOXSMITH_LARGE_MODEL, budget: BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET, useResolved: false },
+                      { level: 3, modelId: BLOXSMITH_LARGE_MODEL, budget: BLOXSMITH_LARGE_MODEL_TOKEN_BUDGET, useResolved: false },
                     ];
 
                 const systemTokens = estimateTokens(SYSTEM_PROMPT);
@@ -1385,13 +1397,14 @@ export const Route = createFileRoute("/api/assistant/execute")({
                 for (let i = 0; i < attempts.length; i++) {
                   const att = attempts[i];
                   const built = buildContextBlock(att.level, ctxInputs);
-                  const useSlim = att.level === 2;
+                  const useSlim = att.level >= 2;
                   const baseSystem = useSlim ? SLIM_SYSTEM_PROMPT : SYSTEM_PROMPT;
                   const baseSystemTokens = useSlim ? slimSystemTokens : systemTokens;
                   const promptTokens =
                     baseSystemTokens +
                     estimateTokens(built.contextBlock) +
                     built.trimmedHistory.reduce((sum, m) => sum + estimateTokens(m.content), 0);
+
 
                   console.log(
                     `[ai-execute] attempt=${i} src=${resolved.source} level=${att.level} model=${att.modelId} ` +
@@ -1494,9 +1507,10 @@ export const Route = createFileRoute("/api/assistant/execute")({
                 const msg = String(outerErr?.message ?? outerErr);
                 if (/too large|context length|tpm/i.test(msg)) {
                   throw new Error(
-                    "Your request was too large for the AI model even after compressing the project context. Try a more specific prompt or focus on one system at a time.",
+                    "Your project context is too large for this model even after the AI compressed it down to just your prompt. Try a shorter, more focused request (e.g. 'add a jump pad' instead of 'build the whole game'), or split the build into smaller steps.",
                   );
                 }
+
                 if (msg.includes("429")) throw new Error("AI rate limit. Try again in a moment.");
                 if (msg.includes("402"))
                   throw new Error("AI credits exhausted. Add credits in workspace settings.");
