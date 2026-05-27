@@ -1908,134 +1908,144 @@ function ProjectEditor() {
             {messages.map((m) => {
               const isUser = m.role === "user";
               return (
-                <div key={m.id} className="space-y-2 animate-fade-in">
-                  <div className="flex items-center gap-2">
-                    {isUser ? (
-                      <UserIcon className="h-3 w-3 text-muted-foreground" />
-                    ) : (
-                      <Sparkles className="h-3 w-3 text-primary" />
-                    )}
-                    <span className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">
-                      {isUser ? "You" : "Assistant"}
+                <div key={m.id} className={`flex gap-2.5 animate-fade-in ${isUser ? "justify-end" : "justify-start"}`}>
+                  {!isUser && (
+                    <div className="shrink-0 mt-1 h-7 w-7 rounded-full bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center shadow-lg shadow-primary/20 ring-1 ring-primary/30">
+                      <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
+                    </div>
+                  )}
+                  <div className={`flex flex-col gap-2 max-w-[88%] ${isUser ? "items-end" : "items-start"}`}>
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/70 px-1">
+                      {isUser ? "You" : "BloxSmith AI"}
                     </span>
-                  </div>
-                  <div
-                    className={`${isUser ? "text-foreground/90 text-sm leading-relaxed whitespace-pre-wrap break-words" : "text-foreground"} pl-5`}
-                  >
-                    {isUser ? m.content : <AssistantMessage content={m.content} />}
-                  </div>
-                  <div className="pl-5 space-y-2">
-                    {!isUser && previewsByMsg[m.id] && (
-                      <PushPreview
-                        preview={previewsByMsg[m.id]}
-                        onApplied={() =>
-                          setPreviewsByMsg((p) => {
-                            const n = { ...p };
-                            delete n[m.id];
-                            return n;
-                          })
-                        }
-                        onDiscarded={() =>
-                          setPreviewsByMsg((p) => {
-                            const n = { ...p };
-                            delete n[m.id];
-                            return n;
-                          })
-                        }
-                      />
-                    )}
-                    {!isUser && actionStatuses[m.id] && (
-                      <div className="mt-2">
-                        {actionStatuses[m.id].status === "executing" && (
-                          <div className="inline-flex items-center gap-2 rounded-lg bg-primary/10 border border-primary/20 px-3 py-1.5 text-xs text-primary-glow animate-pulse">
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            <span>Waiting for Roblox Studio plugin confirmation...</span>
-                          </div>
-                        )}
-                        {actionStatuses[m.id].status === "complete" && (
-                          <div className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs text-emerald-400">
-                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                            <span>Studio plugin confirmed this batch completed.</span>
-                          </div>
-                        )}
-                        {actionStatuses[m.id].status === "error" && (
-                          <div className="inline-flex items-center gap-2 rounded-lg bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 text-xs text-rose-300">
-                            <span className="h-3.5 w-3.5 bg-rose-500 text-black rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">
-                              !
-                            </span>
-                            <span className="truncate">
-                              Error — execution failed: {actionStatuses[m.id].error}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {!isUser && plansByMsg[m.id] && (
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          onClick={() => buildFromPlan(m.id)}
-                          disabled={aiBusy || outOfCredits}
-                          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition disabled:opacity-50"
-                        >
-                          <Hammer className="h-3.5 w-3.5" /> Build this plan ({GENERATE_COST} cr)
-                        </button>
-                        <button
-                          onClick={() =>
-                            setPlansByMsg((p) => {
+                    <div
+                      className={
+                        isUser
+                          ? "rounded-2xl rounded-tr-sm bg-primary/90 text-primary-foreground text-sm leading-relaxed whitespace-pre-wrap break-words px-3.5 py-2.5 shadow-md"
+                          : "rounded-2xl rounded-tl-sm bg-surface-elevated/80 backdrop-blur-sm border border-border/60 text-foreground px-3.5 py-2.5 shadow-md w-full"
+                      }
+                    >
+                      {isUser ? m.content : <AssistantMessage content={m.content} />}
+                    </div>
+                    <div className="w-full space-y-2">
+                      {!isUser && previewsByMsg[m.id] && (
+                        <PushPreview
+                          preview={previewsByMsg[m.id]}
+                          onApplied={() =>
+                            setPreviewsByMsg((p) => {
                               const n = { ...p };
                               delete n[m.id];
                               return n;
                             })
                           }
-                          className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-surface-elevated transition"
+                          onDiscarded={() =>
+                            setPreviewsByMsg((p) => {
+                              const n = { ...p };
+                              delete n[m.id];
+                              return n;
+                            })
+                          }
+                        />
+                      )}
+                      {!isUser && actionStatuses[m.id] && (
+                        <div>
+                          {actionStatuses[m.id].status === "executing" && (
+                            <div className="inline-flex items-center gap-2 rounded-lg bg-primary/10 border border-primary/20 px-3 py-1.5 text-xs text-primary-glow animate-pulse">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              <span>Waiting for Roblox Studio plugin confirmation...</span>
+                            </div>
+                          )}
+                          {actionStatuses[m.id].status === "complete" && (
+                            <div className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs text-emerald-400">
+                              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                              <span>Studio plugin confirmed this batch completed.</span>
+                            </div>
+                          )}
+                          {actionStatuses[m.id].status === "error" && (
+                            <div className="inline-flex items-center gap-2 rounded-lg bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 text-xs text-rose-300">
+                              <span className="h-3.5 w-3.5 bg-rose-500 text-black rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">
+                                !
+                              </span>
+                              <span className="truncate">
+                                Error — execution failed: {actionStatuses[m.id].error}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {!isUser && plansByMsg[m.id] && (
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => buildFromPlan(m.id)}
+                            disabled={aiBusy || outOfCredits}
+                            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition disabled:opacity-50"
+                          >
+                            <Hammer className="h-3.5 w-3.5" /> Build this plan ({GENERATE_COST} cr)
+                          </button>
+                          <button
+                            onClick={() =>
+                              setPlansByMsg((p) => {
+                                const n = { ...p };
+                                delete n[m.id];
+                                return n;
+                              })
+                            }
+                            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-surface-elevated transition"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      )}
+                      {!isUser && validationByMsg[m.id]?.errors?.length > 0 && (
+                        <button
+                          onClick={() => autoFixValidation(m.id)}
+                          disabled={aiBusy || outOfCredits}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-300 hover:bg-amber-500/20 transition disabled:opacity-50"
+                          title="Send the sync-check errors back to the AI and regenerate only the failing files/actions"
                         >
-                          Dismiss
+                          {autoFixingMsg === m.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Bug className="h-3.5 w-3.5" />
+                          )}
+                          Auto-fix {validationByMsg[m.id].errors.length} blocked ({GENERATE_COST} cr)
                         </button>
-                      </div>
-                    )}
-                    {!isUser && validationByMsg[m.id]?.errors?.length > 0 && (
-                      <button
-                        onClick={() => autoFixValidation(m.id)}
-                        disabled={aiBusy || outOfCredits}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-300 hover:bg-amber-500/20 transition disabled:opacity-50"
-                        title="Send the sync-check errors back to the AI and regenerate only the failing files/actions"
-                      >
-                        {autoFixingMsg === m.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Bug className="h-3.5 w-3.5" />
-                        )}
-                        Auto-fix {validationByMsg[m.id].errors.length} blocked ({GENERATE_COST} cr)
-                      </button>
-                    )}
+                      )}
+                    </div>
                   </div>
+                  {isUser && (
+                    <div className="shrink-0 mt-1 h-7 w-7 rounded-full bg-surface-elevated border border-border flex items-center justify-center">
+                      <UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
+                  )}
                 </div>
               );
             })}
             {aiBusy && (
-              <div className="flex items-center gap-2 pl-0 animate-fade-in">
-                <Sparkles className="h-3 w-3 text-primary animate-pulse" />
-                <span className="flex gap-1">
-                  <span
-                    className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce"
-                    style={{ animationDelay: "0ms" }}
-                  />
-                  <span
-                    className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce"
-                    style={{ animationDelay: "120ms" }}
-                  />
-                  <span
-                    className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce"
-                    style={{ animationDelay: "240ms" }}
-                  />
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {chatMode ? "Thinking…" : planMode ? "Planning…" : "Generating…"}
-                </span>
+              <div className="flex gap-2.5 animate-fade-in">
+                <div className="shrink-0 mt-1 h-7 w-7 rounded-full bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center shadow-lg shadow-primary/30 ring-1 ring-primary/40 animate-pulse">
+                  <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/70 px-1">
+                    BloxSmith AI
+                  </span>
+                  <div className="rounded-2xl rounded-tl-sm bg-surface-elevated/80 backdrop-blur-sm border border-primary/20 px-3.5 py-2.5 shadow-md inline-flex items-center gap-2.5">
+                    <span className="flex gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </span>
+                    <span className="text-xs text-foreground/80 font-medium">
+                      {chatMode ? "Thinking…" : planMode ? "Planning your build…" : "Crafting your Roblox magic…"}
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
             <div ref={chatEnd} />
           </div>
+
 
           {outOfCredits && !(chatMode && credits !== null && credits >= CHAT_COST) ? (
             <div className="border-t border-border p-3 space-y-2 bg-destructive/5">
