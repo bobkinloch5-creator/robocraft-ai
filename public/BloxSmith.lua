@@ -2454,6 +2454,7 @@ local function doConnect()
 	local first = (data.projects or {})[1]
 	if first then
 		activeProjectId = first.id; activeProjectName = first.name
+		status.Text = "Connected as " .. (data.user.display_name or data.user.email) .. " · Project: " .. first.name
 		syncInfo.Text = "Auto-building: " .. first.name
 		syncInfo.TextColor3 = C.text
 		pushContext(true)
