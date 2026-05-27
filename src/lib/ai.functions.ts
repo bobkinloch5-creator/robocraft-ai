@@ -49,12 +49,19 @@ export const generateWithAI = createServerFn({ method: "POST" })
 
     const { buildBloxSmithTools } = await import("./ai-tools.server");
 
+    // Heuristic: short prompts (edits, tweaks, single-feature asks) use the fast
+    // tier even in generate mode. Big/complex asks keep the deeper model.
+    const promptLen = prompt.trim().length;
+    const complexKeywords = /(system|datastore|leaderboard|tycoon|simulator|obby|admin|gamepass|multiple|all|whole|full game|entire|refactor|rewrite|architecture)/i;
+    const isComplex = mode === "generate" && (promptLen > 400 || complexKeywords.test(prompt));
+    const routingKind: "build" | "fast" = mode === "generate" && isComplex ? "build" : "fast";
+
     let resolved;
     try {
       resolved = await resolveAiGateway({
         userId,
         projectId,
-        kind: mode === "generate" ? "build" : "fast",
+        kind: routingKind,
         thinking,
       });
     } catch (e) {
@@ -76,35 +83,63 @@ export const generateWithAI = createServerFn({ method: "POST" })
       .eq("project_id", projectId)
       .maybeSingle();
 
-    // 2. Pull script files we have in DB as a backup (in case plugin hasn't pushed yet).
-    const { data: existingFiles } = await supabase
+    // 2. Pull script files we have in DB. We over-fetch metadata, then pick
+    //    only the files that look relevant to the prompt to keep tokens small.
+    const { data: allFiles } = await supabase
       .from("project_files")
       .select("path,file_type,service_location,content")
       .eq("project_id", projectId)
-      .limit(15);
+      .limit(80);
 
-    const filesBlock = (existingFiles ?? [])
+    // Keyword-based relevance: score each file on prompt-token overlap and
+    // include only the top ~6. Always include any explicitly-named file.
+    const promptTokens = (prompt.toLowerCase().match(/[a-z0-9_]{3,}/g) ?? []).slice(0, 40);
+    const scoreFile = (f: { path: string; content: string | null }) => {
+      const hay = (f.path + " " + (f.content ?? "").slice(0, 2000)).toLowerCase();
+      let s = 0;
+      for (const t of promptTokens) if (hay.includes(t)) s += 1;
+      if (promptTokens.some((t) => f.path.toLowerCase().includes(t))) s += 5;
+      return s;
+    };
+    const relevant = (allFiles ?? [])
+      .map((f) => ({ ...f, _score: scoreFile(f) }))
+      .sort((a, b) => b._score - a._score)
+      .slice(0, isComplex ? 10 : 6);
+    const filesBlock = relevant
       .map(
         (f) =>
-          `--- ${f.path} (${f.file_type} in ${f.service_location}) ---\n${(f.content ?? "").slice(0, 300)}`,
+          `--- ${f.path} (${f.file_type} in ${f.service_location}) ---\n${(f.content ?? "").slice(0, isComplex ? 400 : 220)}`,
       )
       .join("\n\n")
-      .slice(0, 4000);
+      .slice(0, isComplex ? 4000 : 2200);
 
-    const liveBlock = liveContext?.context
-      ? `LIVE STUDIO WORKSPACE (${liveContext.instance_count} instances):\n${JSON.stringify(liveContext.context).slice(0, 2500)}`
-      : "LIVE STUDIO WORKSPACE: (empty baseplate)";
+    // Live workspace: summarize service counts instead of dumping full JSON.
+    let liveBlock = "LIVE STUDIO WORKSPACE: (empty baseplate)";
+    if (liveContext?.context) {
+      try {
+        const ctx: any = liveContext.context;
+        const services = ctx?.services ?? ctx;
+        const summary = Array.isArray(services)
+          ? services.slice(0, 12).map((s: any) => `${s.name ?? s.className}:${s.childCount ?? 0}`).join(", ")
+          : typeof services === "object"
+            ? Object.keys(services).slice(0, 12).map((k) => `${k}:${Array.isArray(services[k]) ? services[k].length : 1}`).join(", ")
+            : JSON.stringify(services).slice(0, 600);
+        liveBlock = `LIVE STUDIO WORKSPACE (${liveContext.instance_count} instances): ${summary}`;
+      } catch {
+        liveBlock = `LIVE STUDIO WORKSPACE (${liveContext.instance_count} instances): present`;
+      }
+    }
 
     let result: { message: string; files: GenFile[]; actions: GenAction[] };
     try {
-      const fullPrompt = `${liveBlock}\n\nProject files in DB:\n${filesBlock || "(empty)"}\n\nUser request:\n${prompt}\n\nThink step-by-step. If you need current info (Roblox API, Luau patterns, free models, decals, sounds, meshes), USE the tools — web_search, roblox_asset_search, roblox_asset_thumbnail, roblox_asset_info, fetch_url.\n\nNOTE: If the user request is just a casual message, greeting, or general question (not requesting code changes/additions), simply reply naturally in the 'message' field of the JSON with empty 'files' and 'actions'. Finally respond with the JSON object as specified.`;
+      const fullPrompt = `${liveBlock}\n\nRelevant project files:\n${filesBlock || "(none indexed)"}\n\nUser request:\n${prompt}\n\nRules:\n- Place server Scripts in ServerScriptService, LocalScripts in StarterPlayerScripts or StarterGui, GUIs in StarterGui, RemoteEvents/RemoteFunctions in ReplicatedStorage, Tools in StarterPack, physical/world objects in Workspace.\n- Do NOT claim success in your message — the Studio plugin reports actual placement. Phrase the message as "Queued for Studio…" not "Created…".\n- If the request is a casual question (no code changes), reply naturally in 'message' with empty 'files' and 'actions'.\n- Use tools (web_search, roblox_asset_*, fetch_url) only when you genuinely need fresh info.\n\nReturn the JSON object as specified.`;
       const { generateTextWithToolFallback } = await import("./ai-retry.server");
       const { text: rawText } = await generateTextWithToolFallback(generateText, {
         model,
         system: SYSTEM_PROMPT,
         prompt: fullPrompt,
         tools: { ...buildBloxSmithTools({ userId }), ...(await (await import("./mcp-client.server")).buildUserMcpTools(userId)) } as any,
-        stopWhen: stepCountIs(50),
+        stopWhen: stepCountIs(isComplex ? 30 : 12),
       }, "generateWithAI");
       // Parse JSON from the raw text response
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
