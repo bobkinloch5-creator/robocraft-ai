@@ -1776,6 +1776,34 @@ local function refreshReviewBtnLabel()
 end
 refreshReviewBtnLabel()
 
+-- Focus the Studio camera on a freshly created instance so the user immediately
+-- sees what BloxSmith inserted (only for visible BaseParts / Models).
+local function focusOn(instances)
+	if not instances or #instances == 0 then return end
+	pcall(function() Selection:Set(instances) end)
+	local target
+	for _, inst in ipairs(instances) do
+		if inst and inst.Parent then
+			if inst:IsA("Model") or inst:IsA("BasePart") then target = inst; break end
+		end
+	end
+	if not target then return end
+	pcall(function()
+		local cam = Workspace.CurrentCamera
+		if not cam then return end
+		local cf
+		if target:IsA("Model") then
+			local ok, pivot = pcall(function() return target:GetPivot() end)
+			if ok then cf = pivot end
+		else
+			cf = target.CFrame
+		end
+		if cf then
+			cam.CFrame = CFrame.new(cf.Position + Vector3.new(20, 15, 20), cf.Position)
+		end
+	end)
+end
+
 -- Runs the actual Studio mutations + reports status back to the website.
 -- Used by both immediate sync and "Apply" inside the preview overlay.
 local function applyActions(actions, sourceLabel)
@@ -1817,15 +1845,37 @@ local function applyActions(actions, sourceLabel)
 	local ok, fail = 0, 0
 	local reports = {}
 	local failedDetails = {}
+	local createdInstances = {}
 	for _, a in ipairs(actions) do
-		local success, e = pcall(dispatch, a)
-		local executed = success and e ~= false
+		local pcOk, success, errOrInst, instMaybe = pcall(dispatch, a)
+		local executed = pcOk and success and success ~= false
+		local createdInst = nil
+		local errMsg = nil
+		if executed then
+			-- dispatch returns (true, nil, instance) for create-style actions
+			if typeof(errOrInst) == "Instance" then createdInst = errOrInst
+			elseif typeof(instMaybe) == "Instance" then createdInst = instMaybe end
+		else
+			if pcOk then
+				errMsg = tostring(errOrInst or "failed")
+			else
+				errMsg = tostring(success or "error")
+			end
+		end
 		if executed then
 			ok = ok + 1
-			if a.id then table.insert(reports, { id = a.id, status = "executed" }) end
+			if createdInst then table.insert(createdInstances, createdInst) end
+			if a.id then
+				local report = { id = a.id, status = "executed" }
+				if createdInst then
+					report.path = instancePath(createdInst)
+					report.className = createdInst.ClassName
+					report.name = createdInst.Name
+				end
+				table.insert(reports, report)
+			end
 		else
 			fail = fail + 1
-			local errMsg = tostring(e)
 			table.insert(failedDetails, { action = a, error = errMsg })
 			if a.id then table.insert(reports, { id = a.id, status = "failed", error = errMsg }) end
 			pcall(function()
@@ -1847,6 +1897,12 @@ local function applyActions(actions, sourceLabel)
 		pcall(function() ChangeHistoryService:FinishRecording(recordingId, Enum.FinishRecordingOperation.Commit) end)
 	else
 		ChangeHistoryService:SetWaypoint(("BloxSmith built %d (%d failed)"):format(ok, fail))
+	end
+
+	-- Select + camera-focus the freshly created objects so the user
+	-- can SEE the result in Studio edit mode immediately.
+	if #createdInstances > 0 then
+		pcall(focusOn, createdInstances)
 	end
 
 	if fail > 0 then setPill("error") else setPill("complete") end
