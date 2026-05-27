@@ -1918,8 +1918,8 @@ local function applyActions(actions, sourceLabel)
 		if connected then setPill("connected") end
 	end)
 
-	syncInfo.Text = ("Built %d action(s)%s · %s · undoable"):format(
-		ok, (fail > 0 and (" · " .. fail .. " failed") or ""), os.date("%H:%M:%S"))
+	syncInfo.Text = ("[%s] Built %d action(s)%s · %s · undoable"):format(
+		activeProjectName or "project", ok, (fail > 0 and (" · " .. fail .. " failed") or ""), os.date("%H:%M:%S"))
 
 	return ok, fail, failedDetails
 end
