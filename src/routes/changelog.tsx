@@ -8,8 +8,8 @@ export const Route = createFileRoute("/changelog")({
       {
         version: "v2.2.0",
         date: "May 26, 2026",
-        title: "MCP Servers, Promote-to-Earn & Admin Moderation Suite",
-        description: "A massive platform expansion: connect your own MCP servers, earn free credits by promoting BloxSmith on TikTok/YouTube, and a fully revamped admin panel with moderation commands.",
+        title: "MCP Servers & Promote-to-Earn",
+        description: "A platform expansion: connect your own MCP servers and earn free credits by promoting BloxSmith on TikTok/YouTube.",
         updates: [
           {
             category: "Integrations",
@@ -30,21 +30,7 @@ export const Route = createFileRoute("/changelog")({
             tagColor: "bg-pink-500/10 text-pink-400 border-pink-500/20",
             icon: Megaphone,
             title: "Promote & Earn Free Credits",
-            detail: "Post a TikTok or YouTube video promoting BloxSmith, submit the link from your Account page, and earn free credits once an admin approves your submission."
-          },
-          {
-            category: "Admin",
-            tagColor: "bg-red-500/10 text-red-400 border-red-500/20",
-            icon: Gavel,
-            title: "Moderation Commands in Admin Panel",
-            detail: "Admins can now ban/unban users with reasons, grant or revoke admin roles, reset credits, and review every promotion submission. The owner role is protected from accidental demotion."
-          },
-          {
-            category: "Admin",
-            tagColor: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-            icon: Shield,
-            title: "User Stats, Filters & Activity Feed",
-            detail: "The admin user list now shows role badges, project and generation counts, supports searching by email or display name, filters banned accounts, and surfaces the latest 25 global credit transactions in a live activity feed."
+            detail: "Post a TikTok or YouTube video promoting BloxSmith, submit the link from your Account page, and earn free credits once your submission is approved."
           }
         ]
       },
