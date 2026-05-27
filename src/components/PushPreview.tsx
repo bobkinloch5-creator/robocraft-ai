@@ -300,23 +300,25 @@ export function PushPreview({
       </div>
 
 
-      <div className="flex items-center justify-end gap-2 pt-1">
-        <button
-          onClick={() => { setStatus("skipped"); onDiscarded(); }}
-          disabled={status !== "idle"}
-          className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-surface disabled:opacity-50 inline-flex items-center gap-1.5"
-        >
-          <X className="h-3 w-3" /> Discard
-        </button>
-        <button
-          onClick={doApply}
-          disabled={status !== "idle"}
-          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 inline-flex items-center gap-1.5"
-        >
-          {status === "applying" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
-          {status === "applying" ? "Pushing…" : "Approve & Push to Studio"}
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <button
+            onClick={() => { setStatus("skipped"); onDiscarded(); }}
+            disabled={status !== "idle"}
+            className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-surface disabled:opacity-50 inline-flex items-center gap-1.5"
+          >
+            <X className="h-3 w-3" /> Discard
+          </button>
+          <button
+            onClick={doApply}
+            disabled={status !== "idle"}
+            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 inline-flex items-center gap-1.5"
+          >
+            {status === "applying" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+            {status === "applying" ? "Pushing…" : "Approve & Push to Studio"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
