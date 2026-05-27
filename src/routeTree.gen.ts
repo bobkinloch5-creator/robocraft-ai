@@ -22,6 +22,7 @@ import { Route as FaqRouteImport } from './routes/faq'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ChangelogRouteImport } from './routes/changelog'
+import { Route as AuthorizeRouteImport } from './routes/authorize'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
@@ -41,6 +42,8 @@ import { Route as ApiPublicPluginErrorsRouteImport } from './routes/api/public/p
 import { Route as ApiPublicPluginContextRouteImport } from './routes/api/public/plugin/context'
 import { Route as ApiPublicPluginAuthRouteImport } from './routes/api/public/plugin/auth'
 import { Route as ApiPublicPaypalWebhookRouteImport } from './routes/api/public/paypal/webhook'
+import { Route as ApiPublicOauthTokenRouteImport } from './routes/api/public/oauth/token'
+import { Route as ApiPublicOauthRegisterRouteImport } from './routes/api/public/oauth/register'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -105,6 +108,11 @@ const DashboardRoute = DashboardRouteImport.update({
 const ChangelogRoute = ChangelogRouteImport.update({
   id: '/changelog',
   path: '/changelog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthorizeRoute = AuthorizeRouteImport.update({
+  id: '/authorize',
+  path: '/authorize',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -204,11 +212,22 @@ const ApiPublicPaypalWebhookRoute = ApiPublicPaypalWebhookRouteImport.update({
   path: '/api/public/paypal/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicOauthTokenRoute = ApiPublicOauthTokenRouteImport.update({
+  id: '/api/public/oauth/token',
+  path: '/api/public/oauth/token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicOauthRegisterRoute = ApiPublicOauthRegisterRouteImport.update({
+  id: '/api/public/oauth/register',
+  path: '/api/public/oauth/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
+  '/authorize': typeof AuthorizeRoute
   '/changelog': typeof ChangelogRoute
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRoute
@@ -231,6 +250,8 @@ export interface FileRoutesByFullPath {
   '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/studio/poll': typeof ApiStudioPollRoute
   '/api/studio/snapshot': typeof ApiStudioSnapshotRoute
+  '/api/public/oauth/register': typeof ApiPublicOauthRegisterRoute
+  '/api/public/oauth/token': typeof ApiPublicOauthTokenRoute
   '/api/public/paypal/webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/public/plugin/auth': typeof ApiPublicPluginAuthRoute
   '/api/public/plugin/context': typeof ApiPublicPluginContextRoute
@@ -243,6 +264,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
+  '/authorize': typeof AuthorizeRoute
   '/changelog': typeof ChangelogRoute
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRoute
@@ -265,6 +287,8 @@ export interface FileRoutesByTo {
   '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/studio/poll': typeof ApiStudioPollRoute
   '/api/studio/snapshot': typeof ApiStudioSnapshotRoute
+  '/api/public/oauth/register': typeof ApiPublicOauthRegisterRoute
+  '/api/public/oauth/token': typeof ApiPublicOauthTokenRoute
   '/api/public/paypal/webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/public/plugin/auth': typeof ApiPublicPluginAuthRoute
   '/api/public/plugin/context': typeof ApiPublicPluginContextRoute
@@ -278,6 +302,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
+  '/authorize': typeof AuthorizeRoute
   '/changelog': typeof ChangelogRoute
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRoute
@@ -300,6 +325,8 @@ export interface FileRoutesById {
   '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/studio/poll': typeof ApiStudioPollRoute
   '/api/studio/snapshot': typeof ApiStudioSnapshotRoute
+  '/api/public/oauth/register': typeof ApiPublicOauthRegisterRoute
+  '/api/public/oauth/token': typeof ApiPublicOauthTokenRoute
   '/api/public/paypal/webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/public/plugin/auth': typeof ApiPublicPluginAuthRoute
   '/api/public/plugin/context': typeof ApiPublicPluginContextRoute
@@ -314,6 +341,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/admin'
+    | '/authorize'
     | '/changelog'
     | '/dashboard'
     | '/docs'
@@ -336,6 +364,8 @@ export interface FileRouteTypes {
     | '/api/public/mcp'
     | '/api/studio/poll'
     | '/api/studio/snapshot'
+    | '/api/public/oauth/register'
+    | '/api/public/oauth/token'
     | '/api/public/paypal/webhook'
     | '/api/public/plugin/auth'
     | '/api/public/plugin/context'
@@ -348,6 +378,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/admin'
+    | '/authorize'
     | '/changelog'
     | '/dashboard'
     | '/docs'
@@ -370,6 +401,8 @@ export interface FileRouteTypes {
     | '/api/public/mcp'
     | '/api/studio/poll'
     | '/api/studio/snapshot'
+    | '/api/public/oauth/register'
+    | '/api/public/oauth/token'
     | '/api/public/paypal/webhook'
     | '/api/public/plugin/auth'
     | '/api/public/plugin/context'
@@ -382,6 +415,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/admin'
+    | '/authorize'
     | '/changelog'
     | '/dashboard'
     | '/docs'
@@ -404,6 +438,8 @@ export interface FileRouteTypes {
     | '/api/public/mcp'
     | '/api/studio/poll'
     | '/api/studio/snapshot'
+    | '/api/public/oauth/register'
+    | '/api/public/oauth/token'
     | '/api/public/paypal/webhook'
     | '/api/public/plugin/auth'
     | '/api/public/plugin/context'
@@ -417,6 +453,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
   AdminRoute: typeof AdminRoute
+  AuthorizeRoute: typeof AuthorizeRoute
   ChangelogRoute: typeof ChangelogRoute
   DashboardRoute: typeof DashboardRoute
   DocsRoute: typeof DocsRoute
@@ -439,6 +476,8 @@ export interface RootRouteChildren {
   ApiPublicMcpRoute: typeof ApiPublicMcpRoute
   ApiStudioPollRoute: typeof ApiStudioPollRoute
   ApiStudioSnapshotRoute: typeof ApiStudioSnapshotRoute
+  ApiPublicOauthRegisterRoute: typeof ApiPublicOauthRegisterRoute
+  ApiPublicOauthTokenRoute: typeof ApiPublicOauthTokenRoute
   ApiPublicPaypalWebhookRoute: typeof ApiPublicPaypalWebhookRoute
   ApiPublicPluginAuthRoute: typeof ApiPublicPluginAuthRoute
   ApiPublicPluginContextRoute: typeof ApiPublicPluginContextRoute
@@ -539,6 +578,13 @@ declare module '@tanstack/react-router' {
       path: '/changelog'
       fullPath: '/changelog'
       preLoaderRoute: typeof ChangelogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/authorize': {
+      id: '/authorize'
+      path: '/authorize'
+      fullPath: '/authorize'
+      preLoaderRoute: typeof AuthorizeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -674,6 +720,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaypalWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/oauth/token': {
+      id: '/api/public/oauth/token'
+      path: '/api/public/oauth/token'
+      fullPath: '/api/public/oauth/token'
+      preLoaderRoute: typeof ApiPublicOauthTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/oauth/register': {
+      id: '/api/public/oauth/register'
+      path: '/api/public/oauth/register'
+      fullPath: '/api/public/oauth/register'
+      preLoaderRoute: typeof ApiPublicOauthRegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -681,6 +741,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
   AdminRoute: AdminRoute,
+  AuthorizeRoute: AuthorizeRoute,
   ChangelogRoute: ChangelogRoute,
   DashboardRoute: DashboardRoute,
   DocsRoute: DocsRoute,
@@ -705,6 +766,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicMcpRoute: ApiPublicMcpRoute,
   ApiStudioPollRoute: ApiStudioPollRoute,
   ApiStudioSnapshotRoute: ApiStudioSnapshotRoute,
+  ApiPublicOauthRegisterRoute: ApiPublicOauthRegisterRoute,
+  ApiPublicOauthTokenRoute: ApiPublicOauthTokenRoute,
   ApiPublicPaypalWebhookRoute: ApiPublicPaypalWebhookRoute,
   ApiPublicPluginAuthRoute: ApiPublicPluginAuthRoute,
   ApiPublicPluginContextRoute: ApiPublicPluginContextRoute,

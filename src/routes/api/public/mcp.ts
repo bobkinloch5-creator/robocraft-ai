@@ -191,42 +191,83 @@ async function authenticate(request: Request) {
     return { ok: true as const, auth: { token, claims: { scope: "admin", userId: null } } };
   }
 
-  if (!token.startsWith("bsmcp_")) {
+  if (!token.startsWith("bsmcp_") && !token.startsWith("bsoa_")) {
     console.log(`[mcp] auth: invalid prefix (prefix=${prefix})`);
     return {
       ok: false as const,
       response: authError(
         "Invalid MCP token format.",
-        "Tokens must start with 'bsmcp_'. Do NOT use MCP_SECRET — that's an internal value. Generate a user token at https://bloxsmith.pro/mcp.",
+        "Tokens must start with 'bsmcp_' (manual) or 'bsoa_' (OAuth-issued). Generate one at https://bloxsmith.pro/mcp.",
       ),
     };
   }
 
   const hash = await sha256(token);
-  const { data, error } = await supabaseAdmin
-    .from("mcp_tokens")
-    .select("user_id")
-    .eq("token_hash", hash)
-    .maybeSingle();
+  let userId: string | null = null;
 
-  if (error) {
-    console.error(`[mcp] auth: db lookup error`, error.message);
-    return {
-      ok: false as const,
-      response: authError("Auth service temporarily unavailable.", "Please retry in a moment."),
-    };
+  if (token.startsWith("bsoa_")) {
+    const { data: oauthRow, error: oauthErr } = await supabaseAdmin
+      .from("oauth_access_tokens")
+      .select("user_id, expires_at")
+      .eq("token_hash", hash)
+      .maybeSingle();
+    if (oauthErr) {
+      console.error(`[mcp] auth: oauth db lookup error`, oauthErr.message);
+      return {
+        ok: false as const,
+        response: authError("Auth service temporarily unavailable.", "Please retry in a moment."),
+      };
+    }
+    if (!oauthRow) {
+      return {
+        ok: false as const,
+        response: authError(
+          "Invalid or revoked OAuth token.",
+          "Reconnect from your MCP client (e.g. Claude.ai → Connectors → BloxSmith).",
+        ),
+      };
+    }
+    if (oauthRow.expires_at && new Date(oauthRow.expires_at).getTime() < Date.now()) {
+      return {
+        ok: false as const,
+        response: authError("OAuth token expired.", "Reconnect from your MCP client."),
+      };
+    }
+    userId = oauthRow.user_id as string;
+    // Best-effort update of last_used_at
+    void supabaseAdmin
+      .from("oauth_access_tokens")
+      .update({ last_used_at: new Date().toISOString() })
+      .eq("token_hash", hash);
+  } else {
+    const { data, error } = await supabaseAdmin
+      .from("mcp_tokens")
+      .select("user_id")
+      .eq("token_hash", hash)
+      .maybeSingle();
+    if (error) {
+      console.error(`[mcp] auth: db lookup error`, error.message);
+      return {
+        ok: false as const,
+        response: authError("Auth service temporarily unavailable.", "Please retry in a moment."),
+      };
+    }
+    if (!data) {
+      console.log(`[mcp] auth: token not found (prefix=${prefix}, client=${client})`);
+      return {
+        ok: false as const,
+        response: authError(
+          "Invalid, revoked, or wrong-environment MCP token.",
+          "Tokens generated on localhost/127.0.0.1 do NOT work against https://bloxsmith.pro. Generate a production token at https://bloxsmith.pro/mcp.",
+        ),
+      };
+    }
+    userId = data.user_id as string;
   }
 
-  if (!data) {
-    console.log(`[mcp] auth: token not found (prefix=${prefix}, client=${client})`);
-    return {
-      ok: false as const,
-      response: authError(
-        "Invalid, revoked, or wrong-environment MCP token.",
-        "Tokens generated on localhost/127.0.0.1 do NOT work against https://bloxsmith.pro. Generate a production token at https://bloxsmith.pro/mcp and update BLOXSMITH_MCP_TOKEN.",
-      ),
-    };
-  }
+  // Reuse existing downstream code that expects `data.user_id`
+  const data = { user_id: userId! };
+
 
   const { data: userRow, error: userErr } = await supabaseAdmin
     .from("profiles")
