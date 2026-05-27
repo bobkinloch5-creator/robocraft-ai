@@ -54,6 +54,7 @@ import {
   Mic,
   MicOff,
   History,
+  ImagePlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { downloadRbxmx } from "@/lib/rbxmx-export";
@@ -322,6 +323,40 @@ function ProjectEditor() {
   const [conversations, setConversations] = useState<Array<{ id: string; title: string | null; updated_at: string }>>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [prompt, setPrompt] = useState("");
+  // Image attachments for chat mode (vision). data: URLs, max 4, ~6MB each
+  // pre-encoded — schema caps at 8.5MB encoded.
+  const [attachments, setAttachments] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const MAX_ATTACHMENTS = 4;
+  const MAX_ATTACHMENT_BYTES = 6 * 1024 * 1024;
+  const addAttachmentFiles = async (files: FileList | File[]) => {
+    const list = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (list.length === 0) return;
+    const slots = MAX_ATTACHMENTS - attachments.length;
+    if (slots <= 0) {
+      toast.error(`You can attach up to ${MAX_ATTACHMENTS} images.`);
+      return;
+    }
+    const accepted = list.slice(0, slots);
+    if (list.length > slots) toast.message(`Only added ${slots} more (max ${MAX_ATTACHMENTS}).`);
+    const dataUrls: string[] = [];
+    for (const f of accepted) {
+      if (f.size > MAX_ATTACHMENT_BYTES) {
+        toast.error(`"${f.name}" is over 6 MB — please shrink it first.`);
+        continue;
+      }
+      const url = await new Promise<string>((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result ?? ""));
+        r.onerror = () => rej(new Error("read failed"));
+        r.readAsDataURL(f);
+      });
+      if (url.startsWith("data:image/")) dataUrls.push(url);
+    }
+    if (dataUrls.length) setAttachments((prev) => [...prev, ...dataUrls]);
+  };
+  const removeAttachment = (i: number) =>
+    setAttachments((prev) => prev.filter((_, idx) => idx !== i));
   const [aiBusy, setAiBusy] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [showInvite, setShowInvite] = useState(false);
@@ -1046,18 +1081,27 @@ function ProjectEditor() {
     }
   };
 
-  const runChatRequest = async (userPrompt: string) => {
+  const runChatRequest = async (userPrompt: string, images: string[] = []) => {
     if (aiBusy) return;
     if (credits !== null && credits < CHAT_COST) {
       toast.error("Not enough credits for chat.");
       return;
     }
     setAiBusy(true);
-    await pushMsg("user", userPrompt);
+    const bubble = images.length
+      ? `${userPrompt}\n\n_📎 attached ${images.length} image${images.length === 1 ? "" : "s"}_`
+      : userPrompt;
+    await pushMsg("user", bubble);
     try {
       const history = messages.slice(-10).map((m) => ({ role: m.role, content: m.content }));
       const out: any = await runChat({
-        data: { projectId, prompt: userPrompt, history, thinking },
+        data: {
+          projectId,
+          prompt: userPrompt,
+          history,
+          thinking,
+          ...(images.length ? { attachments: images } : {}),
+        },
       });
       await pushMsg("assistant", out.reply, { kind: "chat" });
     } catch (e: any) {
@@ -1071,10 +1115,12 @@ function ProjectEditor() {
   };
 
   const send = async () => {
-    if (!prompt.trim() || aiBusy) return;
+    if ((!prompt.trim() && attachments.length === 0) || aiBusy) return;
     const p = prompt;
+    const imgs = attachments;
     setPrompt("");
-    if (chatMode) await runChatRequest(p);
+    setAttachments([]);
+    if (chatMode) await runChatRequest(p || "Analyze the attached image(s).", imgs);
     else if (planMode) await runPlanRequest(p);
     else await runGenerate(p);
   };
@@ -2151,9 +2197,41 @@ function ProjectEditor() {
               <div
                 className={`rounded-xl border bg-background/45 p-2 transition ${chatMode ? "border-accent/40" : planMode ? "border-primary/40" : "border-border focus-within:border-primary/40"}`}
               >
+                {attachments.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {attachments.map((src, i) => (
+                      <div
+                        key={i}
+                        className="group relative h-14 w-14 overflow-hidden rounded-md border border-border bg-surface"
+                      >
+                        <img src={src} alt="attachment" className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(i)}
+                          className="absolute right-0.5 top-0.5 grid h-4 w-4 place-items-center rounded-full bg-background/80 text-foreground opacity-0 group-hover:opacity-100 transition"
+                          title="Remove"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
+                  onPaste={(e) => {
+                    if (!chatMode) return;
+                    const items = Array.from(e.clipboardData?.items ?? []);
+                    const imgs = items
+                      .filter((it) => it.kind === "file" && it.type.startsWith("image/"))
+                      .map((it) => it.getAsFile())
+                      .filter((f): f is File => !!f);
+                    if (imgs.length) {
+                      e.preventDefault();
+                      void addAttachmentFiles(imgs);
+                    }
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
@@ -2163,12 +2241,25 @@ function ProjectEditor() {
                   rows={3}
                   placeholder={
                     chatMode
-                      ? "Ask anything: ideas, Luau questions, code samples to copy — nothing runs in Studio."
+                      ? "Ask anything, or attach a screenshot of your game/Studio — the AI will analyze it."
                       : planMode
                         ? "Describe the Roblox system you want planned..."
                         : "Type any command: build a map, add UI, create scripts, insert assets, fix bugs..."
                   }
                   className="min-h-20 w-full resize-none bg-transparent px-1 py-1 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none"
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  hidden
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length) {
+                      void addAttachmentFiles(e.target.files);
+                      e.target.value = "";
+                    }
+                  }}
                 />
                 <div className="mt-2 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1">
@@ -2222,6 +2313,21 @@ function ProjectEditor() {
                     >
                       {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                     </button>
+                    {chatMode && (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        title={
+                          attachments.length >= MAX_ATTACHMENTS
+                            ? `Max ${MAX_ATTACHMENTS} images`
+                            : "Attach image for AI to analyze"
+                        }
+                        disabled={attachments.length >= MAX_ATTACHMENTS}
+                        className={`h-8 w-8 grid place-items-center rounded-lg transition disabled:opacity-40 ${attachments.length > 0 ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-surface"}`}
+                      >
+                        <ImagePlus className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                   {aiBusy ? (
                     <button
@@ -2235,7 +2341,7 @@ function ProjectEditor() {
                   ) : (
                     <button
                       onClick={send}
-                      disabled={!prompt.trim()}
+                      disabled={!prompt.trim() && attachments.length === 0}
                       className="inline-flex h-8 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:opacity-90 transition disabled:opacity-30"
                       title={
                         chatMode

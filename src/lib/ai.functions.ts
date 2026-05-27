@@ -478,6 +478,13 @@ const ChatInputSchema = z.object({
     .max(20)
     .optional(),
   thinking: z.boolean().default(false),
+  // Vision: data URLs (e.g. "data:image/png;base64,...") captured from the
+  // chat composer's attach-image button. Limited to 4 images, ~6 MB each
+  // after base64 encoding to stay within model + gateway limits.
+  attachments: z
+    .array(z.string().startsWith("data:image/").max(8_500_000))
+    .max(4)
+    .optional(),
 });
 
 export const chatWithAI = createServerFn({ method: "POST" })
@@ -485,7 +492,7 @@ export const chatWithAI = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ChatInputSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { projectId, prompt, history, thinking } = data;
+    const { projectId, prompt, history, thinking, attachments } = data;
 
     const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userId);
     const isOwner = (roles ?? []).some((r) => r.role === "owner" || r.role === "admin");
@@ -544,19 +551,33 @@ CHAT MODE RULES — never break these:
 - The user wants to brainstorm, get ideas, ask questions, learn, debug, or get sample code to copy manually.
 - Be conversational and helpful. Use Markdown.
 - When you give code, ALWAYS wrap it in fenced code blocks with a language tag like \`\`\`lua, \`\`\`luau, or \`\`\`json. Each block gets a copy button in the UI, so split distinct snippets into separate blocks.
-- Keep answers focused. If something is best built (not chatted about), say so and suggest switching off Chat mode.${projectBlock}`;
+- Keep answers focused. If something is best built (not chatted about), say so and suggest switching off Chat mode.
+- VISION: When the user attaches screenshots of Roblox Studio, their game, error popups, or reference images, analyze them in detail. Call out broken hierarchies, missing services, malformed Luau, UI layout issues, lighting/material problems, and red error text by exact wording. Tie every observation back to a concrete fix the user can apply.
+- MCP CONTEXT: If the user has connected MCP servers (Roblox docs, n8n, custom tools), reference relevant facts those servers expose. Cite which server you're drawing from so the user can trust the answer.${projectBlock}`;
 
-    const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-      { role: "system", content: chatSystem },
-    ];
+    // Compose the user turn as multi-part content when images are attached so
+    // vision-capable models (Gemini 2.5+/3, GPT-5) can actually see them.
+    type Part = { type: "text"; text: string } | { type: "image"; image: string };
+    const userContent: string | Part[] =
+      attachments && attachments.length > 0
+        ? [
+            { type: "text", text: prompt } as Part,
+            ...attachments.map((image): Part => ({ type: "image", image })),
+          ]
+        : prompt;
+
+    const messages: Array<{
+      role: "system" | "user" | "assistant";
+      content: string | Part[];
+    }> = [{ role: "system", content: chatSystem }];
     for (const h of history ?? []) {
       messages.push({ role: h.role, content: h.content });
     }
-    messages.push({ role: "user", content: prompt });
+    messages.push({ role: "user", content: userContent });
 
     let text = "";
     try {
-      const { text: out } = await generateText({ model, messages });
+      const { text: out } = await generateText({ model, messages: messages as any });
       text = out;
     } catch (err: any) {
       if (!isOwner)
