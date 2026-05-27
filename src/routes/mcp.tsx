@@ -119,40 +119,26 @@ function McpPage() {
         <section className="space-y-3">
           <h2 className="text-2xl font-semibold">Claude.ai (web & desktop app)</h2>
           <p className="text-muted-foreground">
-            Claude.ai's <strong>custom connector</strong> dialog requires OAuth and
-            ignores static bearer tokens, so pasting the MCP URL there will fail with
-            a 404 on <code className="bg-muted px-1.5 py-0.5 rounded">/authorize</code>.
-            Use the <strong>Claude Desktop</strong> config below instead — it bridges
-            the connection through <code className="bg-muted px-1.5 py-0.5 rounded">mcp-remote</code>
-            using your token.
+            In Claude, open <strong>Settings → Connectors → Add custom connector</strong> and fill in:
           </p>
+          <ul className="list-disc list-inside text-muted-foreground space-y-1">
+            <li><strong>Name:</strong> <code className="bg-muted px-1.5 py-0.5 rounded">BloxSmith</code></li>
+            <li>
+              <strong>Remote MCP server URL:</strong>{" "}
+              <code className="bg-muted px-1.5 py-0.5 rounded">{endpoint}</code>
+            </li>
+          </ul>
           <p className="text-muted-foreground">
-            Open <strong>Claude Desktop → Settings → Developer → Edit Config</strong>{" "}
-            and add:
+            Click <strong>Add</strong>. Claude will open a BloxSmith authorization page —
+            sign in (if you aren't already) and click <strong>Authorize</strong>. You'll be
+            redirected back to Claude and BloxSmith tools will be available in any new chat.
           </p>
-          <Code>{`{
-  "mcpServers": {
-    "bloxsmith": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "${endpoint}",
-        "--header",
-        "Authorization: Bearer \${BLOXSMITH_MCP_TOKEN}"
-      ],
-      "env": {
-        "BLOXSMITH_MCP_TOKEN": "YOUR_MCP_TOKEN"
-      }
-    }
-  }
-}`}</Code>
           <p className="text-sm text-muted-foreground">
-            Save, fully quit Claude Desktop, and reopen it. BloxSmith tools will appear
-            in the 🔌 menu. Token must be generated on the live{" "}
-            <strong>bloxsmith.pro</strong> site — localhost tokens won't work.
+            No token needed — authorization is handled via OAuth. You can revoke access any
+            time from Claude's connector settings.
           </p>
         </section>
+
 
 
         <section className="space-y-3">
