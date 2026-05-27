@@ -358,6 +358,21 @@ function ProjectEditor() {
   const removeAttachment = (i: number) =>
     setAttachments((prev) => prev.filter((_, idx) => idx !== i));
   const [aiBusy, setAiBusy] = useState(false);
+  const [aiBusyStartedAt, setAiBusyStartedAt] = useState<number | null>(null);
+  const [aiBusyElapsed, setAiBusyElapsed] = useState(0);
+  const [aiBusyExpanded, setAiBusyExpanded] = useState(false);
+  useEffect(() => {
+    if (!aiBusy) {
+      setAiBusyStartedAt(null);
+      setAiBusyElapsed(0);
+      return;
+    }
+    const start = Date.now();
+    setAiBusyStartedAt(start);
+    setAiBusyElapsed(0);
+    const id = setInterval(() => setAiBusyElapsed(Math.floor((Date.now() - start) / 1000)), 500);
+    return () => clearInterval(id);
+  }, [aiBusy]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [showInvite, setShowInvite] = useState(false);
   const [collabs, setCollabs] = useState<Array<{ user_id: string; role: string; email?: string }>>(
