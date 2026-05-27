@@ -2064,28 +2064,10 @@ function ProjectEditor() {
                       )}
                       {!isUser && actionStatuses[m.id] && (
                         <div className="space-y-1.5">
-                          {actionStatuses[m.id].status === "executing" && (
-                            <div className="flex flex-col gap-1 rounded-lg bg-primary/10 border border-primary/20 px-3 py-1.5 text-xs text-primary-glow">
-                              <div className="inline-flex items-center gap-2">
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                <span>Waiting for Roblox Studio plugin confirmation...</span>
-                              </div>
-                              {actionStatuses[m.id].hint && (
-                                <span className="text-[11px] text-primary-glow/80 pl-5">
-                                  {actionStatuses[m.id].hint}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          {actionStatuses[m.id].status === "queued" && (
-                            <div className="inline-flex items-start gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 text-xs text-amber-300">
-                              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                              <span>
-                                {actionStatuses[m.id].hint ??
-                                  "Actions queued — they'll apply on the next Studio sync."}
-                              </span>
-                            </div>
-                          )}
+                          {/* "executing" and "queued" waiting states are hidden —
+                              the Studio plugin polls on its own and applies actions automatically.
+                              Only show terminal states (complete/error). */}
+
                           {actionStatuses[m.id].status === "complete" && (
                             <div className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs text-emerald-400">
                               <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
