@@ -1,37 +1,38 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-// MCP clients (mcp-remote, Claude Desktop, Codex) probe this before initialize.
-// BloxSmith MCP uses static Bearer tokens — return 404 so clients fall back
-// to the configured Authorization header.
-const notOffered = () =>
-  new Response(
-    JSON.stringify({
-      error: "oauth_not_supported",
-      message: "BloxSmith MCP uses static Bearer tokens. Generate one at https://bloxsmith.pro/mcp.",
-    }),
-    {
-      status: 404,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Cache-Control": "public, max-age=3600",
-      },
-    },
-  );
+// RFC 9728 — Protected Resource Metadata
+// Tells OAuth-only MCP clients (Claude.ai web/desktop "Add custom connector")
+// which authorization server protects this resource.
+const ORIGIN = "https://bloxsmith.pro";
+
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
 
 export const Route = createFileRoute("/.well-known/oauth-protected-resource")({
   server: {
     handlers: {
-      GET: async () => notOffered(),
-      OPTIONS: async () =>
-        new Response(null, {
-          status: 204,
-          headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      OPTIONS: async () => new Response(null, { status: 204, headers: cors }),
+      GET: async () =>
+        new Response(
+          JSON.stringify({
+            resource: `${ORIGIN}/api/public/mcp`,
+            authorization_servers: [ORIGIN],
+            bearer_methods_supported: ["header"],
+            resource_documentation: `${ORIGIN}/mcp`,
+            scopes_supported: ["mcp"],
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+              "Cache-Control": "public, max-age=3600",
+              ...cors,
+            },
           },
-        }),
+        ),
     },
   },
 });
