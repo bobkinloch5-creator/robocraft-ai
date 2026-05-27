@@ -207,8 +207,8 @@ export const Route = createFileRoute("/changelog")({
           blogPost: [
             {
               "@type": "BlogPosting",
-              headline: "MCP Servers, Promote-to-Earn & Admin Moderation Suite",
-              description: "Connect MCP servers, earn credits by promoting BloxSmith, and use the new admin moderation commands.",
+              headline: "MCP Servers & Promote-to-Earn",
+              description: "Connect MCP servers and earn credits by promoting BloxSmith.",
               datePublished: "2026-05-26",
               author: { "@type": "Organization", name: "BloxSmith" },
               url: "https://bloxsmith.pro/changelog#v2-2-0",
