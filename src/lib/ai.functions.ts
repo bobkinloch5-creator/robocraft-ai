@@ -138,7 +138,7 @@ export const generateWithAI = createServerFn({ method: "POST" })
         model,
         system: SYSTEM_PROMPT,
         prompt: fullPrompt,
-        tools: buildBloxSmithTools({ userId }) as any,
+        tools: { ...buildBloxSmithTools({ userId }), ...(await (await import("./mcp-client.server")).buildUserMcpTools(userId)) } as any,
         stopWhen: stepCountIs(isComplex ? 30 : 12),
       }, "generateWithAI");
       // Parse JSON from the raw text response
