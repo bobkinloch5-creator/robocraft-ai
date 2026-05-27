@@ -2341,7 +2341,7 @@ function ProjectEditor() {
                   ) : (
                     <button
                       onClick={send}
-                      disabled={!prompt.trim()}
+                      disabled={!prompt.trim() && attachments.length === 0}
                       className="inline-flex h-8 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:opacity-90 transition disabled:opacity-30"
                       title={
                         chatMode
