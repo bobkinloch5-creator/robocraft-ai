@@ -163,6 +163,35 @@ function McpServersPage() {
           </p>
         </header>
 
+        <div className="border border-primary/30 bg-primary/5 rounded-lg p-4 text-sm space-y-2">
+          <div className="font-semibold flex items-center gap-2">
+            ✨ Let the AI configure this for you
+          </div>
+          <p className="text-muted-foreground">
+            You don&apos;t have to fill out the form below. Open any project chat and
+            just paste your server URL or token — for example:
+          </p>
+          <ul className="list-disc pl-5 text-muted-foreground space-y-1">
+            <li>
+              <span className="text-foreground">&ldquo;Add this MCP token: bsmcp_…&rdquo;</span>{" "}
+              → adds BloxSmith&apos;s own MCP server automatically.
+            </li>
+            <li>
+              <span className="text-foreground">&ldquo;Add Notion MCP at https://… with Bearer sk-…&rdquo;</span>{" "}
+              → adds any third-party server.
+            </li>
+            <li>
+              <span className="text-foreground">&ldquo;Update my BloxSmith token to bsmcp_…&rdquo;</span>{" "}
+              → rotates the key on an existing server.
+            </li>
+          </ul>
+          <p className="text-muted-foreground">
+            Works in Cursor, Claude, Codex, Windsurf, and any other IDE / chat that
+            speaks MCP.
+          </p>
+        </div>
+
+
         <form
           onSubmit={add}
           className="space-y-4 border border-border rounded-lg p-6 bg-card"
