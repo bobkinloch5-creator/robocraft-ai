@@ -358,6 +358,21 @@ function ProjectEditor() {
   const removeAttachment = (i: number) =>
     setAttachments((prev) => prev.filter((_, idx) => idx !== i));
   const [aiBusy, setAiBusy] = useState(false);
+  const [aiBusyStartedAt, setAiBusyStartedAt] = useState<number | null>(null);
+  const [aiBusyElapsed, setAiBusyElapsed] = useState(0);
+  const [aiBusyExpanded, setAiBusyExpanded] = useState(false);
+  useEffect(() => {
+    if (!aiBusy) {
+      setAiBusyStartedAt(null);
+      setAiBusyElapsed(0);
+      return;
+    }
+    const start = Date.now();
+    setAiBusyStartedAt(start);
+    setAiBusyElapsed(0);
+    const id = setInterval(() => setAiBusyElapsed(Math.floor((Date.now() - start) / 1000)), 500);
+    return () => clearInterval(id);
+  }, [aiBusy]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [showInvite, setShowInvite] = useState(false);
   const [collabs, setCollabs] = useState<Array<{ user_id: string; role: string; email?: string }>>(
@@ -2134,28 +2149,91 @@ function ProjectEditor() {
                 </div>
               );
             })}
-            {aiBusy && (
-              <div className="flex gap-2.5 animate-fade-in">
-                <div className="shrink-0 mt-1 h-7 w-7 rounded-full bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center shadow-lg shadow-primary/30 ring-1 ring-primary/40 animate-pulse">
-                  <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/70 px-1">
-                    BloxSmith AI
-                  </span>
-                  <div className="rounded-2xl rounded-tl-sm bg-surface-elevated/80 backdrop-blur-sm border border-primary/20 px-3.5 py-2.5 shadow-md inline-flex items-center gap-2.5">
-                    <span className="flex gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+            {aiBusy && (() => {
+              const phase = chatMode ? "chat" : planMode ? "plan" : "build";
+              const phaseLabel = phase === "chat" ? "Thinking…" : phase === "plan" ? "Planning your build…" : "Crafting your Roblox magic…";
+              const steps = phase === "chat"
+                ? [
+                    "Reading your message",
+                    "Reviewing project context",
+                    "Composing a reply",
+                  ]
+                : phase === "plan"
+                ? [
+                    "Analyzing your request",
+                    "Inspecting current project tree",
+                    "Outlining the build steps",
+                    "Finalizing the plan",
+                  ]
+                : [
+                    "Reading your request",
+                    "Loading current project state",
+                    "Designing scripts & instances",
+                    "Generating files and actions",
+                    "Validating against Roblox",
+                    "Finalizing the build",
+                  ];
+              // step roughly every 6s, clamp to last
+              const stepIdx = Math.min(steps.length - 1, Math.floor(aiBusyElapsed / 6));
+              const mm = String(Math.floor(aiBusyElapsed / 60)).padStart(1, "0");
+              const ss = String(aiBusyElapsed % 60).padStart(2, "0");
+              return (
+                <div className="flex gap-2.5 animate-fade-in">
+                  <div className="shrink-0 mt-1 h-7 w-7 rounded-full bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center shadow-lg shadow-primary/30 ring-1 ring-primary/40 animate-pulse">
+                    <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/70 px-1">
+                      BloxSmith AI
                     </span>
-                    <span className="text-xs text-foreground/80 font-medium">
-                      {chatMode ? "Thinking…" : planMode ? "Planning your build…" : "Crafting your Roblox magic…"}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setAiBusyExpanded((v) => !v)}
+                      className="text-left rounded-2xl rounded-tl-sm bg-surface-elevated/80 backdrop-blur-sm border border-primary/20 px-3.5 py-2.5 shadow-md hover:border-primary/40 transition cursor-pointer"
+                      title={aiBusyExpanded ? "Hide details" : "Tap to see what the AI is doing"}
+                    >
+                      <div className="inline-flex items-center gap-2.5">
+                        <span className="flex gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+                        </span>
+                        <span className="text-xs text-foreground/80 font-medium">{phaseLabel}</span>
+                        <span className="text-[10px] text-muted-foreground tabular-nums">{mm}:{ss}</span>
+                        <span className="text-[10px] text-muted-foreground/70 ml-1">
+                          {aiBusyExpanded ? "▾" : "▸"}
+                        </span>
+                      </div>
+                      {aiBusyExpanded && (
+                        <div className="mt-3 pt-3 border-t border-border/60 space-y-1.5">
+                          {steps.map((s, i) => {
+                            const done = i < stepIdx;
+                            const active = i === stepIdx;
+                            return (
+                              <div key={i} className="flex items-center gap-2 text-xs">
+                                {done ? (
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                                ) : active ? (
+                                  <Loader2 className="h-3.5 w-3.5 text-primary animate-spin shrink-0" />
+                                ) : (
+                                  <span className="h-3.5 w-3.5 rounded-full border border-border shrink-0" />
+                                )}
+                                <span className={active ? "text-foreground" : done ? "text-muted-foreground line-through" : "text-muted-foreground/70"}>
+                                  {s}
+                                </span>
+                              </div>
+                            );
+                          })}
+                          <p className="text-[10px] text-muted-foreground/60 pt-1">
+                            Estimated progress — the AI works on these in order.
+                          </p>
+                        </div>
+                      )}
+                    </button>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
             <div ref={chatEnd} />
           </div>
 
