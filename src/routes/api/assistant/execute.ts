@@ -105,16 +105,25 @@ type ContextInputs = {
   keywords: string[];
 };
 
-function buildContextBlock(level: 0 | 1 | 2, inp: ContextInputs): {
+function buildContextBlock(level: 0 | 1 | 2 | 3, inp: ContextInputs): {
   contextBlock: string;
   trimmedHistory: { role: "user" | "assistant"; content: string }[];
   filesIncluded: number;
 } {
+  // level 3 = ultra-minimal: just the user's prompt + studio status.
   const liveCharBudget = level === 0 ? 6000 : level === 1 ? 1500 : 0;
   const maxFiles = level === 0 ? 6 : level === 1 ? 3 : 0;
   const perFileChars = level === 0 ? 800 : level === 1 ? 400 : 0;
   const historyTurns = level === 0 ? 6 : level === 1 ? 2 : 0;
   const historyChars = level === 0 ? 600 : 200;
+  if (level === 3) {
+    const contextBlock =
+      `Studio plugin status: ${inp.studioConnected ? "connected" : "not connected"}.\n\n` +
+      `User request:\n${inp.prompt}\n\n` +
+      `Return ONLY the strict JSON object from the output contract.`;
+    return { contextBlock, trimmedHistory: [], filesIncluded: 0 };
+  }
+
 
   const relevant = maxFiles > 0
     ? pickRelevantFiles(inp.files, inp.keywords, maxFiles, perFileChars)
